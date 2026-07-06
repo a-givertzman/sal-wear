@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "vibro-core",
+    "wear-core",
+]
+resolver = "2"
+
+[workspace.dependencies]
+log = "^0.4"
+env_logger = "^0.11"
