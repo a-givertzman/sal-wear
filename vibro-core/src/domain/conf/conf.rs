@@ -1,60 +1,39 @@
+use std::ops::Range;
+
+use serde::Deserialize;
+
 /// Главная конфигурация конвейера обработки вибросигнала.
 /// Инкапсулирует базовые аппаратные константы, параметры сетки и границы фильтров.
-#[derive(Clone, Debug, Dese)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Conf {
-    hardware: HardwareConf,
-    angular: AngularConf,
-    bands: BandsConf,
-}
-impl Conf {
-    /// Создает новый иммутабельный объект конфигурации.
-    pub fn new(hardware: HardwareConf, angular: AngularConf, bands: BandsConf) -> Self {
-        Self { hardware, angular, bands }
-    }
-    /// Возвращает параметры аппаратной части (АЦП, чанки).
-    pub fn hardware(&self) -> &HardwareConf {
-        &self.hardware
-    }
-    /// Возвращает настройки угловой сетки и буферов для Order Tracking.
-    pub fn angular(&self) -> &AngularConf {
-        &self.angular
-    }
-    /// Возвращает частотные диапазоны для детекторов.
-    pub fn bands(&self) -> &BandsConf {
-        &self.bands
-    }
+    /// Параметры аппаратной части (АЦП, чанки).
+    pub hardware: HardwareConf,
+    /// Настройки угловой сетки и буферов для Order Tracking.
+    pub angular: AngularConf,
+    /// Частотные диапазоны для детекторов.
+    pub bands: BandsConf,
 }
 /// Аппаратные параметры источника данных.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct HardwareConf {
-    sample_rate_hz: f32,
-    chunk_size: usize,
-}
-impl HardwareConf {
-    /// Инициализирует параметры АЦП.
-    pub fn new(sample_rate_hz: f32, chunk_size: usize) -> Self {
-        Self { sample_rate_hz, chunk_size }
-    }
     /// Возвращает базовую частоту дискретизации в Гц.
-    pub fn sample_rate_hz(&self) -> f32 {
-        self.sample_rate_hz
-    }
+    #[serde(alias = "sample-rate-hz")]
+    pub sample_rate_hz: f32,
     /// Возвращает размер пакета данных, поступающего из сети.
-    pub fn chunk_size(&self) -> usize {
-        self.chunk_size
-    }
+    #[serde(alias = "chunk-size")]
+    pub chunk_size: usize,
 }
 /// Настройки углового домена (Order Tracking).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct AngularConf {
-    points_per_rev: usize,
-    fft_revolutions: usize,
+    /// Плотность угловой сетки
+    #[serde(alias = "resolution")]
+    pub points_per_rev: usize,
+    /// Размер окна для спектрального анализа
+    #[serde(alias = "fft-size")]
+    pub fft_size: usize,
 }
 impl AngularConf {
-    /// Задает плотность угловой сетки и размер окна для спектрального анализа.
-    pub fn new(points_per_rev: usize, fft_revolutions: usize) -> Self {
-        Self { points_per_rev, fft_revolutions }
-    }
     /// Вычисляет угловой шаг в радианах.
     /// Возвращает f64 для предотвращения деградации точности при интегрировании фазы вала.
     pub fn angular_step_rad(&self) -> f64 {
@@ -63,39 +42,33 @@ impl AngularConf {
     /// Вычисляет итоговый размер буфера для спектрального анализа.
     /// Гарантирует степень двойки для быстрого FFT, если параметры заданы корректно.
     pub fn fft_buffer_size(&self) -> usize {
-        self.points_per_rev * self.fft_revolutions
+        self.points_per_rev * self.fft_size
     }
 }
 /// Границы частотных диапазонов для фильтрации и анализа.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct BandsConf {
-    low_order_min: f32,
-    low_order_max: f32,
-    mid_hz_max: f32,
-    high_hz_min: f32,
-    high_hz_max: f32,
+    /// Границы низкочастотной зоны в порядках (Orders).
+    #[serde(alias = "low-order")]
+    pub low_order: Range<f32>,
+    /// Верхняя граница среднего диапазона в Герцах (нижняя определяется порядками).
+    #[serde(alias = "mid-hz")]
+    pub mid_hz: Range<f32>,
+    /// Границы высокочастотной зоны в Герцах.
+    #[serde(alias = "high-hz")]
+    pub high_hz: Range<f32>,
 }
 impl BandsConf {
-    /// Устанавливает границы для низко-, средне- и высокочастотных зон.
-    pub fn new(
-        low_order_min: f32, 
-        low_order_max: f32, 
-        mid_hz_max: f32, 
-        high_hz_min: f32, 
-        high_hz_max: f32
-    ) -> Self {
-        Self { low_order_min, low_order_max, mid_hz_max, high_hz_min, high_hz_max }
-    }
     /// Возвращает границы низкочастотной зоны в порядках (Orders).
     pub fn low_range_orders(&self) -> (f32, f32) {
-        (self.low_order_min, self.low_order_max)
+        (self.low_order.start, self.low_order.end)
     }
     /// Возвращает границы высокочастотной зоны в Герцах.
     pub fn high_range_hz(&self) -> (f32, f32) {
-        (self.high_hz_min, self.high_hz_max)
+        (self.high_hz.start, self.high_hz.end)
     }
     /// Возвращает верхнюю границу среднего диапазона в Герцах (нижняя определяется порядками).
     pub fn mid_range_max_hz(&self) -> f32 {
-        self.mid_hz_max
+        self.mid_hz.end
     }
 }
