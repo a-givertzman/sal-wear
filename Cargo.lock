@@ -1585,6 +1585,9 @@ dependencies = [
  "log",
  "sal-core",
  "sal-sync",
+ "serde",
+ "serde_json",
+ "serde_yaml",
  "testing",
 ]
 
@@ -1681,6 +1684,9 @@ dependencies = [
  "log",
  "sal-core",
  "sal-sync",
+ "serde",
+ "serde_json",
+ "serde_yaml",
  "testing",
 ]
 
