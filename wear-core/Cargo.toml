@@ -6,3 +6,10 @@ edition = "2024"
 [dependencies]
 log = { workspace = true }
 env_logger = { workspace = true }
+
+#
+# Internal
+sal-core = { workspace = true }
+testing = { workspace = true }
+debugging = { workspace = true }
+sal-sync = { workspace = true }

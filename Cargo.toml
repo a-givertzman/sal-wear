@@ -8,3 +8,10 @@ resolver = "2"
 [workspace.dependencies]
 log = "^0.4"
 env_logger = "^0.11"
+
+#
+# Internal
+sal-core = { tag = "0.1.0", git = "https://github.com/a-givertzman/rust-sal-core.git" }
+testing = { tag = "0.1.2", git = "https://github.com/a-givertzman/rust-testing.git" }
+debugging = { tag = "0.1.0", git = "https://github.com/a-givertzman/rust-debuging.git" }
+sal-sync = { tag = "0.3.2", git = "https://github.com/a-givertzman/rust-sal-sync.git" }
