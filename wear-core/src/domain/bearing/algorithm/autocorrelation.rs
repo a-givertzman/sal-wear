@@ -4,16 +4,16 @@ use crate::{Context, Eval, me};
 
 /// Вычисляет точный период вращения (в отсчетах) через автокорреляцию.
 /// Ищет максимум функции в узком окне от показаний тахометра.
-pub struct Autocorrelation<Child> {
+pub struct EvalTemplate<Child> {
     sample_rate: f64,
     child: Child,
     dbg: Dbg,
 }
-impl<Child> Autocorrelation<Child>
+impl<Child> EvalTemplate<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
     ///
-    /// ### Returns `Autocorrelation` new instance
+    /// ### Returns `EvalTemplate` new instance
     pub fn new(parent: &Dbg, sample_rate: impl Into<f64>, child: Child) -> Self {
         let dbg = Dbg::new(parent, me::<Self>());
         Self {
@@ -23,7 +23,7 @@ where
         }
     }
 }
-impl<Child> Eval<Context, Context> for Autocorrelation<Child>
+impl<Child> Eval<Context, Context> for EvalTemplate<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
     //
