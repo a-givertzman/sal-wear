@@ -1,6 +1,5 @@
-use std::ops::Range;
-
-use serde::Deserialize;
+use std::ops::{Bound, Range, RangeBounds, RangeFull};
+use serde::{Deserialize, Deserializer};
 
 /// Главная конфигурация конвейера обработки вибросигнала.
 /// Инкапсулирует базовые аппаратные константы, параметры сетки и границы фильтров.
@@ -26,49 +25,126 @@ pub struct HardwareConf {
 /// Настройки углового домена (Order Tracking).
 #[derive(Clone, Debug, Deserialize)]
 pub struct AngularConf {
-    /// Плотность угловой сетки
+    /// Максимальный порядок для анализа.
+    /// Определяет верхнюю границу спектра.
+    /// Связь с Герцами: F_max [Гц] = max_order * (RPM / 60).
+    /// При 3000 об/мин (50 Гц) и max_order = 100, спектр покроет полосу от 0 до 5000 Гц.
+    #[serde(alias = "max-order")]
+    pub max_order: f32,
+    /// Шаг спектра (разрешение) от 0 до max_order.
+    /// Например, шаг 0.05 порядка создаст на графике "бины" 0.00, 0.05, 0.10 и т.д.
+    /// Это позволит отличить дефект на 4.20X от шума на 4.25X.
     #[serde(alias = "resolution")]
-    pub points_per_rev: usize,
-    /// Размер окна для спектрального анализа
-    #[serde(alias = "fft-size")]
-    pub fft_size: usize,
+    pub resolution: f32,
 }
 impl AngularConf {
+    /// Вычисляет плотность угловой сетки (точек на оборот).
+    /// Опирается на теорему Найквиста с запасом и автоматически округляет до степени двойки.
+    pub fn points_per_rev(&self) -> usize {
+        let min_points = (self.max_order * 2.5).ceil() as usize;
+        min_points.next_power_of_two()
+    }
+    /// Вычисляет количество полных оборотов для достижения нужного разрешения.
+    /// Округляет до степени двойки для быстрого FFT.
+    pub fn fft_turns(&self) -> usize {
+        let min_turns = (1.0 / self.resolution).ceil() as usize;
+        min_turns.next_power_of_two()
+    }
     /// Вычисляет угловой шаг в радианах.
-    /// Возвращает f64 для предотвращения деградации точности при интегрировании фазы вала.
     pub fn angular_step_rad(&self) -> f64 {
-        std::f64::consts::TAU / (self.points_per_rev as f64)
+        std::f64::consts::TAU / (self.points_per_rev() as f64)
     }
     /// Вычисляет итоговый размер буфера для спектрального анализа.
-    /// Гарантирует степень двойки для быстрого FFT, если параметры заданы корректно.
     pub fn fft_buffer_size(&self) -> usize {
-        self.points_per_rev * self.fft_size
+        self.points_per_rev() * self.fft_turns()
     }
 }
 /// Границы частотных диапазонов для фильтрации и анализа.
 #[derive(Clone, Debug, Deserialize)]
 pub struct BandsConf {
     /// Границы низкочастотной зоны в порядках (Orders).
-    #[serde(alias = "low-order")]
-    pub low_order: Range<f32>,
+    #[serde(alias = "low-order", deserialize_with = "parse_range")]
+    pub low_order: (Bound<f32>, Bound<f32>),
     /// Верхняя граница среднего диапазона в Герцах (нижняя определяется порядками).
-    #[serde(alias = "mid-hz")]
-    pub mid_hz: Range<f32>,
+    #[serde(alias = "mid-hz", deserialize_with = "parse_range")]
+    pub mid_hz: (Bound<f32>, Bound<f32>),
     /// Границы высокочастотной зоны в Герцах.
-    #[serde(alias = "high-hz")]
-    pub high_hz: Range<f32>,
+    #[serde(alias = "high-hz", deserialize_with = "parse_range")]
+    pub high_hz: (Bound<f32>, Bound<f32>),
 }
 impl BandsConf {
+    /// Возвращает верхнюю границу для ФНЧ в порядках (Orders).
+    pub fn low_cutoff_order(&self) -> f32 {
+        self.low_range_orders().1
+    }
     /// Возвращает границы низкочастотной зоны в порядках (Orders).
     pub fn low_range_orders(&self) -> (f32, f32) {
-        (self.low_order.start, self.low_order.end)
+        let (start, end) = extract_bounds(&(self.low_order));
+        (start.unwrap(), end.unwrap())
     }
     /// Возвращает границы высокочастотной зоны в Герцах.
     pub fn high_range_hz(&self) -> (f32, f32) {
-        (self.high_hz.start, self.high_hz.end)
+        let (start, end) = extract_bounds(&(self.high_hz));
+        (start.unwrap(), end.unwrap())
     }
     /// Возвращает верхнюю границу среднего диапазона в Герцах (нижняя определяется порядками).
     pub fn mid_range_max_hz(&self) -> f32 {
-        self.mid_hz.end
+        let (_, end) = extract_bounds(&(self.mid_hz));
+        end.unwrap()
+    }
+}
+fn extract_bounds<T: Clone>(range: &(Bound<T>, Bound<T>)) -> (Option<T>, Option<T>) {
+    let f = |b: Bound<&T>| match b {
+        Bound::Included(v) | Bound::Excluded(v) => Some(v.clone()),
+        Bound::Unbounded => None,
+    };
+    (f(range.start_bound()), f(range.end_bound()))
+}
+fn parse_range<'de, D>(deserializer: D) -> Result<(Bound<f32>, Bound<f32>), D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    // Разделяем строку по разделителю ".."
+    let (low_str, high_str) = s.split_once("..").ok_or_else(|| {
+        serde::de::Error::custom(format!("Неверный формат диапазона: '{}'. Ожидалось 'start..end'", s))
+    })?;
+    let low_str = low_str.trim(); 
+    let high_str = high_str.trim(); 
+    let start = if low_str.is_empty() {
+        Bound::Unbounded
+    } else {
+        let val = low_str.parse::<f32>().map_err(serde::de::Error::custom)?;
+        Bound::Included(val)
+    };
+    let end = if high_str.is_empty() {
+        Bound::Unbounded
+    } else {
+        let val = high_str.parse::<f32>().map_err(serde::de::Error::custom)?;
+        Bound::Excluded(val)
+    };
+    Ok((start, end))
+}
+
+///
+/// Basic Tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f64::consts::PI;
+    /// Тестирование контрактов конфигурации.
+    /// Проверяет правильность вычисления внутренних констант для FFT и ресемплинга.
+    #[test]
+    fn test_conf_contracts() {
+        // Допустим, points_per_rev = 256 [cite: 341] и fft_revolutions = 32 
+        let conf: AngularConf = serde_yaml::from_str(r#"
+            max-order: 100
+            resolution: 0.05
+        "#).unwrap();
+        // Шаг угла должен вычисляться в f64 [cite: 341]
+        let expected_step = 2.0 * PI / 256.0;
+        assert!((conf.angular_step_rad() - expected_step).abs() < 1e-12);
+        // Буфер FFT должен математически гарантированно быть 8192 [cite: 344]
+        assert_eq!(conf.fft_buffer_size(), 8192);
     }
 }

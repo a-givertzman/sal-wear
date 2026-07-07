@@ -1,5 +1,5 @@
 use sal_core::dbg::Dbg;
-use crate::{Context, Eval, domain::PI2, me};
+use crate::{Context, Eval, me};
 
 /// Вычисляет точный период вращения (в отсчетах) через автокорреляцию.
 /// Ищет максимум функции в узком окне от показаний тахометра.
@@ -12,6 +12,8 @@ pub struct Autocorrelation<Child> {
 impl<Child> Autocorrelation<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
+    /// 2 * PI
+    const PI2: f64 = std::f64::consts::PI * 2.0;
     ///
     /// ### Returns `Autocorrelation` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
@@ -25,28 +27,6 @@ where
             dbg,
         }
     }
-    /// Вычисляет точный период вращения (в отсчетах) через автокорреляцию.
-    /// Ищет максимум функции в узком окне от показаний тахометра.
-    #[inline]
-    fn find_exact_period(samples: &[u16], raw_period: f64) -> f64 {
-        let margin = (raw_period * 0.1) as usize;
-        let center = raw_period as usize;
-        let start = center.saturating_sub(margin).max(1);
-        let end = (center + margin).min(samples.len() / 2);
-        let mut max_corr = 0.0;
-        let mut best_lag = center;
-        for lag in start..=end {
-            let mut corr = 0.0;
-            for i in 0..(samples.len() - lag) {
-                corr += samples[i] as f64 * samples[i + lag] as f64;
-            }
-            if corr > max_corr {
-                max_corr = corr;
-                best_lag = lag;
-            }
-        }
-        best_lag as f64
-    }
 }
 impl<Child> Eval<Context, Context> for Autocorrelation<Child>
 where
@@ -57,10 +37,9 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        ctx.raw_period = self.sample_rate * 60.0 / ctx.raw_rpm;
-        ctx.period = Self::find_exact_period(ctx.ac_samples.read_window(), ctx.raw_period);
-        ctx.omega = PI2 * self.sample_rate / ctx.period;
-        ctx.dt = 1.0 / self.sample_rate;
+        // Do calculations, write to ctx
+        // Write error if calculation faled
+        // ctx.err = Some(Error::new(&self.dbg, "eval").err("Error message"))
         ctx
     }
     //
