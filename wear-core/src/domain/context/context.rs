@@ -11,7 +11,7 @@ pub struct Context {
     /// Текущая мощность двигателя [кВ]
     pub(crate) motor_p: Option<f64>,
     /// Текущая температура подшипникового узла [°C]
-    pub(crate) motor_t: Option<f64>,
+    pub(crate) t_bearing: Option<f64>,
     ///
     /// Расчетные значения
     /// 
@@ -32,7 +32,7 @@ impl Context {
         Self {
             motor_rpm: None,
             motor_p: None,
-            motor_t: None,
+            t_bearing: None,
             duration: 0.0,
             motor_torque: 0.0,
             radial_load: 0.0,

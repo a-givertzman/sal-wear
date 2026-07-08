@@ -48,7 +48,7 @@ mod tests {
                 Context {
                     motor_rpm: None,
                     motor_p: None,
-                    motor_t: None,
+                    t_bearing: None,
                     duration: 0.0,
                     motor_torque: 50.0,
                     radial_load: 0.0,
@@ -68,7 +68,7 @@ mod tests {
                 Context {
                     motor_rpm: None,
                     motor_p: None,
-                    motor_t: None,
+                    t_bearing: None,
                     duration: 0.0,
                     motor_torque: 25.0,
                     radial_load: 0.0,
@@ -88,7 +88,7 @@ mod tests {
                 Context {
                     motor_rpm: None,
                     motor_p: None,
-                    motor_t: None,
+                    t_bearing: None,
                     duration: 0.0,
                     motor_torque: 2.5,
                     radial_load: 0.0,
@@ -108,7 +108,7 @@ mod tests {
                 Context {
                     motor_rpm: None,
                     motor_p: None,
-                    motor_t: None,
+                    t_bearing: None,
                     duration: 0.0,
                     motor_torque: 2.5,
                     radial_load: 0.0,
