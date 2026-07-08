@@ -30,7 +30,7 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
     fn eval(&self, mut ctx: Context) -> Context {
         match &self.inputs.rpm() {
             Some(rpm) => {
-                ctx.rpm = Some(*rpm);
+                ctx.motor_rpm = Some(*rpm);
             }
             None => {
                 ctx.err = Some(Error::new(&self.dbg, "eval").err("RPM isn't initialized yet."));
@@ -41,7 +41,7 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
                 if *p_motor <= 0.0 {
                     ctx.err = Some(Error::new(&self.dbg, "eval").err("Motor power must be > 0."));
                 } else {
-                    ctx.p_motor = Some(*p_motor);
+                    ctx.motor_p = Some(*p_motor);
                 }
             }
             None => {

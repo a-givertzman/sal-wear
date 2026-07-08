@@ -1,4 +1,4 @@
-use sal_core::dbg::Dbg;
+use sal_core::{dbg::Dbg, error::Error};
 use crate::{
     Eval, 
     domain::context::Context
@@ -32,32 +32,26 @@ where
     Child: Eval<Context, Context> + Send + 'static {
     fn eval(&self, ctx: Context) -> Context {
         let mut ctx = self.child.eval(ctx);
-        match &ctx.err {
-            Some(_) => ctx.pass_err(&self.dbg, "eval"),
-            None => {
-                if ctx.motor_torque.is_none() {
-                    match &ctx.p_motor {
-                        Some(p_motor) => {
-                            match &ctx.rpm {
-                                Some(rpm) => {
-                                    ctx.motor_torque = Some(9550.0 * p_motor / rpm);
-                                }
-                                None => {
-                                    return ctx.pass_err(&self.dbg, "eval");
-                                }
-                            }
-                        }
-                        None => {
-                            return ctx.pass_err(&self.dbg, "eval");
-                        }
-                    }
-                }
-                ctx
-            }
+        if ctx.err.is_some() {
+            return ctx.pass_err(&self.dbg, "eval");
         }
+        let Some(motor_p) = &ctx.motor_p else {
+            ctx.err = Some(Error::new(&self.dbg, "eval").err("Motor P isn't initialized"));
+            return ctx;
+        };
+        let Some(motor_rpm) = &ctx.motor_rpm else {
+            ctx.err = Some(Error::new(&self.dbg, "eval").err("Motor RPM isn't initialized"));
+            return ctx;
+        };
+        if *motor_rpm < 0.1 {
+            ctx.err = Some(Error::new(&self.dbg, "eval").err("Motor RPM is about zero"));
+            return ctx;
+        }
+        ctx.motor_torque = 9550.0 * motor_p / motor_rpm;
+        ctx
     }
     //
     fn exit(&self) {
-        todo!()
+        self.child.exit();
     }
 }
