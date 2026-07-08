@@ -1,14 +1,15 @@
-use std::sync::Arc;
+use std::f64::consts::TAU;
 
 use sal_core::{dbg::Dbg, error::Error};
-use crate::{AngularGrid, Eval, domain::imbalance::context::ImbContext, me};
+use crate::{Eval, domain::imbalance::context::ImbContext, me};
 
 /// Выполняет ресемплинг (Order Tracking) отфильтрованного сигнала во временной области 
 /// в равномерную сетку угловой области.
 /// Использует локальную кубическую интерполяцию Catmull-Rom для предотвращения алиасинга.
 pub struct OrderDomainSamples<Child> {
-    /// Ссылка на генератор/конфигурацию идеальной сетки углов.
-    angular_grid: Arc<AngularGrid<_>>,
+    /// Плотность угловой сетки (точек на оборот).
+    points_per_turn: usize,
+    angles: Vec<f64>,
     child: Child,
     dbg: Dbg,
 }
@@ -20,12 +21,13 @@ where
     ///
     /// ### Returns `OrderDomainSamples` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
-    /// - `angular_grid` - Ссылка на генератор/конфигурацию идеальной сетки углов.
+    /// - `points_per_turn` - Плотность угловой сетки (точек на оборот).
     /// - `child` - Дочерний (предыдущий) расчетный шаг
-    pub fn new(parent: &Dbg, angular_grid: Arc<AngularGrid<_>>, child: Child) -> Self {
+    pub fn new(parent: &Dbg, points_per_turn: usize, child: Child) -> Self {
         let dbg = Dbg::new(parent, me::<Self>());
         Self {
-            angular_grid,
+            points_per_turn,
+            angles: (0..points_per_turn).map(|i| (i as f64) * TAU / points_per_turn as f64).collect(),
             child,
             dbg,
         }
@@ -61,26 +63,26 @@ where
             return ctx;
         }
         // Запрашиваем идеальные углы, которые попадают в текущий физический кадр
-        let ideal_angles = self.angular_grid.get_target_angles(phases[0], phases[phases.len() - 1]);
+        let ideal_angles = TargetAngles::new(phases[0], phases[phases.len() - 1], self.points_per_turn);
         let mut idx = 1;
         ctx.order_samples.clear();
-        for &target_theta in ideal_angles.iter() {
+        for target_theta in ideal_angles {
             // Ищем интервал [idx, idx + 1], в который попадает требуемый угол
-            while idx < phases.len() - 2 && phases[idx + 1] < target_theta {
+            while idx < phases.len() - 2 && (phases[idx + 1] as f64) < target_theta {
                 idx += 1;
             }
             // Пропускаем точки, если для них не хватает истории по краям чанка
-            if target_theta < phases[idx] || idx >= phases.len() - 2 {
+            if target_theta < (phases[idx] as f64) || idx >= phases.len() - 2 {
                 continue; 
             }
-            let phase_start = phases[idx];
-            let phase_end = phases[idx + 1];
+            let phase_start = phases[idx] as f64;
+            let phase_end = phases[idx + 1] as f64;
             let t = (target_theta - phase_start) / (phase_end - phase_start);
             let p0 = samples[idx - 1] as f64;
             let p1 = samples[idx] as f64;
             let p2 = samples[idx + 1] as f64;
             let p3 = samples[idx + 2] as f64;
-            let resampled_val = Self::catmull_rom(p0, p1, p2, p3, t as f64);
+            let resampled_val = Self::catmull_rom(p0, p1, p2, p3, t);
             ctx.order_samples.push(resampled_val);
         }
         ctx
@@ -88,5 +90,53 @@ where
     //
     fn exit(&self) {
         self.child.exit();
+    }
+}
+/// Математический генератор идеальной угловой сетки (Zero-Cost).
+/// Вычисляет целевые углы на лету без выделения памяти.
+pub struct TargetAngles {
+    current_idx: usize,
+    end_idx: usize,
+    points_per_turn: usize,
+    delta_theta: f64,
+}
+impl TargetAngles {
+    /// Создает итератор по идеальным отметкам математической сетки,
+    /// которые попали в физический промежуток между `theta1` и `theta2`.
+    /// Корректно обрабатывает перехлест фазы (конец оборота).
+    ///
+    /// Аргументы:
+    /// - `theta1`: Начальный угол физического чанка (в радианах).
+    /// - `theta2`: Конечный угол физического чанка (в радианах).
+    /// - `points_per_turn`: Плотность угловой сетки (точек на оборот).
+    pub fn new(theta1: impl Into<f64>, theta2: impl Into<f64>, points_per_turn: usize) -> Self {
+        let theta1 = theta1.into();
+        let theta2 = theta2.into();
+        let delta_theta = std::f64::consts::TAU / (points_per_turn as f64);
+        let mut t2 = theta2;
+        if theta2 < theta1 {
+            t2 += std::f64::consts::TAU;
+        }
+        let current_idx = (theta1 / delta_theta).ceil() as usize;
+        let end_idx = (t2 / delta_theta).floor() as usize + 1;
+        Self {
+            current_idx,
+            end_idx,
+            points_per_turn,
+            delta_theta,
+        }
+    }
+}
+impl Iterator for TargetAngles {
+    type Item = f64;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_idx < self.end_idx {
+            let wrapped_idx = self.current_idx % self.points_per_turn;
+            let angle = (wrapped_idx as f64) * self.delta_theta;
+            self.current_idx += 1;
+            Some(angle)
+        } else {
+            None
+        }
     }
 }

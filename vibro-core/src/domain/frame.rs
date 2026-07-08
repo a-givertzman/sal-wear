@@ -7,6 +7,8 @@ pub struct Frame {
     pub phases: [f32; Self::SIZE],
 }
 impl Frame {
+    /// Количество сырых сэмплов в одной пачке,
+    /// Которая за раз заходит на обработку (приходит из сети).
     pub const SIZE: usize = 512;
 }
 impl Default for Frame {

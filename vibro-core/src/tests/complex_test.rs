@@ -86,7 +86,8 @@ fn complex_test () {
         ),
     );
     let low_range = 
-        OrderDomainSamples::new(&dbg, conf.hardware.sample_rate_hz,
+    OrderDomainSamples::new(&dbg,
+        conf.angular.points_per_turn(),
         LowPassSignal::new(&dbg,
             conf.hardware.sample_rate_hz,
             conf.bands.low_cutoff_order(),
@@ -97,7 +98,7 @@ fn complex_test () {
         // Статический резонанс на 5 кГц с амплитудой 100
         (5000.0, 100),
     ]);
-    let mut low_range_ctx = ImbContext::new();
+    let mut low_range_ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);
     let (high_send, high_recv) = channel::bounded(1);

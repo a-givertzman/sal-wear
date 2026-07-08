@@ -1,4 +1,4 @@
-use std::ops::{Bound, Range, RangeBounds, RangeFull};
+use std::ops::{Bound, RangeBounds};
 use serde::{Deserialize, Deserializer};
 
 /// Главная конфигурация конвейера обработки вибросигнала.
@@ -40,7 +40,7 @@ pub struct AngularConf {
 impl AngularConf {
     /// Вычисляет плотность угловой сетки (точек на оборот).
     /// Опирается на теорему Найквиста с запасом и автоматически округляет до степени двойки.
-    pub fn points_per_rev(&self) -> usize {
+    pub fn points_per_turn(&self) -> usize {
         let min_points = (self.max_order * 2.5).ceil() as usize;
         min_points.next_power_of_two()
     }
@@ -52,11 +52,11 @@ impl AngularConf {
     }
     /// Вычисляет угловой шаг в радианах.
     pub fn angular_step_rad(&self) -> f64 {
-        std::f64::consts::TAU / (self.points_per_rev() as f64)
+        std::f64::consts::TAU / (self.points_per_turn() as f64)
     }
     /// Вычисляет итоговый размер буфера для спектрального анализа.
     pub fn fft_buffer_size(&self) -> usize {
-        self.points_per_rev() * self.fft_turns()
+        self.points_per_turn() * self.fft_turns()
     }
 }
 /// Границы частотных диапазонов для фильтрации и анализа.
@@ -136,7 +136,7 @@ mod tests {
     /// Проверяет правильность вычисления внутренних констант для FFT и ресемплинга.
     #[test]
     fn test_conf_contracts() {
-        // Допустим, points_per_rev = 256 [cite: 341] и fft_revolutions = 32 
+        // Допустим, points_per_turn = 256 [cite: 341] и fft_revolutions = 32 
         let conf: AngularConf = serde_yaml::from_str(r#"
             max-order: 100
             resolution: 0.05
