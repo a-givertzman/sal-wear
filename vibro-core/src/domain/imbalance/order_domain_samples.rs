@@ -140,3 +140,70 @@ impl Iterator for TargetAngles {
         }
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f64::consts::{PI, TAU};
+    /// Вспомогательная функция для безопасного сравнения векторов с плавающей точкой
+    fn assert_angles_eq(actual: Vec<f64>, expected: &[f64]) {
+        assert_eq!(
+            actual.len(),
+            expected.len(),
+            "Количество углов не совпадает: получили {}, ожидали {}",
+            actual.len(),
+            expected.len()
+        );
+        for (i, (a, e)) in actual.iter().zip(expected.iter()).enumerate() {
+            assert!(
+                (a - e).abs() < 1e-9,
+                "Ошибка в индексе {}: {} != {}",
+                i,
+                a,
+                e
+            );
+        }
+    }
+    #[test]
+    fn test_target_angles_linear_segment() {
+        // Сетка 4 точки на оборот: 0, PI/2, PI, 3*PI/2
+        // Физический чанк лежит от 1.0 рад до 4.0 рад
+        // Должны попасть: PI/2 (1.57) и PI (3.14)
+        let angles: Vec<f64> = TargetAngles::new(1.0, 4.0, 4).collect();
+        assert_angles_eq(angles, &[PI / 2.0, PI]);
+    }
+    #[test]
+    fn test_target_angles_phase_wrap() {
+        // Перехлест оборота: чанк начался на 5.0 рад (конец старого оборота), 
+        // а закончился на 1.0 рад (начало нового оборота).
+        // Должны попасть: 3*PI/2 (4.71 - мимо, так как меньше 5.0), 
+        // 0.0 (перехлест) и мы не доходим до PI/2 (1.57)
+        let angles: Vec<f64> = TargetAngles::new(5.0, 1.0, 4).collect();
+        assert_angles_eq(angles, &[0.0]);
+    }
+    #[test]
+    fn test_target_angles_exact_bounds() {
+        // Сетка 8 точек на оборот.
+        // Чанк начинается ровно с PI/2 и заканчивается ровно на PI.
+        // Должны попасть границы включительно, плюс промежуточная точка 3*PI/4.
+        let theta1 = PI / 2.0;
+        let theta2 = PI;
+        let angles: Vec<f64> = TargetAngles::new(theta1, theta2, 8).collect();
+        assert_angles_eq(angles, &[PI / 2.0, 3.0 * PI / 4.0, PI]);
+    }
+    #[test]
+    fn test_target_angles_bounds() {
+        // Сетка 8 точек на оборот.
+        // Чанк начинается с PI / 8.0 + 0.01 и заканчивается ровно на 5.0 * PI / 8.0 - 0.01.
+        let theta1 = PI / 4.0 + 0.01;
+        let theta2 = 5.0 * PI / 4.0 - 0.01;
+        let angles: Vec<f64> = TargetAngles::new(theta1, theta2, 8).collect();
+        assert_angles_eq(angles, &[PI/2.0, 3.0*PI/4.0, PI]);
+    }
+    #[test]
+    fn test_target_angles_empty_range() {
+        // Очень короткий чанк, внутрь которого не попадает ни одна идеальная отметка сетки.
+        // Например, от 0.1 до 1.0 при сетке из 4 точек (первая точка PI/2 ~ 1.57).
+        let angles: Vec<f64> = TargetAngles::new(0.1, 1.0, 4).collect();
+        assert!(angles.is_empty(), "Итератор должен быть пустым");
+    }
+}

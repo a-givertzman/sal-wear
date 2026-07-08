@@ -157,9 +157,9 @@ fn complex_test () {
                 samples,
                 phases: ctx.phases,
             });
-            low_send.send(frame.clone());
-            mid_send.send(frame.clone());
-            high_send.send(frame.clone());
+            _ = low_send.send(frame.clone());
+            _ = mid_send.send(frame.clone());
+            _ = high_send.send(frame.clone());
         }
     }
 }
