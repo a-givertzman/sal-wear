@@ -36,12 +36,12 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
                 ctx.err = Some(Error::new(&self.dbg, "eval").err("RPM isn't initialized yet."));
             }
         }
-        match &self.inputs.p_motor() {
-            Some(p_motor) => {
-                if *p_motor <= 0.0 {
+        match &self.inputs.motor_p() {
+            Some(motor_p) => {
+                if *motor_p <= 0.0 {
                     ctx.err = Some(Error::new(&self.dbg, "eval").err("Motor power must be > 0."));
                 } else {
-                    ctx.motor_p = Some(*p_motor);
+                    ctx.motor_p = Some(*motor_p);
                 }
             }
             None => {

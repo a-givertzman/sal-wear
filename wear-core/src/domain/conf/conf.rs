@@ -14,24 +14,15 @@ pub struct WearCoreConf {
 /// Конфиг текущего устойчивого режима
 #[derive(Clone, Debug, Deserialize)]
 pub struct SteadyStateConf {
-    /// Скорость вращения вала в оборотах в минуту [об/мин]
-    #[serde(alias = "rpm")]
-    pub rpm: f64,
+    /// Диаметр вала двигателя [м]
+    #[serde(alias = "motor-d-m")]
+    pub motor_d: f64,
     /// Радиальная нагрузка на подшипник [H]
     #[serde(alias = "fr-h")]
     pub fr_h: Option<f64>,
     /// Осевая нагрузка на подшипник [H]
     #[serde(alias = "fa-h", default)]
     pub fa_h: f64,
-    /// Крутящий момент на валу редуктора [Н·м]
-    #[serde(alias = "M-Hm")]
-    pub M_Hm: Option<f64>,
-    /// Текущая температура подшипникового узла [°C]
-    #[serde(alias = "t-bearing")]
-    pub t_bearing: Option<f64>,
-    /// Текущая продолжительность расчётного интервала [сек]
-    #[serde(alias = "duration")]
-    pub duration: f64,
 }
 ///
 /// Конфиг подшипника

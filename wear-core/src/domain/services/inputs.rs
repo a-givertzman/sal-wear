@@ -3,7 +3,7 @@ pub struct Inputs {
     /// Текущая частота вращения двигателя [об/мин]
     rpm: Option<f64>,
     /// Текущая мощность двигателя [кВ]
-    p_motor: Option<f64>,
+    motor_p: Option<f64>,
     /// Текущая температура подшипникового узла [°C]
     t_bearing: Option<f64>,
     /// Текущая продолжительность расчётного интервала [сек]
@@ -15,8 +15,8 @@ impl Inputs {
     pub fn rpm(&self) -> Option<f64> {
         self.rpm
     }
-    pub fn p_motor(&self) -> Option<f64> {
-        self.p_motor
+    pub fn motor_p(&self) -> Option<f64> {
+        self.motor_p
     }
     pub fn t_bearing(&self) -> Option<f64> {
         self.t_bearing
@@ -30,7 +30,7 @@ pub struct MockInputs {
     /// Текущая частота вращения двигателя [об/мин]
     pub rpm: Option<f64>,
     /// Текущая мощность двигателя [кВ]
-    pub p_motor: Option<f64>,
+    pub motor_p: Option<f64>,
     /// Текущая температура подшипникового узла [°C]
     pub t_bearing: Option<f64>,
     /// Текущая продолжительность расчётного интервала [сек]
@@ -42,8 +42,8 @@ impl MockInputs {
     pub fn rpm(&self) -> Option<f64> {
         self.rpm
     }
-    pub fn p_motor(&self) -> Option<f64> {
-        self.p_motor
+    pub fn motor_p(&self) -> Option<f64> {
+        self.motor_p
     }
     pub fn t_bearing(&self) -> Option<f64> {
         self.t_bearing

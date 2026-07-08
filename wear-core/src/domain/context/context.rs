@@ -8,7 +8,7 @@ pub struct Context {
     /// 
     /// Скорость вращения вала в оборотах в минуту [об/мин]
     pub(crate) motor_rpm: Option<f64>,
-    /// Мощность двигателя [кВ]
+    /// Текущая мощность двигателя [кВ]
     pub(crate) motor_p: Option<f64>,
     /// Текущая температура подшипникового узла [°C]
     pub(crate) motor_t: Option<f64>,
@@ -19,7 +19,8 @@ pub struct Context {
     pub(crate) duration: f64,
     /// Крутящий момент мотора [Н·м]
     pub(crate) motor_torque: f64,
-    /// 
+    /// Радиальная нагрузка на подшипник [H]
+    pub(crate) radial_load: f64, 
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -34,6 +35,7 @@ impl Context {
             motor_t: None,
             duration: 0.0,
             motor_torque: 0.0,
+            radial_load: 0.0,
             err: None,
         }
     }
