@@ -51,7 +51,7 @@ mod tests {
                 MockInputs {
                     rpm: Some(50.0),
                     p_motor: Some(50.0),
-                    t_temp: Some(0.0),
+                    t_bearing: Some(0.0),
                     duration: Some(0.0),
                 },
                 Some(9550.0), // 9550 * 50 / 50 = 9550
@@ -61,7 +61,7 @@ mod tests {
                 MockInputs {
                     rpm: Some(25.0),
                     p_motor: Some(50.0),
-                    t_temp: Some(0.0),
+                    t_bearing: Some(0.0),
                     duration: Some(0.0),
                 },
                 Some(19100.0), // 9550 * 50 / 25 = 19100
@@ -71,7 +71,7 @@ mod tests {
                 MockInputs {
                     rpm: Some(1450.0),
                     p_motor: Some(11.5),
-                    t_temp: Some(0.0),
+                    t_bearing: Some(0.0),
                     duration: Some(0.0),
                 },
                 Some(9550.0 * 11.5 / 1450.0), // ~75.74137
@@ -81,7 +81,7 @@ mod tests {
                 MockInputs {
                     rpm: Some(1000.0),
                     p_motor: Some(0.0),
-                    t_temp: Some(0.0),
+                    t_bearing: Some(0.0),
                     duration: Some(0.0),
                 },
                 None, // Ошибка тк p_motor должен быть > 0
@@ -91,7 +91,7 @@ mod tests {
                 MockInputs {
                     rpm: None,
                     p_motor: Some(15.0),
-                    t_temp: Some(0.0),
+                    t_bearing: Some(0.0),
                     duration: Some(0.0),
                 },
                 None, // Ожидаем, что в контексте вернется ошибка, а не расчет
@@ -101,7 +101,7 @@ mod tests {
                 MockInputs {
                     rpm: Some(1500.0),
                     p_motor: None,
-                    t_temp: None,
+                    t_bearing: None,
                     duration: None,
                 },
                 None, // Ожидаем ошибку
@@ -122,7 +122,7 @@ mod tests {
                         "Шаг [{}]: Ожидался успешный расчет, но получена ошибка: {:?}", 
                         step, result.err
                     );
-                    let actual = result.motor_torque.expect("motor_torque должен быть заполнен");
+                    let actual = result.motor_torque;
                     let epsilon = 1e-5;
                     let diff = (actual - target).abs();
                     assert!(

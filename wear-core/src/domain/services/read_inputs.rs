@@ -48,9 +48,9 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
                 ctx.err = Some(Error::new(&self.dbg, "eval").err("Motor power isn't initialized yet."));
             }
         }
-        match &self.inputs.t_temp() {
-            Some(t_temp) => {
-                ctx.motor_t = Some(*t_temp);
+        match &self.inputs.t_bearing() {
+            Some(t_bearing) => {
+                ctx.motor_t = Some(*t_bearing);
             }
             None => {
                 ctx.err = Some(Error::new(&self.dbg, "eval").err("Current T isn't initialized yet."));
@@ -58,7 +58,7 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
         }
         match &self.inputs.duration() {
             Some(duration) => {
-                ctx.duration = Some(*duration);
+                ctx.duration = *duration;
             }
             None => {
                 ctx.err = Some(Error::new(&self.dbg, "eval").err("Duration isn't initialized yet."));

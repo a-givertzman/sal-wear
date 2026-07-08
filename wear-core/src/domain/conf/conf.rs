@@ -26,10 +26,10 @@ pub struct SteadyStateConf {
     /// Крутящий момент на валу редуктора [Н·м]
     #[serde(alias = "M-Hm")]
     pub M_Hm: Option<f64>,
-    /// Температура подшипникового узла [°C]
-    #[serde(alias = "t-temp")]
-    pub t_temp: Option<f64>,
-    /// Длительность данного устойчивого режима [сек]
+    /// Текущая температура подшипникового узла [°C]
+    #[serde(alias = "t-bearing")]
+    pub t_bearing: Option<f64>,
+    /// Текущая продолжительность расчётного интервала [сек]
     #[serde(alias = "duration")]
     pub duration: f64,
 }
