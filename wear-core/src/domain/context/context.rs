@@ -8,9 +8,9 @@ pub struct Context {
     /// Мощность двигателя [кВ]
     pub(crate) motor_p: Option<f64>,
     /// Текущая температура [°C]
-    pub(crate) t_temp: Option<f64>,
+    pub(crate) motor_t: Option<f64>,
     /// Текущая продолжительность [сек]
-    pub(crate) duration: Option<f64>,
+    pub(crate) duration: f64,
     /// Крутящий момент мотора [Н·м]
     pub(crate) motor_torque: f64,
     /// Текущая ошибка вычислений
@@ -24,8 +24,8 @@ impl Context {
         Self {
             motor_rpm: None,
             motor_p: None,
-            t_temp: None,
-            duration: None,
+            motor_t: None,
+            duration: 0.0,
             motor_torque: 0.0,
             err: None,
         }

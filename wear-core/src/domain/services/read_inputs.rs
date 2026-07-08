@@ -50,7 +50,7 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
         }
         match &self.inputs.t_temp() {
             Some(t_temp) => {
-                ctx.t_temp = Some(*t_temp);
+                ctx.motor_t = Some(*t_temp);
             }
             None => {
                 ctx.err = Some(Error::new(&self.dbg, "eval").err("Current T isn't initialized yet."));
