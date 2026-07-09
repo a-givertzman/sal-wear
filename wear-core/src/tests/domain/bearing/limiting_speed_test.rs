@@ -56,6 +56,7 @@ mod tests {
                     basic_rating_life: 110.0,
                     limiting_speed: 0.0,
                     actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
                     err: None,
                 },
                 MockInputs {
@@ -80,6 +81,7 @@ mod tests {
                     basic_rating_life: 1110.0,
                     limiting_speed: 0.0,
                     actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
                     err: None,
                 },
                 MockInputs {

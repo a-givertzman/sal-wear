@@ -42,9 +42,8 @@ mod tests {
         let test_duration = TestDuration::new(&parent_dbg, Duration::from_secs(10));
         test_duration.run().unwrap();
         let test_data = [
-            // --- БЛОК 1: Положительные сценарии (Нормальный расчет) ---
             (
-                1, // 2.0 * 50.0 / 50.0 = 2.0
+                1,
                 Context {
                     motor_rpm: None,
                     motor_p: None,
@@ -57,6 +56,7 @@ mod tests {
                     basic_rating_life: 0.0,
                     limiting_speed: 0.0,
                     actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
                     err: None,
                 },
                 50.0,
@@ -82,6 +82,7 @@ mod tests {
                     basic_rating_life: 0.0,
                     limiting_speed: 0.0,
                     actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
                     err: None,
                 },
                 50.0,
@@ -107,6 +108,7 @@ mod tests {
                     basic_rating_life: 0.0,
                     limiting_speed: 0.0,
                     actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
                     err: None,
                 },
                 0.5,
@@ -132,6 +134,7 @@ mod tests {
                     basic_rating_life: 0.0,
                     limiting_speed: 0.0,
                     actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
                     err: None,
                 },
                 0.09,

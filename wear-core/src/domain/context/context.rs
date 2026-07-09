@@ -31,6 +31,8 @@ pub struct Context {
     pub(crate) limiting_speed: f64,  
     /// Фактическое количество оборотов подшипника [об]
     pub(crate) actual_speed: f64,  
+    /// Накопленное повреждение подшипника
+    pub(crate) bearing_accumulated_wear: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -51,6 +53,7 @@ impl Context {
             basic_rating_life: 0.0,
             limiting_speed: 0.0,
             actual_speed: 0.0,
+            bearing_accumulated_wear: 0.0,
             err: None,
         }
     }
