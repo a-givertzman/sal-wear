@@ -55,6 +55,7 @@ mod tests {
                     axial_load: 0.0,
                     basic_rating_life: 110.0,
                     limiting_speed: 0.0,
+                    actual_speed: 0.0,
                     err: None,
                 },
                 MockInputs {
@@ -78,6 +79,7 @@ mod tests {
                     equivalent_load: 0.0,   
                     basic_rating_life: 1110.0,
                     limiting_speed: 0.0,
+                    actual_speed: 0.0,
                     err: None,
                 },
                 MockInputs {
