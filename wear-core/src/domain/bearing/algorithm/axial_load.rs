@@ -1,7 +1,6 @@
 use sal_core::{dbg::Dbg, error::Error};
 use crate::{
-    Eval, 
-    domain::context::Context
+    AXIAL_LOAD_COEFF, Eval, domain::context::Context
 };
 ///
 /// Расчёт осевой нагрузки на подшипник [H]
@@ -35,7 +34,7 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        ctx.axial_load = 0.2 * ctx.radial_load;
+        ctx.axial_load = AXIAL_LOAD_COEFF * ctx.radial_load;
         ctx
     }
     //
