@@ -20,7 +20,9 @@ pub struct Context {
     /// Крутящий момент мотора [Н·м]
     pub(crate) motor_torque: f64,
     /// Радиальная нагрузка на подшипник [H]
-    pub(crate) radial_load: f64, 
+    pub(crate) radial_load: f64,
+    /// Осевая нагрузка на подшипник [H]
+    pub(crate) axial_load: f64,  
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -36,6 +38,7 @@ impl Context {
             duration: 0.0,
             motor_torque: 0.0,
             radial_load: 0.0,
+            axial_load: 0.0,
             err: None,
         }
     }
