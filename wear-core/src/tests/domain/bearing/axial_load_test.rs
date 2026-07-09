@@ -30,10 +30,10 @@ mod tests {
     ///  - ...
     fn init_each() -> () {}
     ///
-    /// Тест радиальной нагрузки на подшипник [Н]
-    /// F_r = 2 * (M_motor/D_motor)
+    /// Тест осевой нагрузки на подшипник [Н]
+    /// F_a = 0.2 * F_r
     #[test]
-    fn radial_load() {
+    fn axial_load() {
         DebugSession::new().filter(LogLevel::Debug).init();
         init_once();
         init_each();
