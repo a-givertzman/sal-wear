@@ -17,12 +17,6 @@ pub struct SteadyStateConf {
     /// Диаметр вала двигателя [м]
     #[serde(alias = "motor-d-m")]
     pub motor_d: f64,
-    /// Радиальная нагрузка на подшипник [H]
-    #[serde(alias = "fr-h")]
-    pub fr_h: Option<f64>,
-    /// Осевая нагрузка на подшипник [H]
-    #[serde(alias = "fa-h", default)]
-    pub fa_h: f64,
 }
 ///
 /// Конфиг подшипника
