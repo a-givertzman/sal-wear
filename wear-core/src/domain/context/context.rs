@@ -27,6 +27,8 @@ pub struct Context {
     pub(crate) equivalent_load: f64,  
     /// Номинальный ресурс подшипника [10^6 об]
     pub(crate) basic_rating_life: f64,  
+    /// Допустимое количество оборотов подшипника [об]
+    pub(crate) limiting_speed: f64,  
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -45,6 +47,7 @@ impl Context {
             axial_load: 0.0,
             equivalent_load: 0.0,
             basic_rating_life: 0.0,
+            limiting_speed: 0.0,
             err: None,
         }
     }
