@@ -36,7 +36,7 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        ctx.limiting_speed = ctx.basic_rating_life * 10e6;
+        ctx.limiting_speed = ctx.basic_rating_life * 1_000_000.0;
         ctx
     }
     //
