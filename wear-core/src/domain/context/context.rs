@@ -33,6 +33,8 @@ pub struct Context {
     pub(crate) actual_speed: f64,  
     /// Накопленное повреждение подшипника
     pub(crate) bearing_accumulated_wear: f64,
+    /// Температурный коэффициент ускорения износа (Коэффициент Вант-Гоффа)
+    pub(crate) temp_coeff: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -54,6 +56,7 @@ impl Context {
             limiting_speed: 0.0,
             actual_speed: 0.0,
             bearing_accumulated_wear: 0.0,
+            temp_coeff: 0.0,
             err: None,
         }
     }

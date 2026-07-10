@@ -53,7 +53,7 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
                 ctx.t_bearing = Some(*t_bearing);
             }
             None => {
-                ctx.err = Some(Error::new(&self.dbg, "eval").err("Current T isn't initialized yet."));
+                ctx.t_bearing = None;
             }
         }
         match &self.inputs.duration() {

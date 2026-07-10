@@ -57,6 +57,7 @@ mod tests {
                     limiting_speed: 100.0,
                     actual_speed: 50.0,
                     bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
                     err: None,
                 },
                 MockInputs {
@@ -86,6 +87,7 @@ mod tests {
                     limiting_speed: 50.0,
                     actual_speed: 0.5,
                     bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
                     err: None,
                 },
                 MockInputs {

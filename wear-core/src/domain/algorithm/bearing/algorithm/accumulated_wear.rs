@@ -35,16 +35,6 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        println!("motor_torque {:?}", ctx.motor_torque);
-        println!("radial_load {:?}", ctx.radial_load);
-        println!("axial_load {:?}", ctx.axial_load);
-        println!("equivalent_load {:?}", ctx.equivalent_load);
-        println!("basic_rating_life {:?}", ctx.basic_rating_life);
-        println!("limiting_speed {:?}", ctx.limiting_speed);
-        println!("actual_speed {:?}", ctx.actual_speed);
-        println!("bearing_accumulated_wear {:?}", ctx.bearing_accumulated_wear);
-
-
         ctx.bearing_accumulated_wear = ctx.actual_speed / ctx.limiting_speed;
         ctx
     }
