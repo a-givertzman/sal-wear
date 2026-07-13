@@ -1,7 +1,7 @@
-use std::sync::Arc;
+use std::{f64::consts::TAU, sync::Arc};
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, PI2, Pass, ReadInputs};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, Pass, ReadInputs};
 
 struct Udp {
     chunk: usize,
@@ -35,21 +35,21 @@ impl Udp {
     /// `rpm_amp` - Амплитуда 1x гармоники вала
     fn parse(&mut self, rpm: f64, rpm_amp: u16, samples: &mut [u16]) {
         let rpm_hz = rpm / 60.0;
-        let rpm_step = PI2 * rpm_hz * self.dt;
+        let rpm_step = TAU * rpm_hz * self.dt;
         for i in 0..samples.len() {
             // Накапливаем фазу вращения вала
             self.dynamic_phase += rpm_step;
-            if self.dynamic_phase > PI2 {
-                self.dynamic_phase -= PI2;
+            if self.dynamic_phase > TAU {
+                self.dynamic_phase -= TAU;
             }
             let mut val = 2048.0; // Смещение нулевой линии для 12-бит АЦП
             // Добавляем динамическую 1x гармонику
             val += (rpm_amp as f64) * self.dynamic_phase.sin();
             // Добавляем статические резонансы механизма
             for (j, (f, amp)) in self.freqs.iter().enumerate() {
-                self.fixed_phases[j] += PI2 * f * self.dt;
-                if self.fixed_phases[j] > PI2 {
-                    self.fixed_phases[j] -= PI2;
+                self.fixed_phases[j] += TAU * f * self.dt;
+                if self.fixed_phases[j] > TAU {
+                    self.fixed_phases[j] -= TAU;
                 }
                 val += (*amp as f64) * self.fixed_phases[j].sin();
             }

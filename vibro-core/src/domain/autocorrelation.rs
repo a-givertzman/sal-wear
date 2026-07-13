@@ -1,5 +1,7 @@
+use std::f64::consts::TAU;
+
 use sal_core::dbg::Dbg;
-use crate::{Context, Eval, domain::PI2, me};
+use crate::{Context, Eval, me};
 
 /// Вычисляет точный период вращения (в отсчетах) через автокорреляцию.
 /// Ищет максимум функции в узком окне от показаний тахометра.
@@ -59,7 +61,7 @@ where
         }
         ctx.raw_period = self.sample_rate * 60.0 / ctx.raw_rpm;
         ctx.period = Self::find_exact_period(ctx.ac_samples.read_window(), ctx.raw_period);
-        ctx.omega = PI2 * self.sample_rate / ctx.period;
+        ctx.omega = TAU * self.sample_rate / ctx.period;
         ctx.dt = 1.0 / self.sample_rate;
         ctx
     }

@@ -17,10 +17,9 @@ mod frame;
 pub use frame::*;
 mod pass;
 pub use pass::*;
+mod order_spectrum;
+pub use order_spectrum::*;
 
-
-/// 2 * PI
-pub(crate) const PI2: f64 = std::f64::consts::PI * 2.0;
 
 
 pub struct Inputs {

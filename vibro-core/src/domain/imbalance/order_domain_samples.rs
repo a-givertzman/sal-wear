@@ -16,8 +16,6 @@ pub struct OrderDomainSamples<Child> {
 impl<Child> OrderDomainSamples<Child>
 where
     Child: Eval<ImbContext, ImbContext> + Send + 'static {
-    /// 2 * PI
-    const PI2: f64 = std::f64::consts::PI * 2.0;
     ///
     /// ### Returns `OrderDomainSamples` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).

@@ -1,5 +1,7 @@
+use std::f64::consts::TAU;
+
 use sal_core::dbg::Dbg;
-use crate::{Context, Eval, Frame, domain::PI2, me};
+use crate::{Context, Eval, Frame, me};
 
 /// Угловая сетка (фазовый профиль) для заданного окна временных отсчетов.
 /// Представляет собой массив углов поворота вала, соответствующих каждому отсчету вибрации.
@@ -37,8 +39,8 @@ where
         ctx.phases = [0.0; Frame::SIZE];
         for i in 0..ctx.phases.len() {
             ctx.current_theta += ctx.omega * ctx.dt;
-            if ctx.current_theta >= PI2 {
-                ctx.current_theta -= PI2;
+            if ctx.current_theta >= TAU {
+                ctx.current_theta -= TAU;
             }
             ctx.phases[i] = ctx.current_theta as f32;
         }
