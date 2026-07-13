@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, WearCoreConf, motor_torque::MotorTorque, radial_load::RadialLoad
+        Context, Eval, MockInputs, ReadInputs, TempCoeff, WearCoreConf, accumulated_wear::BearingAccumulatedWear, actual_speed::ActualSpeed, axial_load::AxialLoad, basic_rating_life::BasicRatingLife, equivalent_load::EquivalentLoad, limiting_speed::LimitingSpeed, motor_torque::MotorTorque, radial_load::RadialLoad, temp_accumulated_wear::BearingTempAccumulatedWear,
     };
     ///
     ///
@@ -30,10 +30,10 @@ mod tests {
     ///  - ...
     fn init_each() -> () {}
     ///
-    /// Тест радиальной нагрузки на подшипник [Н]
-    /// F_r = 2 * (M_motor/D_motor)
+    /// Комплексный тест накопленного повреждения подшипника 
+    /// D_bearing = n / N
     #[test]
-    fn radial_load() {
+    fn accumulated_wear_complex() {
         DebugSession::new().filter(LogLevel::Debug).init();
         init_once();
         init_each();
@@ -50,25 +50,28 @@ mod tests {
                     t_bearing: None,
                     duration: 0.0,
                     motor_torque: 50.0,
-                    radial_load: 0.0,
+                    radial_load: 50.0,
+                    axial_load: 50.0,
                     equivalent_load: 0.0,
-                    axial_load: 0.0,
                     basic_rating_life: 0.0,
-                    limiting_speed: 0.0,
-                    actual_speed: 0.0,
+                    limiting_speed: 100.0,
+                    actual_speed: 50.0,
                     bearing_accumulated_wear: 0.0,
                     temp_coeff: 0.0,
                     bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
-                50.0,
                 MockInputs {
                     rpm: Some(1500.0),
-                    motor_p: Some(15.0),
+                    motor_p: Some(5550.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
+                    duration: Some(120.0),
                 },
-                Some(2.0 * 50.0 / 50.0),
+                0.038, // диаметр вала
+                0.56, // X
+                1.2, // Y
+                22000.0, // Сr
+                None, // диаметр вала около нуля
             ),
             (
                 2,
@@ -78,91 +81,70 @@ mod tests {
                     t_bearing: None,
                     duration: 0.0,
                     motor_torque: 25.0,
-                    radial_load: 0.0,
-                    axial_load: 0.0,
+                    radial_load: 20.0,
+                    axial_load: 10.0,
                     equivalent_load: 0.0,
                     basic_rating_life: 0.0,
-                    limiting_speed: 0.0,
-                    actual_speed: 0.0,
+                    limiting_speed: 50.0,
+                    actual_speed: 0.5,
                     bearing_accumulated_wear: 0.0,
                     temp_coeff: 0.0,
                     bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
-                50.0,
-                MockInputs {
-                    rpm: Some(1500.0),
-                    motor_p: Some(15.0),
-                    t_bearing: Some(0.0),
-                    duration: Some(0.0),
-                },
-                Some(2.0 * 25.0 / 50.0),
-            ),
-            (
-                3,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
-                    t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 2.5,
-                    radial_load: 0.0,
-                    axial_load: 0.0,
-                    equivalent_load: 0.0,
-                    basic_rating_life: 0.0,
-                    limiting_speed: 0.0,
-                    actual_speed: 0.0,
-                    bearing_accumulated_wear: 0.0,
-                    temp_coeff: 0.0,
-                    bearing_temp_accumulated_wear: 0.0,
-                    err: None,
-                },
-                0.5,
                 MockInputs {
                     rpm: Some(3000.0),
-                    motor_p: Some(30.0),
+                    motor_p: Some(45000.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
+                    duration: Some(3600.0),
                 },
-                Some(2.0 * 2.5 / 0.5),
-            ),
-            (
-                4,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
-                    t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 2.5,
-                    radial_load: 0.0,
-                    axial_load: 0.0,
-                    equivalent_load: 0.0,
-                    basic_rating_life: 0.0,
-                    limiting_speed: 0.0,
-                    actual_speed: 0.0,
-                    bearing_accumulated_wear: 0.0,
-                    temp_coeff: 0.0,
-                    bearing_temp_accumulated_wear: 0.0,
-                    err: None,
-                },
-                0.09,
-                MockInputs {
-                    rpm: Some(1500.0),
-                    motor_p: Some(15.0),
-                    t_bearing: Some(0.0),
-                    duration: Some(0.0),
-                },
-                None,
+                0.65, 
+                1.0,
+                0.0,
+                110000.0,
+                Some(18.39),
             ),
         ];
-        for (step, ctx, motor_d, inputs, expected_load) in test_data {
-            let result = RadialLoad::new(
-                motor_d,
-                &parent_dbg,
-                ReadInputs::new(
+        for (step, ctx, inputs, motor_d, X, Y, Cr, expected_load) in test_data {
+            let result = BearingTempAccumulatedWear::new(
+                &parent_dbg, 
+                TempCoeff::new(
+                    todo!("q10"), 
+                    todo!("t_ref"), 
                     &parent_dbg, 
-                    Arc::new(inputs)
-                ) 
+                    BearingAccumulatedWear::new(
+                        &parent_dbg,
+                        ActualSpeed::new(
+                            &parent_dbg,
+                            LimitingSpeed::new(
+                                &parent_dbg,
+                                BasicRatingLife::new(
+                                    Cr, 
+                                    &parent_dbg, 
+                                    EquivalentLoad::new(
+                                        X, 
+                                        Y, 
+                                        &parent_dbg, 
+                                        AxialLoad::new(
+                                            &parent_dbg,
+                                            RadialLoad::new(
+                                                motor_d, 
+                                                &parent_dbg,
+                                                MotorTorque::new(
+                                                    &parent_dbg, 
+                                                    ReadInputs::new(
+                                                        &parent_dbg, 
+                                                        Arc::new(inputs)
+                                                    )
+                                                ) 
+                                            ) 
+                                        )
+                                    )
+                                ) 
+                            ) 
+                        )
+                    )
+                )
             ).eval(ctx);
             match expected_load {
                 Some(target) => {
@@ -171,8 +153,8 @@ mod tests {
                         "Шаг [{}]: Ожидался успешный расчет, но получена ошибка: {:?}", 
                         step, result.err
                     );
-                    let actual = result.radial_load;
-                    let epsilon = 1e-5;
+                    let actual = result.bearing_accumulated_wear;
+                    let epsilon = 1e-2;
                     let diff = (actual - target).abs();
                     assert!(
                         diff < epsilon,
@@ -184,7 +166,7 @@ mod tests {
                     assert!(
                         result.err.is_some(), 
                         "Шаг [{}]: Ожидалась ошибка из-за отсутствия данных, но расчет прошел. Результат: {:?}", 
-                        step, result.radial_load
+                        step, result.bearing_accumulated_wear
                     );
                     log::debug!("Шаг [{}]: Ошибка успешно перехвачена: {:?}", step, result.err);
                 }

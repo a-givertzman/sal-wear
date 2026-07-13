@@ -6,3 +6,4 @@ pub mod equivalent_load;
 pub mod limiting_speed;
 pub mod motor_torque;
 pub mod radial_load;
+pub mod temp_accumulated_wear;
