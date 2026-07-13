@@ -43,7 +43,8 @@ mod tests {
         test_duration.run().unwrap();
         let test_data = [
             (
-                1, // 2.0 * 50.0 / 50.0 = 2.0
+                1,
+                0.2,
                 Context {
                     motor_rpm: None,
                     motor_p: None,
@@ -64,6 +65,7 @@ mod tests {
             ),
             (
                 2,
+                0.2,
                 Context {
                     motor_rpm: None,
                     motor_p: None,
@@ -84,6 +86,7 @@ mod tests {
             ),
             (
                 3,
+                0.2,
                 Context {
                     motor_rpm: None,
                     motor_p: None,
@@ -103,8 +106,9 @@ mod tests {
                 Some(0.2 * 0.5),
             ),
         ];
-        for (step, ctx, inputs, expected_load) in test_data {
+        for (step, fa_to_fr, ctx, inputs, expected_load) in test_data {
             let result = AxialLoad::new(
+                fa_to_fr,
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 
