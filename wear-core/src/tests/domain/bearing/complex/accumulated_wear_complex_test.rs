@@ -67,6 +67,7 @@ mod tests {
                     t_bearing: Some(0.0),
                     duration: Some(120.0),
                 },
+                0.2,
                 0.038, // диаметр вала
                 0.56, // X
                 1.2, // Y
@@ -98,6 +99,7 @@ mod tests {
                     t_bearing: Some(0.0),
                     duration: Some(3600.0),
                 },
+                0.2,
                 0.65, 
                 1.0,
                 0.0,
@@ -105,7 +107,7 @@ mod tests {
                 Some(18.39),
             ),
         ];
-        for (step, ctx, inputs, motor_d, X, Y, Cr, expected_load) in test_data {
+        for (step, ctx, inputs, motor_d, fa_to_fr, X, Y, Cr, expected_load) in test_data {
             let result = BearingAccumulatedWear::new(
                 &parent_dbg,
                 ActualSpeed::new(
@@ -120,6 +122,7 @@ mod tests {
                                 Y, 
                                 &parent_dbg, 
                                 AxialLoad::new(
+                                    fa_to_fr,
                                     &parent_dbg,
                                     RadialLoad::new(
                                         motor_d, 

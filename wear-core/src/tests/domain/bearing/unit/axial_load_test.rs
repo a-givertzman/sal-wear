@@ -67,6 +67,7 @@ mod tests {
                     t_bearing: Some(0.0),
                     duration: Some(0.0),
                 },
+                0.2,
                 Some(0.2 * 50.0),
             ),
             (
@@ -94,6 +95,7 @@ mod tests {
                     t_bearing: Some(0.0),
                     duration: Some(0.0),
                 },
+                0.2,
                 Some(0.2 * 20.0),
             ),
             (
@@ -121,11 +123,13 @@ mod tests {
                     t_bearing: Some(0.0),
                     duration: Some(0.0),
                 },
+                0.2,
                 Some(0.2 * 0.5),
             ),
         ];
-        for (step, ctx, inputs, expected_load) in test_data {
+        for (step, ctx, inputs, fa_to_fr, expected_load) in test_data {
             let result = AxialLoad::new(
+                fa_to_fr,
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 
