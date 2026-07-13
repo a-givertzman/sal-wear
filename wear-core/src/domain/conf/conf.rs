@@ -22,6 +22,9 @@ pub struct SteadyStateConf {
 /// Конфиг подшипника
 #[derive(Clone, Debug, Deserialize)]
 pub struct BearingConf {
+    /// Предельное значение отношения радиальной нагрузки к осевой нагрузке
+    #[serde(alias = "fa-to-fr")]
+    pub fa_to_fr: f64,
     /// Динамическая грузоподъёмность подшипника [H]
     #[serde(alias = "cr")]
     pub cr: f64,
