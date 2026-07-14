@@ -48,8 +48,8 @@ mod tests {
                     rpm: Some(50.0),
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
+                0.0,
                 None, // duration !>0
             ),
             (
@@ -58,8 +58,8 @@ mod tests {
                     rpm: Some(25.0),
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
-                    duration: Some(60.0),
                 },
+                60.0,
                 Some(25.0 * (60.0 / 60.0)),
             ),
             (
@@ -68,8 +68,8 @@ mod tests {
                     rpm: Some(0.0),
                     motor_p: Some(11.5),
                     t_bearing: Some(0.0),
-                    duration: Some(50.0),
                 },
+                60.0,
                 None, // rpm !> 0
             ),
             (
@@ -78,19 +78,9 @@ mod tests {
                     rpm: None,
                     motor_p: Some(0.0),
                     t_bearing: Some(0.0),
-                    duration: Some(10.0),
                 },
+                60.0,
                 None, // rpm is none
-            ),
-            (
-                5,
-                MockInputs {
-                    rpm: Some(50.0),
-                    motor_p: Some(15.0),
-                    t_bearing: Some(0.0),
-                    duration: None,
-                },
-                None, // duration is none
             ),
             (
                 6,
@@ -98,19 +88,19 @@ mod tests {
                     rpm: Some(1500.0),
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
-                    duration: Some(500.0),
                 },
+                500.0,
                 Some(1500.0 * (500.0 / 60.0)),
             ),
         ];
-        for (step, inputs, expected_torque) in test_data {
+        for (step, inputs, duration, expected_torque) in test_data {
             let result = ActualSpeed::new(
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 
                     Arc::new(inputs)
                 ) 
-            ).eval(Context::new());
+            ).eval(Context::new_test(duration));
             match expected_torque {
                 Some(target) => {
                     assert!(

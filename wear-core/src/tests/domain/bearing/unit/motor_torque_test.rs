@@ -52,7 +52,6 @@ mod tests {
                     rpm: Some(50.0),
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 Some(9550.0), // 9550 * 50 / 50 = 9550
             ),
@@ -62,7 +61,6 @@ mod tests {
                     rpm: Some(25.0),
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 Some(19100.0), // 9550 * 50 / 25 = 19100
             ),
@@ -72,7 +70,6 @@ mod tests {
                     rpm: Some(1450.0),
                     motor_p: Some(11.5),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 Some(9550.0 * 11.5 / 1450.0), // ~75.74137
             ),
@@ -82,7 +79,6 @@ mod tests {
                     rpm: Some(1000.0),
                     motor_p: Some(0.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 None, // Ошибка тк motor_p должен быть > 0
             ),
@@ -92,7 +88,6 @@ mod tests {
                     rpm: None,
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 None, // Ожидаем, что в контексте вернется ошибка, а не расчет
             ),
@@ -102,7 +97,6 @@ mod tests {
                     rpm: Some(1500.0),
                     motor_p: None,
                     t_bearing: None,
-                    duration: None,
                 },
                 None, // Ожидаем ошибку
             ),

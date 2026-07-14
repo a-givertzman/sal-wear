@@ -64,6 +64,15 @@ impl Context {
         }
     }
     ///
+    /// Конструктор для использования исключительно в unit-тестах
+    #[cfg(test)]
+    pub fn new_test(duration: f64,) -> Self {
+        Self {
+            duration, // Задаем требуемое для тестов время
+            ..Self::new()   // Все остальные поля инициализируем дефолтными значениями
+        }
+    }
+    ///
     /// Добавление контекст ошибки или 
     /// инициализация новой ошибки в текущем контексте
     pub fn pass_err(mut self, me: impl Into<String>, area: impl Into<String>) -> Context {

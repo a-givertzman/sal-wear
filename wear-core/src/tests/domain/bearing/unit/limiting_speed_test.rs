@@ -31,7 +31,7 @@ mod tests {
     fn init_each() -> () {}
     ///
     /// Тест допустимого число оборотов подшипника [Н]
-    /// N = L10 * 10e6
+    /// N = L10 * 10^5
     #[test]
     fn limiting_speed() {
         DebugSession::new().filter(LogLevel::Debug).init();
@@ -65,9 +65,8 @@ mod tests {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(110.0 * 10e6),
+                Some(110.0 * 10e5),
             ),
             (
                 2,
@@ -92,9 +91,8 @@ mod tests {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(1110.0 * 10e6),
+                Some(1110.0 * 10e5),
             ),
         ];
         for (step, ctx, inputs, expected_load) in test_data {

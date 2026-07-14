@@ -4,7 +4,13 @@ use crate::{
     domain::context::Context
 };
 ///
-/// Расчёт накопленного повреждения подшипника с учётом температуры [об]
+/// Расчёт накопленного повреждения подшипника с учётом температуры: D_T [об]
+/// См. [раздел 8.2, шаг 6](../../Operion_Diag_Вибродиагностика_и_остаточный_ресурс.pdf)
+/// Формула:
+/// D_T = D * KT
+/// Где:
+/// * `D` — [накопленное повреждение в режиме](crate::domain::algorithm::bearing::algorithm::accumulated_wear::BearingAccumulatedWear) [об]
+/// * `KT` - [температурный коэффициент](crate::domain::algorithm::temp_coeff::TempCoeff) (при отсутствии температуры -  KT = 1)
 pub struct BearingTempAccumulatedWear<Child> {
     child: Child,
     dbg: Dbg,

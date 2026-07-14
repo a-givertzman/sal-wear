@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, LIFE_EXPONENT_ROLLER, MockInputs, ReadInputs, basic_rating_life::BasicRatingLife,
+        Context, Eval, MockInputs, ReadInputs, basic_rating_life::BasicRatingLife,
     };
     ///
     ///
@@ -62,13 +62,13 @@ mod tests {
                     err: None,
                 },
                 50.0,
+                10.0/3.0,
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some((50.0_f64 / 10.0).powf(LIFE_EXPONENT_ROLLER)),
+                Some((50.0_f64 / 10.0).powf(10.0/3.0)),
             ),
             (
                 2,
@@ -90,13 +90,13 @@ mod tests {
                     err: None,
                 },
                 0.5,
+                10.0/3.0,
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some((0.5_f64 / 110.0).powf(LIFE_EXPONENT_ROLLER)),
+                Some((0.5_f64 / 110.0).powf(10.0/3.0)),
             ),
             (
                 3,
@@ -118,18 +118,19 @@ mod tests {
                     err: None,
                 },
                 0.0,
+                10.0/3.0,
                 MockInputs {
                     rpm: Some(3000.0),
                     motor_p: Some(30.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 None,
             ),
         ];
-        for (step, ctx, cr, inputs, expected_load) in test_data {
+        for (step, ctx, cr, p, inputs, expected_load) in test_data {
             let result = BasicRatingLife::new(
                 cr,
+                p,
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 

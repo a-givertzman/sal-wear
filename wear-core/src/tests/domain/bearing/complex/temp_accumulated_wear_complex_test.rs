@@ -48,7 +48,7 @@ mod tests {
                     motor_rpm: None,
                     motor_p: None,
                     t_bearing: None,
-                    duration: 0.0,
+                    duration: 120.0,
                     motor_torque: 50.0,
                     radial_load: 50.0,
                     axial_load: 50.0,
@@ -65,13 +65,15 @@ mod tests {
                     rpm: Some(1500.0),
                     motor_p: Some(5550.0),
                     t_bearing: Some(0.0),
-                    duration: Some(120.0),
                 },
+                50.0,
+                100.0,
                 0.2,
                 0.038, // диаметр вала
                 0.56, // X
                 1.2, // Y
                 22000.0, // Сr
+                10.0/3.0,
                 None, // диаметр вала около нуля
             ),
             (
@@ -80,7 +82,7 @@ mod tests {
                     motor_rpm: None,
                     motor_p: None,
                     t_bearing: None,
-                    duration: 0.0,
+                    duration: 3600.0,
                     motor_torque: 25.0,
                     radial_load: 20.0,
                     axial_load: 10.0,
@@ -97,22 +99,24 @@ mod tests {
                     rpm: Some(3000.0),
                     motor_p: Some(45000.0),
                     t_bearing: Some(0.0),
-                    duration: Some(3600.0),
                 },
+                50.0,
+                100.0,
                 0.2,
                 0.65, 
                 1.0,
                 0.0,
                 110000.0,
+                10.0/3.0,
                 Some(18.39),
             ),
         ];
-        for (step, ctx, inputs, fa_to_fr, motor_d, X, Y, Cr, expected_load) in test_data {
+        for (step, ctx, inputs, q_10, t_ref, fa_to_fr, motor_d, X, Y, Cr, p, expected_load) in test_data {
             let result = BearingTempAccumulatedWear::new(
                 &parent_dbg, 
                 TempCoeff::new(
-                    todo!("q10"), 
-                    todo!("t_ref"), 
+                    q_10, 
+                    t_ref, 
                     &parent_dbg, 
                     BearingAccumulatedWear::new(
                         &parent_dbg,
@@ -122,6 +126,7 @@ mod tests {
                                 &parent_dbg,
                                 BasicRatingLife::new(
                                     Cr, 
+                                    p,
                                     &parent_dbg, 
                                     EquivalentLoad::new(
                                         X, 
