@@ -11,12 +11,12 @@ use crate::{
 /// Где:
 /// * `X, Y` — коэффициенты для расчёта эквивалентной нагрузки
 /// * `F_r` —  [радиальная нагрузка на подшипник](crate::domain::algorithm::bearing::algorithm::radial_load::RadialLoad) [H] (если нет прямого измерения — должна быть оценена из механической модели)
-/// * `F_a` — [осевая нагрузка на подшипник](crate::domain::algorithm::bearing::algorithm::axial_load::AxialLoad) [H] (если осевая нагрузка отсутствует - передавать 0)
+/// * `F_a` — [осевая нагрузка на подшипник](crate::domain::algorithm::bearing::algorithm::AxialLoad) [H] (если осевая нагрузка отсутствует - передавать 0)
 pub struct EquivalentLoad<Child> {
     /// Коэффициент радиальной нагрузки
-    X: f64,
+    x: f64,
     /// Коэффициент осевой нагрузки
-    Y: f64,
+    y: f64,
     child: Child,
     dbg: Dbg,
 }
@@ -30,8 +30,8 @@ where
     /// * `X` - коэффициент радиальной нагрузки
     /// * `Y` - коэффициент осевой нагрузки 
     pub fn new(
-        X: f64,
-        Y: f64,
+        x: f64,
+        y: f64,
         parent: &Dbg, 
         child: Child
     ) -> Self {
@@ -39,8 +39,8 @@ where
         Self {
             child,
             dbg,
-            X,
-            Y,
+            x,
+            y,
         }
     }
 }
@@ -52,7 +52,7 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        ctx.equivalent_load = self.X * ctx.radial_load + self.Y * ctx.axial_load;
+        ctx.equivalent_load = self.x * ctx.radial_load + self.y * ctx.axial_load;
         ctx
     }
     //

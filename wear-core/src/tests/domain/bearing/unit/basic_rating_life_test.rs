@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, basic_rating_life::BasicRatingLife,
+        Context, Eval, MockInputs, ReadInputs, BasicRatingLife,
     };
     ///
     ///

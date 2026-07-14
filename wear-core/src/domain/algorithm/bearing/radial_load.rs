@@ -9,7 +9,7 @@ use crate::{
 /// Формула:
 /// F_r = (2 * M) / D
 /// Где:
-/// * `M` — [момент двигателя](crate::domain::algorithm::bearing::algorithm::motor_torque::MotorTorque) [Н·м]
+/// * `M` — [момент двигателя](crate::domain::algorithm::bearing::algorithm::MotorTorque) [Н·м]
 /// * `D` — диаметр вала двигателя [м]
 /// * `2` — коэффициент перехода от диаметра вала к радиусу (плечу приложения силы R = D / 2)
 pub struct RadialLoad<Child> {

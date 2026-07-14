@@ -1,4 +1,4 @@
-use sal_core::{dbg::Dbg, error::Error};
+use sal_core::dbg::Dbg;
 use crate::{
     Eval, 
     domain::context::Context
@@ -9,7 +9,7 @@ use crate::{
 /// Формула: 
 /// F_a = fa_to_fr * F_r
 /// Где:
-/// * `F_r` — [радиальная нагрузка на подшипник](crate::domain::algorithm::bearing::algorithm::radial_load::RadialLoad) [H]
+/// * `F_r` — [радиальная нагрузка на подшипник](crate::domain::algorithm::bearing::algorithm::RadialLoad) [H]
 /// * `fa_to_fr` — коэффициент осевого нагружения (отношение осевой силы к радиальной F_a/F_r) [безразмерная величина]
 pub struct AxialLoad<Child> {
     /// Предельное значение отношения радиальной нагрузки к осевой нагрузке

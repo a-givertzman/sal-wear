@@ -17,7 +17,7 @@ mod tests {
         Eval, 
         MockInputs, 
         ReadInputs, 
-        motor_torque::MotorTorque
+        MotorTorque
     };
     ///
     ///

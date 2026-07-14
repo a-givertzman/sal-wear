@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, TempCoeff, WearCoreConf, accumulated_wear::BearingAccumulatedWear, actual_speed::ActualSpeed, axial_load::AxialLoad, basic_rating_life::BasicRatingLife, equivalent_load::EquivalentLoad, limiting_speed::LimitingSpeed, motor_torque::MotorTorque, radial_load::RadialLoad, temp_accumulated_wear::BearingTempAccumulatedWear,
+        Context, Eval, MockInputs, ReadInputs, TempCoeff, WearCoreConf, BearingAccumulatedWear, ActualSpeed, AxialLoad, BasicRatingLife, EquivalentLoad, LimitingSpeed, MotorTorque, RadialLoad, BearingTempAccumulatedWear,
     };
     ///
     ///
