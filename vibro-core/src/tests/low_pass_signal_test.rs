@@ -104,6 +104,22 @@ fn low_pass_signal_test () {
         let s: f32 = r.iter().sum();
         println!("result f {}: {}", freqs[i].0, s / r.len() as f32);
     }
+    // Проверяем полосу пропускания (низкие частоты 1x..3x должны пройти)
+    assert!((results[0].iter().sum::<f32>() / results[0].len() as f32 - 200.0).abs() < 15.0, "1x (50Hz) attenuation is too high");
+    assert!((results[1].iter().sum::<f32>() / results[1].len() as f32 - 250.0).abs() < 10.0, "2x (100Hz) amplitude mismatched");
+    assert!((results[2].iter().sum::<f32>() / results[2].len() as f32 - 150.0).abs() < 20.0, "3x (150Hz) unexpected attenuation");
+    // Проверяем полосу подавления (шумы выше 1000 Гц должны быть жестко зарезаны)
+    let mean_1khz = results[3].iter().sum::<f32>() / results[3].len() as f32;
+    let mean_3khz = results[4].iter().sum::<f32>() / results[4].len() as f32;
+    let mean_5khz = results[5].iter().sum::<f32>() / results[5].len() as f32;
+    let mean_7khz = results[6].iter().sum::<f32>() / results[6].len() as f32;
+    let mean_12khz = results[7].iter().sum::<f32>() / results[7].len() as f32;
+    assert!(mean_1khz < 10.0, "LowPassFilter failed to suppress 1 kHz noise (got {})", mean_1khz);
+    assert!(mean_3khz < 2.0,  "LowPassFilter failed to suppress 3 kHz noise (got {})", mean_3khz);
+    assert!(mean_5khz < 1.0,  "LowPassFilter failed to suppress 5 kHz noise (got {})", mean_5khz);
+    assert!(mean_7khz < 1.0,  "LowPassFilter failed to suppress 7 kHz noise (got {})", mean_7khz);
+    assert!(mean_12khz < 1.0,  "LowPassFilter failed to suppress 12 kHz noise (got {})", mean_12khz);
+
 }
 struct FftBuffer<T> {
     size: usize,
