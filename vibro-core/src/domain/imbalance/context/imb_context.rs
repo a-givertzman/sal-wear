@@ -12,7 +12,7 @@ pub struct ImbContext {
     /// LowPassSinal Context
     pub low_pass_signal: LowPassSignalCtx,
     /// Отфилтрованная выборка сырого АЦП сигнала
-    pub samples: [u16; Frame::SIZE],
+    pub samples: [f32; Frame::SIZE],
     /// Сигнал развернутый в равномерную сетку угловой области
     /// Значения вибрации соответствуют каждому углу поворота вала механизма
     pub order_samples: Vec<f64>,
@@ -40,7 +40,7 @@ impl ImbContext {
             frame: Arc::new(Frame::default()),
             low_pass_signal: LowPassSignalCtx::new(),
             order_samples: Vec::with_capacity(capacity),
-            samples: [0; Frame::SIZE],
+            samples: [0.0; Frame::SIZE],
             err: None,
         }
     }

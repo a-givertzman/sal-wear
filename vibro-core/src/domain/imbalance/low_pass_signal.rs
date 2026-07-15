@@ -83,7 +83,7 @@ where
             state.y1 = y0;
             // Кастим обратно с защитой от выхода за границы типа
             // Если ctx.samples имеет тип f32/f64, clamp и cast не нужны
-            *target = y0.round().clamp(0.0, 4095.0) as u16; 
+            *target = y0 as f32; 
         }
         ctx.low_pass_signal.state = state;
         ctx

@@ -154,7 +154,7 @@ fn complex_test () {
         ctx = angular_grid.eval(ctx);
         if ctx.ac_samples.is_full() {
             let frame = Arc::new(Frame {
-                samples,
+                samples: samples.map(|v| v as f32 - 2048.0),
                 phases: ctx.phases,
             });
             _ = low_send.send(frame.clone());
