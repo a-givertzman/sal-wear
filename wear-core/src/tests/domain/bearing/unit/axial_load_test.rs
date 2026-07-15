@@ -124,9 +124,9 @@ mod tests {
                 Some(0.2 * 0.5),
             ),
         ];
-        for (step, ctx, inputs, fa_to_fr, expected_load) in test_data {
+        for (step, ctx, inputs, k_a, expected_load) in test_data {
             let result = AxialLoad::new(
-                fa_to_fr,
+                k_a,
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 

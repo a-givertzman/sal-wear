@@ -107,7 +107,7 @@ mod tests {
                 Some(18.39),
             ),
         ];
-        for (step, ctx, inputs, fa_to_fr, motor_d, X, Y, Cr, p, expected_load) in test_data {
+        for (step, ctx, inputs, k_a, motor_d, X, Y, Cr, p, expected_load) in test_data {
             let result = BearingAccumulatedWear::new(
                 &parent_dbg,
                 ActualSpeed::new(
@@ -123,7 +123,7 @@ mod tests {
                                 Y, 
                                 &parent_dbg, 
                                 AxialLoad::new(
-                                    fa_to_fr,
+                                    k_a,
                                     &parent_dbg,
                                     RadialLoad::new(
                                         motor_d, 

@@ -281,7 +281,7 @@ mod tests {
                 None, // эквивалентная нагрузка на подшипник около нуля, расчет не может быть выполнен
             ),
         ];
-        for (step, ctx, inputs, q_10, t_ref, fa_to_fr, motor_d, X, Y, Cr, p, expected_load) in test_data {
+        for (step, ctx, inputs, q_10, t_ref, k_a, motor_d, X, Y, Cr, p, expected_load) in test_data {
             let result = BearingTempAccumulatedWear::new(
                 &parent_dbg, 
                 TempCoeff::new(
@@ -303,7 +303,7 @@ mod tests {
                                         Y, 
                                         &parent_dbg, 
                                         AxialLoad::new(
-                                            fa_to_fr,
+                                            k_a,
                                             &parent_dbg,
                                             RadialLoad::new(
                                                 motor_d, 
