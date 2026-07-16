@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, WearCoreConf, axial_load::AxialLoad, motor_torque::MotorTorque,
+        Context, Eval, MockInputs, ReadInputs, TempCoeff, 
     };
     ///
     ///
@@ -30,10 +30,10 @@ mod tests {
     ///  - ...
     fn init_each() -> () {}
     ///
-    /// Тест осевой нагрузки на подшипник [Н]
-    /// F_a = 0.2 * F_r
+    /// Тест температурного коэффициента ускорения износа (Коэффициент Вант-Гоффа)
+    /// KT = Q10^((t_bearing-t_ref)/10.0)
     #[test]
-    fn axial_load() {
+    fn temp_coeff() {
         DebugSession::new().filter(LogLevel::Debug).init();
         init_once();
         init_each();
@@ -44,85 +44,45 @@ mod tests {
         let test_data = [
             (
                 1,
-                0.2,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
-                    t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 50.0,
-                    radial_load: 50.0,
-                    axial_load: 0.0,
-                    err: None,
-                },
                 MockInputs {
-                    rpm: Some(1500.0),
-                    motor_p: Some(15.0),
-                    t_bearing: Some(0.0),
-                    duration: Some(0.0),
+                    rpm: Some(50.0),
+                    motor_p: Some(50.0),
+                    t_bearing: Some(50.0),
                 },
-                Some(0.2 * 50.0),
+                50.0,
+                100.0,
+                Some(50.0_f64.powf((50.0-100.0) / 10.0)),
             ),
             (
-                2,
-                0.2,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
-                    t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 25.0,
-                    radial_load: 20.0,
-                    axial_load: 0.0,
-                    err: None,
-                },
+                1,
                 MockInputs {
-                    rpm: Some(1500.0),
-                    motor_p: Some(15.0),
-                    t_bearing: Some(0.0),
-                    duration: Some(0.0),
-                },
-                Some(0.2 * 20.0),
-            ),
-            (
-                3,
-                0.2,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
+                    rpm: Some(50.0),
+                    motor_p: Some(50.0),
                     t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 2.5,
-                    radial_load: 0.5,
-                    axial_load: 0.0,
-                    err: None,
                 },
-                MockInputs {
-                    rpm: Some(3000.0),
-                    motor_p: Some(30.0),
-                    t_bearing: Some(0.0),
-                    duration: Some(0.0),
-                },
-                Some(0.2 * 0.5),
+                50.0,
+                100.0,
+                Some(1.0),
             ),
         ];
-        for (step, fa_to_fr, ctx, inputs, expected_load) in test_data {
-            let result = AxialLoad::new(
-                fa_to_fr,
+        for (step, inputs, q_10, t_ref, expected_coeff) in test_data {
+            let result = TempCoeff::new(
+                q_10,
+                t_ref,
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 
                     Arc::new(inputs)
                 ) 
-            ).eval(ctx);
-            match expected_load {
+            ).eval(Context::new());
+            match expected_coeff {
                 Some(target) => {
                     assert!(
                         result.err.is_none(), 
                         "Шаг [{}]: Ожидался успешный расчет, но получена ошибка: {:?}", 
                         step, result.err
                     );
-                    let actual = result.axial_load;
+                    let actual = result.temp_coeff;
                     let epsilon = 1e-5;
                     let diff = (actual - target).abs();
                     assert!(
@@ -135,7 +95,7 @@ mod tests {
                     assert!(
                         result.err.is_some(), 
                         "Шаг [{}]: Ожидалась ошибка из-за отсутствия данных, но расчет прошел. Результат: {:?}", 
-                        step, result.axial_load
+                        step, result.temp_coeff
                     );
                     log::debug!("Шаг [{}]: Ошибка успешно перехвачена: {:?}", step, result.err);
                 }
