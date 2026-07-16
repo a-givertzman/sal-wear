@@ -25,6 +25,18 @@ pub struct Context {
     pub(crate) axial_load: f64,  
     /// Эквивалентная нагрузка на подшипник [H]
     pub(crate) equivalent_load: f64,  
+    /// Номинальный ресурс подшипника [10^6 об]
+    pub(crate) basic_rating_life: f64,  
+    /// Допустимое количество оборотов подшипника [об]
+    pub(crate) limiting_speed: f64,  
+    /// Фактическое количество оборотов подшипника [об]
+    pub(crate) actual_speed: f64,  
+    /// Накопленное повреждение подшипника
+    pub(crate) bearing_accumulated_wear: f64,
+    /// Температурный коэффициент ускорения износа (Коэффициент Вант-Гоффа)
+    pub(crate) temp_coeff: f64,
+    /// Накопленное повреждение подшипника c учётом температуры
+    pub(crate) bearing_temp_accumulated_wear: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -42,7 +54,22 @@ impl Context {
             radial_load: 0.0,
             axial_load: 0.0,
             equivalent_load: 0.0,
+            basic_rating_life: 0.0,
+            limiting_speed: 0.0,
+            actual_speed: 0.0,
+            bearing_accumulated_wear: 0.0,
+            temp_coeff: 0.0,
+            bearing_temp_accumulated_wear: 0.0,
             err: None,
+        }
+    }
+    ///
+    /// Конструктор для использования исключительно в unit-тестах
+    #[cfg(test)]
+    pub fn new_test(duration: f64,) -> Self {
+        Self {
+            duration, // Задаем требуемое для тестов время
+            ..Self::new()   // Все остальные поля инициализируем дефолтными значениями
         }
     }
     ///

@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, WearCoreConf, motor_torque::MotorTorque, radial_load::RadialLoad
+        Context, Eval, MockInputs, ReadInputs, RadialLoad
     };
     ///
     ///
@@ -42,9 +42,8 @@ mod tests {
         let test_duration = TestDuration::new(&parent_dbg, Duration::from_secs(10));
         test_duration.run().unwrap();
         let test_data = [
-            // --- БЛОК 1: Положительные сценарии (Нормальный расчет) ---
             (
-                1, // 2.0 * 50.0 / 50.0 = 2.0
+                1,
                 Context {
                     motor_rpm: None,
                     motor_p: None,
@@ -54,6 +53,12 @@ mod tests {
                     radial_load: 0.0,
                     equivalent_load: 0.0,
                     axial_load: 0.0,
+                    basic_rating_life: 0.0,
+                    limiting_speed: 0.0,
+                    actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 50.0,
@@ -61,7 +66,6 @@ mod tests {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 Some(2.0 * 50.0 / 50.0),
             ),
@@ -76,6 +80,12 @@ mod tests {
                     radial_load: 0.0,
                     axial_load: 0.0,
                     equivalent_load: 0.0,
+                    basic_rating_life: 0.0,
+                    limiting_speed: 0.0,
+                    actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 50.0,
@@ -83,7 +93,6 @@ mod tests {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 Some(2.0 * 25.0 / 50.0),
             ),
@@ -98,6 +107,12 @@ mod tests {
                     radial_load: 0.0,
                     axial_load: 0.0,
                     equivalent_load: 0.0,
+                    basic_rating_life: 0.0,
+                    limiting_speed: 0.0,
+                    actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 0.5,
@@ -105,7 +120,6 @@ mod tests {
                     rpm: Some(3000.0),
                     motor_p: Some(30.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 Some(2.0 * 2.5 / 0.5),
             ),
@@ -120,6 +134,12 @@ mod tests {
                     radial_load: 0.0,
                     axial_load: 0.0,
                     equivalent_load: 0.0,
+                    basic_rating_life: 0.0,
+                    limiting_speed: 0.0,
+                    actual_speed: 0.0,
+                    bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 0.09,
@@ -127,7 +147,6 @@ mod tests {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 None,
             ),
