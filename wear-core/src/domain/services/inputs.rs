@@ -6,8 +6,6 @@ pub struct Inputs {
     motor_p: Option<f64>,
     /// Текущая температура подшипникового узла [°C]
     t_bearing: Option<f64>,
-    /// Текущая продолжительность расчётного интервала [сек]
-    duration: Option<f64>,
 }
 //
 //
@@ -21,9 +19,6 @@ impl Inputs {
     pub fn t_bearing(&self) -> Option<f64> {
         self.t_bearing
     }
-    pub fn duration(&self) -> Option<f64> {
-        self.duration
-    }
 }
 /// Заглушка хранилище всех входящих событий  
 pub struct MockInputs {
@@ -33,8 +28,6 @@ pub struct MockInputs {
     pub motor_p: Option<f64>,
     /// Текущая температура подшипникового узла [°C]
     pub t_bearing: Option<f64>,
-    /// Текущая продолжительность расчётного интервала [сек]
-    pub duration: Option<f64>,
 }
 //
 //
@@ -47,8 +40,5 @@ impl MockInputs {
     }
     pub fn t_bearing(&self) -> Option<f64> {
         self.t_bearing
-    }
-    pub fn duration(&self) -> Option<f64> {
-        self.duration
     }
 }

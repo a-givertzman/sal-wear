@@ -1,6 +1,6 @@
 // Тут прикладные типы и классы алгоритмов
-mod bearing;
-pub use bearing::*;
+mod algorithm;
+pub use algorithm::*;
 mod conf;
 pub use conf::*;
 mod context;
