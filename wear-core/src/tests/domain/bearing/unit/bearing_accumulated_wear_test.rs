@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, WearCoreConf, accumulated_wear::BearingAccumulatedWear, axial_load::AxialLoad, equivalent_load::EquivalentLoad, motor_torque::MotorTorque,
+        Context, Eval, MockInputs, ReadInputs, BearingAccumulatedWear,
     };
     ///
     ///
@@ -57,13 +57,14 @@ mod tests {
                     limiting_speed: 100.0,
                     actual_speed: 50.0,
                     bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 Some(50.0 / 100.0),
             ),
@@ -82,13 +83,14 @@ mod tests {
                     limiting_speed: 50.0,
                     actual_speed: 0.5,
                     bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
                 Some(0.5 / 50.0),
             ),
