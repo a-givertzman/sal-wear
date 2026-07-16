@@ -13,7 +13,11 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, WearCoreConf, axial_load::AxialLoad, equivalent_load::EquivalentLoad, motor_torque::MotorTorque,
+        Context, 
+        Eval, 
+        MockInputs, 
+        ReadInputs, 
+        MotorTorque
     };
     ///
     ///
@@ -30,10 +34,10 @@ mod tests {
     ///  - ...
     fn init_each() -> () {}
     ///
-    /// Тест эквивалентной нагрузки на подшипник [Н]
-    /// P = X * Fr + Y * Fa
+    /// Тест расчёта крутящего момента на валу редуктора [Н·м]
+    /// M_motor = 9550 * (P_motor/rpm)
     #[test]
-    fn equiavalent_load() {
+    fn motor_torque() {
         DebugSession::new().filter(LogLevel::Debug).init();
         init_once();
         init_each();
@@ -44,95 +48,75 @@ mod tests {
         let test_data = [
             (
                 1,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
-                    t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 50.0,
-                    radial_load: 50.0,
-                    axial_load: 50.0,
-                    equivalent_load: 0.0,
-                    basic_rating_life: 0.0,
-                    err: None,
-                },
-                0.5,
-                0.5,
                 MockInputs {
-                    rpm: Some(1500.0),
-                    motor_p: Some(15.0),
+                    rpm: Some(50.0),
+                    motor_p: Some(50.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(0.5 * 50.0 + 0.5 * 50.0),
+                Some(9550.0), // 9550 * 50 / 50 = 9550
             ),
             (
                 2,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
-                    t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 25.0,
-                    radial_load: 20.0,
-                    axial_load: 10.0,
-                    equivalent_load: 0.0,
-                    basic_rating_life: 0.0,
-                    err: None,
-                },
-                0.5,
-                0.5,
                 MockInputs {
-                    rpm: Some(1500.0),
-                    motor_p: Some(15.0),
+                    rpm: Some(25.0),
+                    motor_p: Some(50.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(0.5 * 20.0 + 0.5 * 10.0),
+                Some(19100.0), // 9550 * 50 / 25 = 19100
             ),
             (
                 3,
-                Context {
-                    motor_rpm: None,
+                MockInputs {
+                    rpm: Some(1450.0),
+                    motor_p: Some(11.5),
+                    t_bearing: Some(0.0),
+                },
+                Some(9550.0 * 11.5 / 1450.0), // ~75.74137
+            ),
+            (
+                4,
+                MockInputs {
+                    rpm: Some(1000.0),
+                    motor_p: Some(0.0),
+                    t_bearing: Some(0.0),
+                },
+                None, // Ошибка тк motor_p должен быть > 0
+            ),
+            (
+                5,
+                MockInputs {
+                    rpm: None,
+                    motor_p: Some(15.0),
+                    t_bearing: Some(0.0),
+                },
+                None, // Ожидаем, что в контексте вернется ошибка, а не расчет
+            ),
+            (
+                6,
+                MockInputs {
+                    rpm: Some(1500.0),
                     motor_p: None,
                     t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 2.5,
-                    radial_load: 0.5,
-                    axial_load: 0.0,
-                    equivalent_load: 0.0,
-                    basic_rating_life: 0.0,
-                    err: None,
                 },
-                0.5,
-                0.5,
-                MockInputs {
-                    rpm: Some(3000.0),
-                    motor_p: Some(30.0),
-                    t_bearing: Some(0.0),
-                    duration: Some(0.0),
-                },
-                Some(0.5 * 0.5 + 0.5 * 0.0),
+                None, // Ожидаем ошибку
             ),
         ];
-        for (step, ctx, X, Y, inputs, expected_load) in test_data {
-            let result = EquivalentLoad::new(
-                X,
-                Y,
+        for (step, inputs, expected_torque) in test_data {
+            let result = MotorTorque::new(
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 
                     Arc::new(inputs)
                 ) 
-            ).eval(ctx);
-            match expected_load {
+            ).eval(Context::new());
+            match expected_torque {
                 Some(target) => {
                     assert!(
                         result.err.is_none(), 
                         "Шаг [{}]: Ожидался успешный расчет, но получена ошибка: {:?}", 
                         step, result.err
                     );
-                    let actual = result.equivalent_load;
+                    let actual = result.motor_torque;
                     let epsilon = 1e-5;
                     let diff = (actual - target).abs();
                     assert!(
@@ -145,7 +129,7 @@ mod tests {
                     assert!(
                         result.err.is_some(), 
                         "Шаг [{}]: Ожидалась ошибка из-за отсутствия данных, но расчет прошел. Результат: {:?}", 
-                        step, result.equivalent_load
+                        step, result.motor_torque
                     );
                     log::debug!("Шаг [{}]: Ошибка успешно перехвачена: {:?}", step, result.err);
                 }
