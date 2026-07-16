@@ -111,7 +111,9 @@ pub struct SteadyStateConf {
 /// Конфиг подшипника
 #[derive(Clone, Debug, Deserialize)]
 pub struct BearingConf {
-    k_a: f64,
+    /// Коэффициент оценки осевой нагрузки [безразмерная величина]
+    #[serde(alias = "k_a")]
+    pub k_a: f64,
     /// Динамическая грузоподъёмность подшипника [H]
     #[serde(alias = "cr")]
     pub cr: f64,
