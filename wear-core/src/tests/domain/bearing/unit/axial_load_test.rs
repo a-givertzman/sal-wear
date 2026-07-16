@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, WearCoreConf, axial_load::AxialLoad, motor_torque::MotorTorque,
+        Context, Eval, MockInputs, ReadInputs, AxialLoad,
     };
     ///
     ///
@@ -58,14 +58,15 @@ mod tests {
                     actual_speed: 0.0,
                     bearing_accumulated_wear: 0.0,
                     temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
+                0.2,
                 Some(0.2 * 50.0),
             ),
             (
@@ -84,14 +85,15 @@ mod tests {
                     actual_speed: 0.0,
                     bearing_accumulated_wear: 0.0,
                     temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
+                0.2,
                 Some(0.2 * 20.0),
             ),
             (
@@ -110,19 +112,21 @@ mod tests {
                     actual_speed: 0.0,
                     bearing_accumulated_wear: 0.0,
                     temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 MockInputs {
                     rpm: Some(3000.0),
                     motor_p: Some(30.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
+                0.2,
                 Some(0.2 * 0.5),
             ),
         ];
-        for (step, ctx, inputs, expected_load) in test_data {
+        for (step, ctx, inputs, k_a, expected_load) in test_data {
             let result = AxialLoad::new(
+                k_a,
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 

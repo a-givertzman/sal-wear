@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, TempCoeff, actual_speed::ActualSpeed, motor_torque::MotorTorque
+        Context, Eval, MockInputs, ReadInputs, TempCoeff, 
     };
     ///
     ///
@@ -48,7 +48,6 @@ mod tests {
                     rpm: Some(50.0),
                     motor_p: Some(50.0),
                     t_bearing: Some(50.0),
-                    duration: Some(10.0),
                 },
                 50.0,
                 100.0,
@@ -60,7 +59,6 @@ mod tests {
                     rpm: Some(50.0),
                     motor_p: Some(50.0),
                     t_bearing: None,
-                    duration: Some(10.0),
                 },
                 50.0,
                 100.0,

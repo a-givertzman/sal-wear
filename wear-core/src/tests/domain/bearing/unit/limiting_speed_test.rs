@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, WearCoreConf, axial_load::AxialLoad, limiting_speed::LimitingSpeed, motor_torque::MotorTorque,
+        Context, Eval, MockInputs, ReadInputs, LimitingSpeed,
     };
     ///
     ///
@@ -31,7 +31,7 @@ mod tests {
     fn init_each() -> () {}
     ///
     /// Тест допустимого число оборотов подшипника [Н]
-    /// N = L10 * 10e6
+    /// N = L10 * 10^5
     #[test]
     fn limiting_speed() {
         DebugSession::new().filter(LogLevel::Debug).init();
@@ -58,15 +58,15 @@ mod tests {
                     actual_speed: 0.0,
                     bearing_accumulated_wear: 0.0,
                     temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(110.0 * 10e6),
+                Some(110.0 * 10e5),
             ),
             (
                 2,
@@ -84,15 +84,15 @@ mod tests {
                     actual_speed: 0.0,
                     bearing_accumulated_wear: 0.0,
                     temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(1110.0 * 10e6),
+                Some(1110.0 * 10e5),
             ),
         ];
         for (step, ctx, inputs, expected_load) in test_data {

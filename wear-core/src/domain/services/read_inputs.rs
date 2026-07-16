@@ -56,14 +56,6 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
                 ctx.t_bearing = None;
             }
         }
-        match &self.inputs.duration() {
-            Some(duration) => {
-                ctx.duration = *duration;
-            }
-            None => {
-                ctx.err = Some(Error::new(&self.dbg, "eval").err("Duration isn't initialized yet."));
-            }
-        }
         ctx
     }
     //

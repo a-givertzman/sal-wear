@@ -35,6 +35,8 @@ pub struct Context {
     pub(crate) bearing_accumulated_wear: f64,
     /// Температурный коэффициент ускорения износа (Коэффициент Вант-Гоффа)
     pub(crate) temp_coeff: f64,
+    /// Накопленное повреждение подшипника c учётом температуры
+    pub(crate) bearing_temp_accumulated_wear: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -57,7 +59,17 @@ impl Context {
             actual_speed: 0.0,
             bearing_accumulated_wear: 0.0,
             temp_coeff: 0.0,
+            bearing_temp_accumulated_wear: 0.0,
             err: None,
+        }
+    }
+    ///
+    /// Конструктор для использования исключительно в unit-тестах
+    #[cfg(test)]
+    pub fn new_test(duration: f64,) -> Self {
+        Self {
+            duration, // Задаем требуемое для тестов время
+            ..Self::new()   // Все остальные поля инициализируем дефолтными значениями
         }
     }
     ///
