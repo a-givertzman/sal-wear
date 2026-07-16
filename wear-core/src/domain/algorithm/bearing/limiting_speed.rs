@@ -1,11 +1,15 @@
-use sal_core::{dbg::Dbg, error::Error};
+use sal_core::dbg::Dbg;
 use crate::{
     Eval, 
-    LIFE_EXPONENT_ROLLER, 
     domain::context::Context
 };
 ///
-/// Расчёт допустимого числа оборотов подшипника [об]
+/// Расчёт допустимого числа оборотов подшипника: N [об]
+/// См. [раздел 8.2, шаг 2](../../Operion_Diag_Вибродиагностика_и_остаточный_ресурс.pdf)
+/// Формула:
+/// N = L10 * 10^6
+/// Где: 
+/// * `L10` — [номинальный ресурс](crate::domain::algorithm::bearing::algorithm::basic_rating_life::BasicRatingLife) [миллионы оборотов]
 pub struct LimitingSpeed<Child> {
     child: Child,
     dbg: Dbg,
@@ -36,7 +40,7 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        ctx.limiting_speed = ctx.basic_rating_life * 10e6;
+        ctx.limiting_speed = ctx.basic_rating_life * 1_000_000.0;
         ctx
     }
     //

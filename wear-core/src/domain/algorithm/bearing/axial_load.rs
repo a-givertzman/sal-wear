@@ -1,10 +1,19 @@
-use sal_core::{dbg::Dbg, error::Error};
+use sal_core::dbg::Dbg;
 use crate::{
-    AXIAL_LOAD_COEFF, Eval, domain::context::Context
+    Eval, 
+    domain::context::Context
 };
 ///
-/// Расчёт осевой нагрузки на подшипник [H]
+/// Расчёт осевой нагрузки на подшипник: F_a [H]
+/// См. [раздел 8.6](../../08_FaFr_Calculation.md)
+/// Формула: 
+/// F_a = k_a * F_r
+/// Где:
+/// * `F_r` — [радиальная нагрузка на подшипник](crate::domain::algorithm::bearing::algorithm::RadialLoad) [H]
+/// * `k_a` — коэффициент оценки осевой нагрузки [безразмерная величина]
 pub struct AxialLoad<Child> {
+    /// Коэффициент оценки осевой нагрузки
+    k_a: f64,
     child: Child,
     dbg: Dbg,
 }
@@ -13,14 +22,15 @@ pub struct AxialLoad<Child> {
 impl<Child> AxialLoad<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
-    ///
     /// Новый экземпляр [AxialLoad]
     pub fn new(
+        k_a: f64,  
         parent: &Dbg, 
         child: Child
     ) -> Self {
         let dbg = Dbg::new(parent, "AxialLoad");
         Self {
+            k_a,
             child,
             dbg,
         }
@@ -34,7 +44,7 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        ctx.axial_load = AXIAL_LOAD_COEFF * ctx.radial_load;
+        ctx.axial_load = self.k_a * ctx.radial_load;
         ctx
     }
     //
