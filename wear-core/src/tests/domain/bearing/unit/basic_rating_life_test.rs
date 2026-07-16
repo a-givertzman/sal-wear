@@ -62,7 +62,6 @@ mod tests {
                     err: None,
                 },
                 50.0,
-                10.0/3.0,
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
@@ -90,7 +89,6 @@ mod tests {
                     err: None,
                 },
                 0.5,
-                10.0/3.0,
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
@@ -118,7 +116,6 @@ mod tests {
                     err: None,
                 },
                 0.0,
-                10.0/3.0,
                 MockInputs {
                     rpm: Some(3000.0),
                     motor_p: Some(30.0),
@@ -127,10 +124,10 @@ mod tests {
                 None,
             ),
         ];
-        for (step, ctx, cr, p, inputs, expected_load) in test_data {
+        for (step, ctx, cr, inputs, expected_load) in test_data {
             let result = BasicRatingLife::new(
                 cr,
-                p,
+                crate::BearingType::Roller,
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 

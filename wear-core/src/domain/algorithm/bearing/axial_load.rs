@@ -9,7 +9,7 @@ use crate::{
 /// Формула: 
 /// F_a = k_a * F_r
 /// Где:
-/// * `F_r` — [радиальная нагрузка на подшипник](crate::domain::algorithm::bearing::algorithm::RadialLoad) [H]
+/// * `F_r` — [радиальная нагрузка на подшипник](crate::domain::algorithm::bearing::RadialLoad) [H]
 /// * `k_a` — коэффициент оценки осевой нагрузки [безразмерная величина]
 pub struct AxialLoad<Child> {
     /// Коэффициент оценки осевой нагрузки

@@ -71,7 +71,6 @@ mod tests {
                 0.56, // X
                 1.2, // Y
                 22000.0, // Сr
-                10.0/3.0,
                 None, // диаметр вала около нуля
             ),
             (
@@ -103,11 +102,10 @@ mod tests {
                 1.0,
                 0.0,
                 110000.0,
-                10.0/3.0,
                 Some(18.39),
             ),
         ];
-        for (step, ctx, inputs, k_a, motor_d, X, Y, Cr, p, expected_load) in test_data {
+        for (step, ctx, inputs, k_a, motor_d, X, Y, Cr, expected_load) in test_data {
             let result = BearingAccumulatedWear::new(
                 &parent_dbg,
                 ActualSpeed::new(
@@ -116,7 +114,7 @@ mod tests {
                         &parent_dbg,
                         BasicRatingLife::new(
                             Cr, 
-                            p,
+                            crate::BearingType::Roller,
                             &parent_dbg, 
                             EquivalentLoad::new(
                                 X, 

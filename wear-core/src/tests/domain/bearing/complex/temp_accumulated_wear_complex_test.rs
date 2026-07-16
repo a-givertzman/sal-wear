@@ -73,7 +73,6 @@ mod tests {
                 0.56, // X
                 1.2, // Y
                 22000.0, // Сr
-                10.0/3.0,
                 None, // диаметр вала около нуля
             ),
             (
@@ -107,7 +106,6 @@ mod tests {
                 1.0,
                 0.0,
                 110000.0,
-                10.0/3.0,
                 Some(18.39),
             ),
             (
@@ -141,7 +139,6 @@ mod tests {
                 1.0,
                 0.0,
                 110000.0,
-                10.0/3.0,
                 None, // нет данных по мощности двигателя, расчет не может быть выполнен
             ),
             (
@@ -175,7 +172,6 @@ mod tests {
                 1.0,
                 0.0,
                 110000.0,
-                10.0/3.0,
                 None, // нет данных по скорости двигателя, расчет не может быть выполнен
             ),
             (
@@ -209,7 +205,6 @@ mod tests {
                 1.0,
                 0.0,
                 110000.0,
-                10.0/3.0,
                 None, // скорость двигателя около нуля, расчет не может быть выполнен
             ),
             (
@@ -243,7 +238,6 @@ mod tests {
                 1.0,
                 0.0,
                 110000.0,
-                10.0/3.0,
                 None, // эквивалентная нагрузка на подшипник около нуля, расчет не может быть выполнен
             ),
             (
@@ -277,11 +271,10 @@ mod tests {
                 1.0,
                 0.0,
                 110000.0,
-                10.0/3.0,
                 None, // эквивалентная нагрузка на подшипник около нуля, расчет не может быть выполнен
             ),
         ];
-        for (step, ctx, inputs, q_10, t_ref, k_a, motor_d, X, Y, Cr, p, expected_load) in test_data {
+        for (step, ctx, inputs, q_10, t_ref, k_a, motor_d, X, Y, Cr, expected_load) in test_data {
             let result = BearingTempAccumulatedWear::new(
                 &parent_dbg, 
                 TempCoeff::new(
@@ -296,7 +289,7 @@ mod tests {
                                 &parent_dbg,
                                 BasicRatingLife::new(
                                     Cr, 
-                                    p,
+                                    crate::BearingType::Roller,
                                     &parent_dbg, 
                                     EquivalentLoad::new(
                                         X, 

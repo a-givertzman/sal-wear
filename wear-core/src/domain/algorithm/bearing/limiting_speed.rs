@@ -9,7 +9,7 @@ use crate::{
 /// Формула:
 /// N = L10 * 10^6
 /// Где: 
-/// * `L10` — [номинальный ресурс](crate::domain::algorithm::bearing::algorithm::basic_rating_life::BasicRatingLife) [миллионы оборотов]
+/// * `L10` — [номинальный ресурс](crate::domain::algorithm::bearing::basic_rating_life::BasicRatingLife) [миллионы оборотов]
 pub struct LimitingSpeed<Child> {
     child: Child,
     dbg: Dbg,

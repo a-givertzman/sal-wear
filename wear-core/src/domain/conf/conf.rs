@@ -117,9 +117,9 @@ pub struct BearingConf {
     /// Динамическая грузоподъёмность подшипника [H]
     #[serde(alias = "cr")]
     pub cr: f64,
-    /// Показатель степени кривой усталости [безразмерная величина]
-    #[serde(alias = "p")]
-    pub p: f64,
+    /// Тип подшипника
+    #[serde(alias = "bearing_type")]
+    pub bearing_type: String,
     /// Коэффициент радиальной нагрузки
     #[serde(alias = "X")]
     pub X: f64,

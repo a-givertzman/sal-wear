@@ -9,7 +9,7 @@ use crate::{
 /// Формула:
 /// D_T = D * KT
 /// Где:
-/// * `D` — [накопленное повреждение в режиме](crate::domain::algorithm::bearing::algorithm::accumulated_wear::BearingAccumulatedWear) [об]
+/// * `D` — [накопленное повреждение в режиме](crate::domain::algorithm::bearing::accumulated_wear::BearingAccumulatedWear) [об]
 /// * `KT` - [температурный коэффициент](crate::domain::algorithm::temp_coeff::TempCoeff) (при отсутствии температуры -  KT = 1)
 pub struct BearingTempAccumulatedWear<Child> {
     child: Child,

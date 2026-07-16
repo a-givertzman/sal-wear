@@ -10,8 +10,8 @@ use crate::{
 /// P = X * F_r + Y * F_a
 /// Где:
 /// * `X, Y` — коэффициенты для расчёта эквивалентной нагрузки
-/// * `F_r` —  [радиальная нагрузка на подшипник](crate::domain::algorithm::bearing::algorithm::radial_load::RadialLoad) [H] (если нет прямого измерения — должна быть оценена из механической модели)
-/// * `F_a` — [осевая нагрузка на подшипник](crate::domain::algorithm::bearing::algorithm::AxialLoad) [H] (если осевая нагрузка отсутствует - передавать 0)
+/// * `F_r` —  [радиальная нагрузка на подшипник](crate::domain::algorithm::bearing::radial_load::RadialLoad) [H] (если нет прямого измерения — должна быть оценена из механической модели)
+/// * `F_a` — [осевая нагрузка на подшипник](crate::domain::algorithm::bearing::AxialLoad) [H] (если осевая нагрузка отсутствует - передавать 0)
 pub struct EquivalentLoad<Child> {
     /// Коэффициент радиальной нагрузки
     x: f64,
