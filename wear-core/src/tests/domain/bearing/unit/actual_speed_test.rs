@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, WearCoreConf, accumulated_wear::BearingAccumulatedWear, axial_load::AxialLoad, equivalent_load::EquivalentLoad, motor_torque::MotorTorque,
+        Context, Eval, MockInputs, ReadInputs, ActualSpeed
     };
     ///
     ///
@@ -30,10 +30,10 @@ mod tests {
     ///  - ...
     fn init_each() -> () {}
     ///
-    /// Тест накопленного повреждения подшипника 
-    /// D_bearing = n / N
+    /// Тест фактического числа оборотов подшипника [об]
+    /// n = rpm * (duration / 60)
     #[test]
-    fn bearing_accumulated_wear() {
+    fn motor_torque() {
         DebugSession::new().filter(LogLevel::Debug).init();
         init_once();
         init_each();
@@ -44,71 +44,71 @@ mod tests {
         let test_data = [
             (
                 1,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
-                    t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 50.0,
-                    radial_load: 50.0,
-                    axial_load: 50.0,
-                    equivalent_load: 0.0,
-                    basic_rating_life: 0.0,
-                    limiting_speed: 100.0,
-                    actual_speed: 50.0,
-                    bearing_accumulated_wear: 0.0,
-                    err: None,
-                },
                 MockInputs {
-                    rpm: Some(1500.0),
-                    motor_p: Some(15.0),
+                    rpm: Some(50.0),
+                    motor_p: Some(50.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(50.0 / 100.0),
+                0.0,
+                None, // duration !>0
             ),
             (
                 2,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
-                    t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 25.0,
-                    radial_load: 20.0,
-                    axial_load: 10.0,
-                    equivalent_load: 0.0,
-                    basic_rating_life: 0.0,
-                    limiting_speed: 50.0,
-                    actual_speed: 0.5,
-                    bearing_accumulated_wear: 0.0,
-                    err: None,
+                MockInputs {
+                    rpm: Some(25.0),
+                    motor_p: Some(50.0),
+                    t_bearing: Some(0.0),
                 },
+                60.0,
+                Some(25.0 * (60.0 / 60.0)),
+            ),
+            (
+                3,
+                MockInputs {
+                    rpm: Some(0.0),
+                    motor_p: Some(11.5),
+                    t_bearing: Some(0.0),
+                },
+                60.0,
+                None, // rpm !> 0
+            ),
+            (
+                4,
+                MockInputs {
+                    rpm: None,
+                    motor_p: Some(0.0),
+                    t_bearing: Some(0.0),
+                },
+                60.0,
+                None, // rpm is none
+            ),
+            (
+                6,
                 MockInputs {
                     rpm: Some(1500.0),
-                    motor_p: Some(15.0),
+                    motor_p: Some(50.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(0.5 / 50.0),
+                500.0,
+                Some(1500.0 * (500.0 / 60.0)),
             ),
         ];
-        for (step, ctx, inputs, expected_load) in test_data {
-            let result = BearingAccumulatedWear::new(
+        for (step, inputs, duration, expected_torque) in test_data {
+            let result = ActualSpeed::new(
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 
                     Arc::new(inputs)
                 ) 
-            ).eval(ctx);
-            match expected_load {
+            ).eval(Context::new_test(duration));
+            match expected_torque {
                 Some(target) => {
                     assert!(
                         result.err.is_none(), 
                         "Шаг [{}]: Ожидался успешный расчет, но получена ошибка: {:?}", 
                         step, result.err
                     );
-                    let actual = result.bearing_accumulated_wear;
+                    let actual = result.actual_speed;
                     let epsilon = 1e-5;
                     let diff = (actual - target).abs();
                     assert!(
@@ -121,7 +121,7 @@ mod tests {
                     assert!(
                         result.err.is_some(), 
                         "Шаг [{}]: Ожидалась ошибка из-за отсутствия данных, но расчет прошел. Результат: {:?}", 
-                        step, result.bearing_accumulated_wear
+                        step, result.actual_speed
                     );
                     log::debug!("Шаг [{}]: Ошибка успешно перехвачена: {:?}", step, result.err);
                 }

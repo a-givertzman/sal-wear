@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, LIFE_EXPONENT_ROLLER, MockInputs, ReadInputs, basic_rating_life::BasicRatingLife,
+        Context, Eval, MockInputs, ReadInputs, BearingAccumulatedWear,
     };
     ///
     ///
@@ -30,10 +30,10 @@ mod tests {
     ///  - ...
     fn init_each() -> () {}
     ///
-    /// Тест номинального ресурса подшипника [10^6 об]
-    /// L10 = (Cr / P)^p
+    /// Тест накопленного повреждения подшипника 
+    /// D_bearing = n / N
     #[test]
-    fn basic_rating_life() {
+    fn bearing_accumulated_wear() {
         DebugSession::new().filter(LogLevel::Debug).init();
         init_once();
         init_each();
@@ -51,22 +51,22 @@ mod tests {
                     duration: 0.0,
                     motor_torque: 50.0,
                     radial_load: 50.0,
-                    equivalent_load: 10.0,
-                    axial_load: 0.0,
+                    axial_load: 50.0,
+                    equivalent_load: 0.0,
                     basic_rating_life: 0.0,
-                    limiting_speed: 0.0,
-                    actual_speed: 0.0,
+                    limiting_speed: 100.0,
+                    actual_speed: 50.0,
                     bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
-                50.0,
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some((50.0_f64 / 10.0).powf(LIFE_EXPONENT_ROLLER)),
+                Some(50.0 / 100.0),
             ),
             (
                 2,
@@ -77,53 +77,26 @@ mod tests {
                     duration: 0.0,
                     motor_torque: 25.0,
                     radial_load: 20.0,
-                    axial_load: 0.0,
-                    equivalent_load: 110.0,   
+                    axial_load: 10.0,
+                    equivalent_load: 0.0,
                     basic_rating_life: 0.0,
-                    limiting_speed: 0.0,
-                    actual_speed: 0.0,
+                    limiting_speed: 50.0,
+                    actual_speed: 0.5,
                     bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
-                0.5,
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some((0.5_f64 / 110.0).powf(LIFE_EXPONENT_ROLLER)),
-            ),
-            (
-                3,
-                Context {
-                    motor_rpm: None,
-                    motor_p: None,
-                    t_bearing: None,
-                    duration: 0.0,
-                    motor_torque: 2.5,
-                    radial_load: 0.5,
-                    axial_load: 0.0,
-                    equivalent_load: 0.0,
-                    basic_rating_life: 0.0,
-                    limiting_speed: 0.0,
-                    actual_speed: 0.0,
-                    bearing_accumulated_wear: 0.0,
-                    err: None,
-                },
-                0.0,
-                MockInputs {
-                    rpm: Some(3000.0),
-                    motor_p: Some(30.0),
-                    t_bearing: Some(0.0),
-                    duration: Some(0.0),
-                },
-                None,
+                Some(0.5 / 50.0),
             ),
         ];
-        for (step, ctx, cr, inputs, expected_load) in test_data {
-            let result = BasicRatingLife::new(
-                cr,
+        for (step, ctx, inputs, expected_load) in test_data {
+            let result = BearingAccumulatedWear::new(
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 
@@ -137,7 +110,7 @@ mod tests {
                         "Шаг [{}]: Ожидался успешный расчет, но получена ошибка: {:?}", 
                         step, result.err
                     );
-                    let actual = result.basic_rating_life;
+                    let actual = result.bearing_accumulated_wear;
                     let epsilon = 1e-5;
                     let diff = (actual - target).abs();
                     assert!(
@@ -150,7 +123,7 @@ mod tests {
                     assert!(
                         result.err.is_some(), 
                         "Шаг [{}]: Ожидалась ошибка из-за отсутствия данных, но расчет прошел. Результат: {:?}", 
-                        step, result.basic_rating_life
+                        step, result.bearing_accumulated_wear
                     );
                     log::debug!("Шаг [{}]: Ошибка успешно перехвачена: {:?}", step, result.err);
                 }

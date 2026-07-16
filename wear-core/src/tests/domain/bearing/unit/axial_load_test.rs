@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, MockInputs, ReadInputs, WearCoreConf, axial_load::AxialLoad, equivalent_load::EquivalentLoad, motor_torque::MotorTorque,
+        Context, Eval, MockInputs, ReadInputs, AxialLoad,
     };
     ///
     ///
@@ -30,10 +30,10 @@ mod tests {
     ///  - ...
     fn init_each() -> () {}
     ///
-    /// Тест эквивалентной нагрузки на подшипник [Н]
-    /// P = X * Fr + Y * Fa
+    /// Тест осевой нагрузки на подшипник [Н]
+    /// F_a = 0.2 * F_r
     #[test]
-    fn equiavalent_load() {
+    fn axial_load() {
         DebugSession::new().filter(LogLevel::Debug).init();
         init_once();
         init_each();
@@ -43,7 +43,7 @@ mod tests {
         test_duration.run().unwrap();
         let test_data = [
             (
-                1,
+                1, // 2.0 * 50.0 / 50.0 = 2.0
                 Context {
                     motor_rpm: None,
                     motor_p: None,
@@ -51,23 +51,23 @@ mod tests {
                     duration: 0.0,
                     motor_torque: 50.0,
                     radial_load: 50.0,
-                    axial_load: 50.0,
                     equivalent_load: 0.0,
+                    axial_load: 0.0,
                     basic_rating_life: 0.0,
                     limiting_speed: 0.0,
                     actual_speed: 0.0,
                     bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
-                0.5,
-                0.5,
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(0.5 * 50.0 + 0.5 * 50.0),
+                0.2,
+                Some(0.2 * 50.0),
             ),
             (
                 2,
@@ -78,23 +78,23 @@ mod tests {
                     duration: 0.0,
                     motor_torque: 25.0,
                     radial_load: 20.0,
-                    axial_load: 10.0,
-                    equivalent_load: 0.0,
+                    axial_load: 0.0,
+                    equivalent_load: 0.0,   
                     basic_rating_life: 0.0,
                     limiting_speed: 0.0,
                     actual_speed: 0.0,
                     bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
-                0.5,
-                0.5,
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(0.5 * 20.0 + 0.5 * 10.0),
+                0.2,
+                Some(0.2 * 20.0),
             ),
             (
                 3,
@@ -111,23 +111,22 @@ mod tests {
                     limiting_speed: 0.0,
                     actual_speed: 0.0,
                     bearing_accumulated_wear: 0.0,
+                    temp_coeff: 0.0,
+                    bearing_temp_accumulated_wear: 0.0,
                     err: None,
                 },
-                0.5,
-                0.5,
                 MockInputs {
                     rpm: Some(3000.0),
                     motor_p: Some(30.0),
                     t_bearing: Some(0.0),
-                    duration: Some(0.0),
                 },
-                Some(0.5 * 0.5 + 0.5 * 0.0),
+                0.2,
+                Some(0.2 * 0.5),
             ),
         ];
-        for (step, ctx, X, Y, inputs, expected_load) in test_data {
-            let result = EquivalentLoad::new(
-                X,
-                Y,
+        for (step, ctx, inputs, k_a, expected_load) in test_data {
+            let result = AxialLoad::new(
+                k_a,
                 &parent_dbg,
                 ReadInputs::new(
                     &parent_dbg, 
@@ -141,7 +140,7 @@ mod tests {
                         "Шаг [{}]: Ожидался успешный расчет, но получена ошибка: {:?}", 
                         step, result.err
                     );
-                    let actual = result.equivalent_load;
+                    let actual = result.axial_load;
                     let epsilon = 1e-5;
                     let diff = (actual - target).abs();
                     assert!(
@@ -154,7 +153,7 @@ mod tests {
                     assert!(
                         result.err.is_some(), 
                         "Шаг [{}]: Ожидалась ошибка из-за отсутствия данных, но расчет прошел. Результат: {:?}", 
-                        step, result.equivalent_load
+                        step, result.axial_load
                     );
                     log::debug!("Шаг [{}]: Ошибка успешно перехвачена: {:?}", step, result.err);
                 }
