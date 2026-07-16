@@ -1,7 +1,7 @@
 use sal_core::dbg::Dbg;
 use crate::{
     Eval, 
-    domain::context::Context
+    domain::context::Context,
 };
 ///
 /// Расчёт осевой нагрузки на подшипник: F_a [H]
@@ -23,6 +23,7 @@ impl<Child> AxialLoad<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
     /// Новый экземпляр [AxialLoad]
+    /// * `fa_to_fr` - Предельное значение отношения радиальной нагрузки к осевой нагрузке
     pub fn new(
         k_a: f64,  
         parent: &Dbg, 

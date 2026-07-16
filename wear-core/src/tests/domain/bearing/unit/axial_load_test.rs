@@ -44,7 +44,6 @@ mod tests {
         let test_data = [
             (
                 1,
-                0.2,
                 Context {
                     motor_rpm: None,
                     motor_p: None,
@@ -72,7 +71,6 @@ mod tests {
             ),
             (
                 2,
-                0.2,
                 Context {
                     motor_rpm: None,
                     motor_p: None,
@@ -100,7 +98,6 @@ mod tests {
             ),
             (
                 3,
-                0.2,
                 Context {
                     motor_rpm: None,
                     motor_p: None,
