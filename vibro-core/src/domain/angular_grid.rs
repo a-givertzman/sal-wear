@@ -31,12 +31,13 @@ impl<Child> Eval<Context, Context> for AngularGrid<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
     //
+    #[inline]
     fn eval(&self, ctx: Context) -> Context {
         let mut ctx = self.child.eval(ctx);
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        ctx.phases = [0.0; Frame::SIZE];
+        *ctx.phases = [0.0; Frame::SIZE];
         for i in 0..ctx.phases.len() {
             ctx.current_theta += ctx.omega * ctx.dt;
             if ctx.current_theta >= TAU {

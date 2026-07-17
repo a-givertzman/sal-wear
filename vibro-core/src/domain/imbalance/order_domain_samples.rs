@@ -48,6 +48,7 @@ impl<Child> Eval<ImbContext, ImbContext> for OrderDomainSamples<Child>
 where
     Child: Eval<ImbContext, ImbContext> + Send + 'static {
     //
+    #[inline]
     fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
         if ctx.err.is_some() {

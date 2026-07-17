@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use sal_core::error::Error;
-use crate::{Frame, LowPassSignalCtx};
+use crate::{Frame, LowPassSignalCtx, MirroredBuffer};
 
 ///
 /// Контейнер для передачи данных между вычислительными шагами
@@ -16,6 +16,9 @@ pub struct ImbContext {
     /// Сигнал развернутый в равномерную сетку угловой области
     /// Значения вибрации соответствуют каждому углу поворота вала механизма
     pub order_samples: Vec<f64>,
+
+    /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
+    pub fft_buff: MirroredBuffer,
 
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
@@ -39,8 +42,9 @@ impl ImbContext {
             rpm: f64::EPSILON,
             frame: Arc::new(Frame::default()),
             low_pass_signal: LowPassSignalCtx::new(),
-            order_samples: Vec::with_capacity(capacity),
             samples: [0.0; Frame::SIZE],
+            order_samples: Vec::with_capacity(capacity),
+            fft_buff: MirroredBuffer::new(todo!()),
             err: None,
         }
     }

@@ -32,6 +32,7 @@ impl<Child> Eval<Context, Context> for Autocorrelation<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
     //
+    #[inline]
     fn eval(&self, ctx: Context) -> Context {
         let mut ctx = self.child.eval(ctx);
         if ctx.err.is_some() {

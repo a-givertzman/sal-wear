@@ -4,7 +4,8 @@ pub struct Frame {
     pub samples: [f32; Self::SIZE],
     /// Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
     /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
-    pub phases: [f32; Self::SIZE],
+    /// Размер: Self::SIZE
+    pub phases: Vec<f32>,
 }
 impl Frame {
     /// Количество сырых сэмплов в одной пачке,
@@ -15,7 +16,7 @@ impl Default for Frame {
     fn default() -> Self {
         Self {
             samples: [0.0; Self::SIZE],
-            phases: [0.0; Self::SIZE],
+            phases: vec![0.0; Self::SIZE],
         }
     }
 }

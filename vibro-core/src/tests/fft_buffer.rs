@@ -1,6 +1,14 @@
 use rustfft::num_complex::Complex;
 use slice_ring_buffer::SliceRingBuffer;
 
+/// Высокопроизводительный буфер, удобен для FFT
+/// 
+/// Используется только для тестирования!
+/// 
+/// ⚠️ Важно!
+/// В крейте slice-ring-buffer обнаружены критические уязвимости безопасности (double-free)
+/// на уровне безопасного API, из-за чего он признан небезопасным (RUSTSEC-2025-0044).
+/// Кроме того, они сильно привязаны к конкретной ОС (требуют разные хаки для Windows, macOS и Linux).
 pub struct FftBuffer<T> {
     size: usize,
     buf: SliceRingBuffer<Complex<T>>,

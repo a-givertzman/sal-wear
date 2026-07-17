@@ -1,8 +1,8 @@
-use std::{f64::consts::TAU, sync::Arc};
+use std::{f64::consts::TAU, ops::Deref, sync::Arc};
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, Pass, ReadInputs, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, OrderSpectrum, Pass, ReadInputs, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -34,12 +34,15 @@ fn complex_test () {
         ),
     );
     let low_range = 
-    OrderDomainSamples::new(&dbg,
-        conf.angular.points_per_turn(),
-        LowPassSignal::new(&dbg,
-            conf.hardware.sample_rate_hz,
-            conf.bands.low_cutoff_order(),
-            Pass::new(),
+    OrderSpectrum::new(&dbg,
+        conf.hardware.sample_rate_hz,
+        OrderDomainSamples::new(&dbg,
+            conf.angular.points_per_turn(),
+            LowPassSignal::new(&dbg,
+                conf.hardware.sample_rate_hz,
+                conf.bands.low_cutoff_order(),
+                Pass::new(),
+            ),
         ),
     );
     let mut udp = Udp::new(Frame::SIZE, conf.hardware.sample_rate_hz, [
@@ -102,7 +105,7 @@ fn complex_test () {
         if ctx.ac_samples.is_full() {
             let frame = Arc::new(Frame {
                 samples: samples.map(|v| v as f32 - 2048.0),
-                phases: ctx.phases,
+                phases: ctx.phases.to_vec(),
             });
             _ = low_send.send(frame.clone());
             _ = mid_send.send(frame.clone());

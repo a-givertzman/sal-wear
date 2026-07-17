@@ -63,7 +63,7 @@ fn low_pass_signal_test () {
         udp.parse(rpm, &mut samples);
         let frame = Arc::new(Frame {
             samples: samples.map(|v| v as f32 - 2047.5),    // убираем DC
-            phases: [0.0; Frame::SIZE],
+            phases: vec![0.0; Frame::SIZE],
         });
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         ctx.update(frame);

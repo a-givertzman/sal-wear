@@ -24,7 +24,7 @@ pub struct Context {
     pub current_theta: f64,
     /// Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
     /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
-    pub phases: [f32; Frame::SIZE],
+    pub phases: Box<[f32; Frame::SIZE]>,
     
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
@@ -54,7 +54,7 @@ impl Context {
             omega: f64::NAN,
             dt: f64::NAN,
             current_theta: 0.0,
-            phases: [0.0; Frame::SIZE],
+            phases: Box::new([0.0; Frame::SIZE]),
             err: None,
         }
     }

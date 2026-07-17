@@ -1,5 +1,5 @@
 use sal_core::dbg::Dbg;
-use crate::{Context, Eval, me};
+use crate::{ImbContext, Eval, me};
 
 /// Вычисляет точный период вращения (в отсчетах) через автокорреляцию.
 /// Ищет максимум функции в узком окне от показаний тахометра.
@@ -11,9 +11,7 @@ pub struct OrderSpectrum<Child> {
 }
 impl<Child> OrderSpectrum<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
-    /// 2 * PI
-    const PI2: f64 = std::f64::consts::PI * 2.0;
+    Child: Eval<ImbContext, ImbContext> + Send + 'static {
     ///
     /// ### Returns `OrderSpectrum` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
@@ -28,11 +26,12 @@ where
         }
     }
 }
-impl<Child> Eval<Context, Context> for OrderSpectrum<Child>
+impl<Child> Eval<ImbContext, ImbContext> for OrderSpectrum<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
+    Child: Eval<ImbContext, ImbContext> + Send + 'static {
     //
-    fn eval(&self, ctx: Context) -> Context {
+    #[inline]
+    fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");

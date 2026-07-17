@@ -22,14 +22,19 @@ serde_json = { workspace = true }
 
 #
 # Collections
-slice-ring-buffer = "^0.3"
 
 #
 # Math
 rustfft = "^6.4"
 # Alternative https://github.com/smu160/PhastFT (100% Safe Rust, Power of 2 length only, Inbox multithread)
 
+
 [dev-dependencies]
+
+#
+# Collections
+slice-ring-buffer = "^0.3"
+
 #
 # UI
 egui = "^0.35"
