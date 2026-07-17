@@ -2,7 +2,7 @@ use std::sync::Arc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::{FftPlanner, num_complex::{Complex, ComplexFloat}};
 use sal_core::dbg::Dbg;
-use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, Pass, tests::{FftBuffer, Udp}};
+use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, Pass, tests::{FftBuffer, Frequency, Udp}};
 
 ///
 /// 
@@ -35,16 +35,16 @@ fn low_pass_signal_test () {
     );
     let freqs = [
         // Полезный сигнал
-        (50.0, 200),
-        (100.0, 250),
-        (150.0, 150),
+        (Frequency::Rpm(1.0), 200),
+        (Frequency::Rpm(2.0), 250),
+        (Frequency::Rpm(3.0), 150),
         // Шумы
-        (1000.0, 100),
-        (3000.0, 100),
+        (Frequency::Rpm(20.0), 100),
+        (Frequency::Rpm(60.0), 100),
         // Статический резонанс на 5 кГц с амплитудой 100
-        (5000.0, 100),
-        (7000.0, 100),
-        (12000.0, 100),
+        (Frequency::Static(5000.0), 100),
+        (Frequency::Static(7000.0), 100),
+        (Frequency::Static(12000.0), 100),
     ];
     let mut udp = Udp::new(
         Frame::SIZE,    // 512
@@ -59,9 +59,8 @@ fn low_pass_signal_test () {
     for i in 0..1000 { // Выборок из АЦП
         // для тестирования вручную имитируем изменение rpm привода
         let rpm =  3000.0;
-        let rpm_amp = 0;
         // Имитируем получение АЦП выборки из сети
-        udp.parse(rpm, rpm_amp, &mut samples);
+        udp.parse(rpm, &mut samples);
         let frame = Arc::new(Frame {
             samples: samples.map(|v| v as f32 - 2047.5),    // убираем DC
             phases: [0.0; Frame::SIZE],
@@ -80,6 +79,10 @@ fn low_pass_signal_test () {
             let delta_f = f_sample as f64 / fft_size as f64;
             // log::debug!("{dbg} | delta_f: {}", delta_f);
             for (i, (freq, _)) in freqs.iter().enumerate() {
+                let freq = match freq {
+                    Frequency::Rpm(k) => *k * rpm / 60.0,
+                    Frequency::Static(f) => *f,
+                };
                 let n = (freq / delta_f).round() as usize;
                 let amp = |v: Complex<f32>| {
                     2.0 * v.abs() / fft_size as f32
@@ -103,7 +106,7 @@ fn low_pass_signal_test () {
     }
     for (i, r) in results.iter().enumerate() {
         let s: f32 = r.iter().sum();
-        log::debug!("{dbg} | result f {}: {}", freqs[i].0, s / r.len() as f32);
+        log::debug!("{dbg} | result f {:?}: {}", freqs[i].0, s / r.len() as f32);
     }
     // Проверяем полосу пропускания (низкие частоты 1x..3x должны пройти)
     assert!((results[0].iter().sum::<f32>() / results[0].len() as f32 - 200.0).abs() < 15.0, "1x (50Hz) attenuation is too high");

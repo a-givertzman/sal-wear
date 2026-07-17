@@ -2,7 +2,7 @@ use std::{f64::consts::TAU, sync::Arc};
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, Pass, ReadInputs, tests::Udp};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, Pass, ReadInputs, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -44,7 +44,7 @@ fn complex_test () {
     );
     let mut udp = Udp::new(Frame::SIZE, conf.hardware.sample_rate_hz, [
         // Статический резонанс на 5 кГц с амплитудой 100
-        (5000.0, 100),
+        (Frequency::Static(5000.0), 100),
     ]);
     let mut low_range_ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
     let (low_send, low_recv) = channel::bounded(1);
@@ -93,9 +93,8 @@ fn complex_test () {
     loop {
         // для тестирования вручную имитируем изменение rpm привода
         let rpm = 3000.0;
-        let rpm_amp = 2048;
         // Имитируем получение АЦП выборки из сети
-        udp.parse(rpm, rpm_amp, &mut samples);
+        udp.parse(rpm, &mut samples);
         // для тестирования вручную обновляем rpm на входе, в работе он будет приходить извне
         inputs.set_rpm(rpm);
         ctx.push_chunk(&samples);
