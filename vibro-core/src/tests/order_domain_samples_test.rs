@@ -8,7 +8,7 @@ use crate::{Conf, Eval, Frame, ImbContext, OrderDomainSamples, Pass, tests::{Fft
 /// - Тест на стационарность при разгоне                    (Обязательно!)
 /// - Тест фиксированного количества точек на оборот        (Обязательно!)
 /// - Тест постоянного смещения (DC Offset)                 (Желательно)
-// #[test]
+#[test]
 fn order_domain_smples_test () {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderDomainSamples-test");
