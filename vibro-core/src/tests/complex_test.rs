@@ -1,66 +1,14 @@
 use std::{f64::consts::TAU, sync::Arc};
+use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, Pass, ReadInputs};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, Pass, ReadInputs, tests::Udp};
 
-struct Udp {
-    chunk: usize,
-    sample_freq: f64,
-    dt: f64,
-    freqs: Vec<(f64, u16)>, // Статические резонансы (частота, амплитуда)
-    dynamic_phase: f64,     // Аккумулятор фазы для оборотной частоты
-    fixed_phases: Vec<f64>, // Аккумуляторы фаз для статических резонансов    dt: f64,
-}
-impl Udp {
-    /// Имитирует сигнал с АЦП выборками заданного размера
-    /// `chunk` - размер выборок с АЦП (512)
-    /// `sample_freq` - Частота дискретизации АЦП
-    /// `freqs` - Массив пар (частота, амплитуда)
-    fn new(chunk: usize, sample_rate_hz: impl Into<f64>, freqs: impl IntoIterator<Item = (f64, u16)>) -> Self {
-        let sample_rate_hz = sample_rate_hz.into();
-        let freqs: Vec<_> = freqs.into_iter().collect();
-        let fixed_phases = vec![0.0; freqs.len()];
-        Self {
-            chunk,
-            sample_freq: sample_rate_hz,
-            dt: 1.0 / sample_rate_hz,
-            freqs,
-            dynamic_phase: 0.0,
-            fixed_phases,
-        }
-    }
-    /// Заполняет переданный буфер синтетическими данными.
-    /// Выполняет сложение синусоид и смещение нулевой линии для формата u16.
-    /// `rpm` - Текущая частота вращения привода в об/мин
-    /// `rpm_amp` - Амплитуда 1x гармоники вала
-    fn parse(&mut self, rpm: f64, rpm_amp: u16, samples: &mut [u16]) {
-        let rpm_hz = rpm / 60.0;
-        let rpm_step = TAU * rpm_hz * self.dt;
-        for i in 0..samples.len() {
-            // Накапливаем фазу вращения вала
-            self.dynamic_phase += rpm_step;
-            if self.dynamic_phase > TAU {
-                self.dynamic_phase -= TAU;
-            }
-            let mut val = 2048.0; // Смещение нулевой линии для 12-бит АЦП
-            // Добавляем динамическую 1x гармонику
-            val += (rpm_amp as f64) * self.dynamic_phase.sin();
-            // Добавляем статические резонансы механизма
-            for (j, (f, amp)) in self.freqs.iter().enumerate() {
-                self.fixed_phases[j] += TAU * f * self.dt;
-                if self.fixed_phases[j] > TAU {
-                    self.fixed_phases[j] -= TAU;
-                }
-                val += (*amp as f64) * self.fixed_phases[j].sin();
-            }
-            samples[i] = val.round().clamp(0.0, 4095.0) as u16;
-        }
-    }
-}
 ///
 /// 
 #[test]
 fn complex_test () {
+    DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("complex-test");
     let tp = ThreadPool::new(&dbg, Some(8));
     let scheduler = tp.scheduler();

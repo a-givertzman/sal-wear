@@ -36,13 +36,26 @@ pub struct AngularConf {
     /// Это позволит отличить дефект на 4.20X от шума на 4.25X.
     #[serde(alias = "resolution")]
     pub resolution: f32,
+    /// Плотность угловой сетки (точек на оборот).
+    #[serde(alias = "points-per-turn")]
+    pub points_per_turn: Option<usize>,
 }
 impl AngularConf {
     /// Вычисляет плотность угловой сетки (точек на оборот).
     /// Опирается на теорему Найквиста с запасом и автоматически округляет до степени двойки.
     pub fn points_per_turn(&self) -> usize {
-        let min_points = (self.max_order * 2.5).ceil() as usize;
-        min_points.next_power_of_two()
+        match self.points_per_turn {
+            Some(ppt) => {
+                log::debug!("AngularConf.points_per_turn | Manually specified: {}", ppt);
+                ppt
+            }
+            None => {
+                let min_points = (self.max_order * 2.5).ceil() as usize;
+                let ppt = min_points.next_power_of_two();
+                log::debug!("AngularConf.points_per_turn | Auto calculated: {}", ppt);
+                ppt
+            }
+        }
     }
     /// Вычисляет количество полных оборотов для достижения нужного разрешения.
     /// Округляет до степени двойки для быстрого FFT.
