@@ -86,9 +86,12 @@ fn order_domain_smples_test () {
         log::debug!("{dbg} | result f {:?}: {}", freqs[i].0, s / r.len() as f32);
     }
     // Проверяем полосу пропускания (низкие частоты 1x..3x должны пройти)
-    assert!((results[0].iter().sum::<f32>() / results[0].len() as f32 - 200.0).abs() < 15.0, "1x (50Hz) attenuation is too high");
-    assert!((results[1].iter().sum::<f32>() / results[1].len() as f32 - 250.0).abs() < 10.0, "2x (100Hz) amplitude mismatched");
-    assert!((results[2].iter().sum::<f32>() / results[2].len() as f32 - 150.0).abs() < 20.0, "3x (150Hz) unexpected attenuation");
+    let result = results[0].iter().sum::<f32>() / results[0].len() as f32;
+    assert!((result - 200.0).abs() < 15.0, "1x (50Hz) amplitude mismatched: {result}");
+    let result = results[1].iter().sum::<f32>() / results[1].len() as f32;
+    assert!((result - 250.0).abs() < 10.0, "2x (100Hz) amplitude mismatched: {result}");
+    let result = results[2].iter().sum::<f32>() / results[0].len() as f32;
+    assert!((result - 150.0).abs() < 20.0, "3x (150Hz) amplitude mismatched: {result}");
     // Проверяем полосу подавления (шумы выше 1000 Гц должны быть жестко зарезаны)
     let mean_1khz = results[3].iter().sum::<f32>() / results[3].len() as f32;
     let mean_3khz = results[4].iter().sum::<f32>() / results[4].len() as f32;
