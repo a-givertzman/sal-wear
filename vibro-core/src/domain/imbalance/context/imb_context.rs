@@ -8,22 +8,23 @@ use crate::{Frame, LowPassSignalCtx, MirroredBuffer, OrderSpectrum, Pass};
 pub struct ImbContext {
     /// Уточненная частота вращения вала, об/мин.
     pub rpm: f64,
-    /// Сырые выборки из АЦП и угловая сетка
+    /// Сырые выборки из АЦП и угловая сетка.
     pub frame: Arc<Frame>,
-    /// LowPassSinal Context
+    /// LowPassSinal Context.
     pub low_pass_signal: LowPassSignalCtx,
-    /// Отфилтрованная выборка сырого АЦП сигнала
+    /// Отфилтрованная выборка сырого АЦП сигнала.
     pub samples: Box<[f32; Frame::SIZE]>,
-    /// Сигнал развернутый в равномерную сетку угловой области
-    /// Значения вибрации соответствуют каждому углу поворота вала механизма
+    /// Сигнал развернутый в равномерную сетку угловой области.
+    /// Значения вибрации соответствуют каждому углу поворота вала механизма.
     pub order_samples: Vec<Complex<f32>>,
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
     pub fft_buff: MirroredBuffer<Complex<f32>>,
-    /// Буфер для результатов FFT (OrderSpectrum)
+    /// Буфер результатов FFT (OrderSpectrum).
+    /// Первая его половина комплексный спектр амплитуд и фаз порядков от $0X$ до $32X$ с шагом $\approx 0.0078X$.
     pub fft_window: Vec<Complex<f32>>,
 
-    /// Текущая ошибка вычислений
+    /// Текущая ошибка вычислений.
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
 }

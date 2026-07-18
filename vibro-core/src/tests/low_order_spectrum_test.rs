@@ -2,14 +2,14 @@ use std::sync::Arc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::{FftPlanner, num_complex::{Complex, ComplexFloat}};
 use sal_core::dbg::Dbg;
-use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, Pass, tests::{FftBuffer, Frequency, Udp}};
+use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, OrderSpectrum, Pass, tests::{FftBuffer, Frequency, Udp}};
 
 ///
 /// 
 #[test]
-fn low_pass_signal_test () {
+fn order_spectrum_test () {
     DebugSession::new().filter(LogLevel::Debug).init();
-    let dbg = Dbg::own("LowPassSignal-test");
+    let dbg = Dbg::own("OrderSpectrum-test");
     let f_sample = 320_000; // Частота семплирования АЦП (Гц)
     let conf: Conf = serde_yaml::from_str(&format!(r#"
         hardware:
@@ -24,13 +24,11 @@ fn low_pass_signal_test () {
             high-hz: 5000..10000
     "#)).unwrap();
     let mut samples = [0u16; Frame::SIZE];
-    let low_cutoff_order = conf.bands.low_cutoff_order();  // Возвращает верхнюю границу для ФНЧ в порядках (Orders), например 10X
     // Фильтр нижних частот (Баттерворт 2-го порядка) для подавления ВЧ-шумов.
     // Пропускает частоты до заданного порядка (например, 10x от текущих оборотов).
     // RPM берет из контекста ImbContext.rpm
-    let low_range = LowPassSignal::new(&dbg,
+    let low_range = OrderSpectrum::new(&dbg,
         conf.hardware.sample_rate_hz,
-        low_cutoff_order,
         Pass::new(),
     );
     let freqs = [
