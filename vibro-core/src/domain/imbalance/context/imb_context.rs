@@ -18,7 +18,9 @@ pub struct ImbContext {
     pub order_samples: Vec<f64>,
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
-    pub fft_buff: MirroredBuffer,
+    pub fft_buff: MirroredBuffer<f32>,
+    /// Буфер для результатов FFT (OrderSpectrum)
+    pub fft_out: Vec<f32>,
 
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
@@ -45,6 +47,7 @@ impl ImbContext {
             samples: [0.0; Frame::SIZE],
             order_samples: Vec::with_capacity(capacity),
             fft_buff: MirroredBuffer::new(todo!()),
+            fft_out: Vec::with_capacity(todo!()),
             err: None,
         }
     }

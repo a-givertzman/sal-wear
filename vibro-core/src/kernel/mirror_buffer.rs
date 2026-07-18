@@ -1,7 +1,10 @@
+use crate::Zero;
+
+
 /// Зеркальный кольцевой буфер.
-pub struct MirroredBuffer {
+pub struct MirroredBuffer<T> {
     /// Внутренний массив размером 2*capacity.
-    buffer: Vec<u16>,
+    buffer: Vec<T>,
     /// Логический размер окна (N), необходимый для автокорреляции.
     capacity: usize,
     /// Текущий индекс записи (от 0 до N-1).
@@ -9,12 +12,12 @@ pub struct MirroredBuffer {
     /// Текущая длина накопленных элементов
     len: usize,
 }
-impl MirroredBuffer {
+impl<T: Copy + Zero> MirroredBuffer<T> {
     /// Выделяет память под буфер на куче.
     /// Вызывается строго один раз при инициализации.
     pub fn new(capacity: usize) -> Self {
         Self {
-            buffer: vec![0; capacity * 2],
+            buffer: vec![T::zero(); capacity * 2],
             capacity,
             write_idx: 0,
             len: 0,
@@ -32,7 +35,7 @@ impl MirroredBuffer {
     /// Автоматически дублирует данные для обеспечения непрерывного окна чтения.
     /// Агрументы:
     /// * `chunk` - срез новых данных, длина не должна превышать capacity.
-    pub fn push_chunk(&mut self, chunk: &[u16]) {
+    pub fn push_chunk(&mut self, chunk: &[T]) {
         let m = chunk.len();
         assert!(m <= self.capacity, "Размер выборки превышает вместимость буфера");
         let space_left = self.capacity - self.write_idx;
@@ -61,7 +64,7 @@ impl MirroredBuffer {
     }
     /// Возвращает непрерывный срез памяти длиной N для математического алгоритма.
     /// Срез отсортирован хронологически (от старейшего отсчета к самому новому).
-    pub fn read_window(&self) -> &[u16] {
+    pub fn read_window(&self) -> &[T] {
         &self.buffer[self.write_idx..self.write_idx + self.capacity]
     }
 }

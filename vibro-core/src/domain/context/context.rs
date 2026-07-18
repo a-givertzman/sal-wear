@@ -6,7 +6,7 @@ use crate::{Frame, MirroredBuffer};
 pub struct Context {
     /// Аккумулятор сырых сэмплов, окно Автокорреляции.
     /// Должен вмещать 2–3 полных оборота вала
-    pub(crate) ac_samples: MirroredBuffer,
+    pub(crate) ac_samples: MirroredBuffer<u16>,
     /// Приблизительная частота вращения с тахометра (об/мин).
     pub(crate) raw_rpm: f64,
     /// Примерный (грубый) период вращения (в отсчетах АЦП).
