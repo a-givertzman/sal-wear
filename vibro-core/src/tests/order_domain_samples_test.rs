@@ -62,7 +62,7 @@ fn order_domain_smples_test () {
         let rpm =  3000.0;
         // Имитируем получение АЦП выборки из сети
         udp.parse(rpm, &mut samples);
-        ctx.samples = samples.map(|v| v as f32 - 2047.5);    // Пишем сырую выбору в контекст и убираем DC
+        *ctx.samples = samples.map(|v| v as f32 - 2047.5);    // Пишем сырую выбору в контекст и убираем DC
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         // log::debug!("{dbg} | Before filter: {:?}", low_range_ctx.frame.samples);
         ctx = low_range.eval(ctx);

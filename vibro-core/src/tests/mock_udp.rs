@@ -91,9 +91,7 @@ impl Rpm {
 /// Basic Tests
 #[cfg(test)]
 mod tests {
-    use crate::Conf;
-
-use super::*;
+    use super::*;
     use debugging::session::debug_session::{DebugSession, LogLevel};
     use sal_core::dbg::Dbg;
     /// Вспомогательная функция для вычисления амплитуды конкретной частоты в сигнале (ДПФ для одной точки)

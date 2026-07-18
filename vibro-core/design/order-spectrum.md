@@ -1,6 +1,5 @@
 Виброаналитика
 
-https://share.google/aimode/l509rdWksWBSZqzzL
 https://share.google/aimode/cOeDfPQERabyAx03u
 
 1. Выбор разрешения в домене угла поворота вала

@@ -1,6 +1,7 @@
 use std::sync::Arc;
+use rustfft::num_complex::Complex;
 use sal_core::error::Error;
-use crate::{Frame, LowPassSignalCtx, MirroredBuffer};
+use crate::{Frame, LowPassSignalCtx, MirroredBuffer, OrderSpectrum, Pass};
 
 ///
 /// Контейнер для передачи данных между вычислительными шагами
@@ -12,15 +13,15 @@ pub struct ImbContext {
     /// LowPassSinal Context
     pub low_pass_signal: LowPassSignalCtx,
     /// Отфилтрованная выборка сырого АЦП сигнала
-    pub samples: [f32; Frame::SIZE],
+    pub samples: Box<[f32; Frame::SIZE]>,
     /// Сигнал развернутый в равномерную сетку угловой области
     /// Значения вибрации соответствуют каждому углу поворота вала механизма
-    pub order_samples: Vec<f64>,
+    pub order_samples: Vec<Complex<f32>>,
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
-    pub fft_buff: MirroredBuffer<f32>,
+    pub fft_buff: MirroredBuffer<Complex<f32>>,
     /// Буфер для результатов FFT (OrderSpectrum)
-    pub fft_out: Vec<f32>,
+    pub fft_window: Vec<Complex<f32>>,
 
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
@@ -44,10 +45,10 @@ impl ImbContext {
             rpm: f64::EPSILON,
             frame: Arc::new(Frame::default()),
             low_pass_signal: LowPassSignalCtx::new(),
-            samples: [0.0; Frame::SIZE],
+            samples: Box::new([0.0; Frame::SIZE]),
             order_samples: Vec::with_capacity(capacity),
-            fft_buff: MirroredBuffer::new(todo!()),
-            fft_out: Vec::with_capacity(todo!()),
+            fft_buff: MirroredBuffer::new(OrderSpectrum::<Pass>::fft_buffer_size()),
+            fft_window: Vec::with_capacity(OrderSpectrum::<Pass>::fft_buffer_size()),
             err: None,
         }
     }

@@ -3,7 +3,7 @@
 /// Реализация трейта должна строго соблюдать свойства аддитивного нейтрального элемента:
 /// - Правая идентичность: a + 0 = a ∀ a ∈ Self
 /// - Левая идентичность: 0 + a = a ∀ a ∈ Self
-pub trait Zero: Sized + std::ops::Add<Self, Output = Self> {
+pub trait Zero: Sized {
     /// ### Возвращает математический ноль для `Self`, `0`.
     /// 
     /// **Требования к чистоте (Purity)**
@@ -61,6 +61,15 @@ zero_impl!(i128, 0);
 
 zero_impl!(f32, 0.0);
 zero_impl!(f64, 0.0);
+
+impl<T: Copy + Zero> Zero for rustfft::num_complex::Complex<T> {
+    fn zero() -> Self {
+        rustfft::num_complex::Complex { re: T::zero(), im: T::zero() }
+    }
+    fn is_zero(&self) -> bool {
+        todo!()
+    }
+}
 
 #[cfg(test)]
 mod tests {

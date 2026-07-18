@@ -1,4 +1,5 @@
 use std::f64::consts::TAU;
+use rustfft::num_complex::Complex;
 use sal_core::{dbg::Dbg, error::Error};
 use crate::{Eval, domain::imbalance::context::ImbContext, me};
 
@@ -81,7 +82,7 @@ where
             let p2 = samples[idx + 1] as f64;
             let p3 = samples[idx + 2] as f64;
             let resampled_val = Self::catmull_rom(p0, p1, p2, p3, t);
-            ctx.order_samples.push(resampled_val);
+            ctx.order_samples.push(Complex { re: resampled_val as f32, im: 0.0 });
         }
         ctx
     }
