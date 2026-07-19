@@ -94,7 +94,9 @@ where
         if ctx.fft_buff.is_full() {
             ctx.fft_window.copy_from_slice(ctx.fft_buff.read_window());
             if let Some(window_fn) = &self.window_fn {
-                window_fn.eval(&mut ctx.fft_window)
+                if let Err(err) = window_fn.eval(&mut ctx.fft_window) {
+                    log::warn!("{}.eval | {}", self.dbg, err);
+                }
             }
             self.fft.process(&mut ctx.fft_window);
         }

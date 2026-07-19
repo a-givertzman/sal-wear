@@ -38,7 +38,8 @@ impl<T: rustfft::num_traits::Float + rustfft::num_traits::FloatConst> WindowFn<T
                 .err(format!("Размер окна width ({width}) превысил размер выборки size ({size})")));
         }
         let end = offset.checked_add(width).ok_or_else(|| {
-            Error::new(&dbg, "rect").err("Переполнение (overflow) при вычислении границ окна")
+            Error::new(&dbg, "rect")
+                .err("Переполнение (overflow) при вычислении границ окна")
         })?;
         if end > size {
             return Err(Error::new(&dbg, "rect")
@@ -69,16 +70,16 @@ impl<T: rustfft::num_traits::Float + rustfft::num_traits::FloatConst> WindowFn<T
     pub fn hann(parent: &Dbg, size: usize, width: usize, offset: usize) -> Result<Self, Error> {
         let dbg = Dbg::new(parent, me::<Self>());
         if width > size {
-            return Err(Error::new(&dbg, "rect")
+            return Err(Error::new(&dbg, "hann")
                 .err(format!("Размер окна width ({width}) превысил размер выборки size ({size})")));
         }
         let end = offset.checked_add(width).ok_or_else(|| {
-            Error::new(&dbg, "hann").err("Переполнение (overflow) при вычислении границ окна")
+            Error::new(&dbg, "hann")
+                .err("Переполнение (overflow) при вычислении границ окна")
         })?;
         if end > size {
-            return Err(Error::new(&dbg, "hann").err(format!(
-                "Сдвиг окна offset ({offset}) с учетом ширины ({width}) выходит за пределы выборки size ({size})"
-            )));
+            return Err(Error::new(&dbg, "hann")
+                .err(format!("Сдвиг окна offset ({offset}) с учетом ширины ({width}) выходит за пределы выборки size ({size})")));
         }
         // 2. Подготовка констант для формулы косинуса внутри активной зоны
         // Чтобы избежать деления на ноль при width <= 1, делаем безопасный знаменатель (M - 1)
@@ -118,16 +119,16 @@ impl<T: rustfft::num_traits::Float + rustfft::num_traits::FloatConst> WindowFn<T
     pub fn hamming(parent: &Dbg, size: usize, width: usize, offset: usize) -> Result<Self, Error> {
         let dbg = Dbg::new(parent, me::<Self>());
         if width > size {
-            return Err(Error::new(&dbg, "rect")
+            return Err(Error::new(&dbg, "hamming")
                 .err(format!("Размер окна width ({width}) превысил размер выборки size ({size})")));
         }
         let end = offset.checked_add(width).ok_or_else(|| {
-            Error::new(&dbg, "hann").err("Переполнение (overflow) при вычислении границ окна")
+            Error::new(&dbg, "hamming")
+                .err("Переполнение (overflow) при вычислении границ окна")
         })?;
         if end > size {
-            return Err(Error::new(&dbg, "hann").err(format!(
-                "Сдвиг окна offset ({offset}) с учетом ширины ({width}) выходит за пределы выборки size ({size})"
-            )));
+            return Err(Error::new(&dbg, "hamming")
+                .err(format!("Сдвиг окна offset ({offset}) с учетом ширины ({width}) выходит за пределы выборки size ({size})")));
         }
         // 2. Подготовка констант для формулы Хэмминга
         let denom = if width > 1 {
@@ -168,16 +169,16 @@ impl<T: rustfft::num_traits::Float + rustfft::num_traits::FloatConst> WindowFn<T
     pub fn blackman(parent: &Dbg, size: usize, width: usize, offset: usize) -> Result<Self, Error> {
         let dbg = Dbg::new(parent, me::<Self>());
         if width > size {
-            return Err(Error::new(&dbg, "rect")
+            return Err(Error::new(&dbg, "blackman")
                 .err(format!("Размер окна width ({width}) превысил размер выборки size ({size})")));
         }
         let end = offset.checked_add(width).ok_or_else(|| {
-            Error::new(&dbg, "hann").err("Переполнение (overflow) при вычислении границ окна")
+            Error::new(&dbg, "blackman")
+                .err("Переполнение (overflow) при вычислении границ окна")
         })?;
         if end > size {
-            return Err(Error::new(&dbg, "hann").err(format!(
-                "Сдвиг окна offset ({offset}) с учетом ширины ({width}) выходит за пределы выборки size ({size})"
-            )));
+            return Err(Error::new(&dbg, "blackman")
+                .err(format!("Сдвиг окна offset ({offset}) с учетом ширины ({width}) выходит за пределы выборки size ({size})")));
         }
         // 2. Подготовка констант для формулы Блэкмана
         let denom = if width > 1 {
@@ -247,16 +248,16 @@ impl<T: rustfft::num_traits::Float + rustfft::num_traits::FloatConst> WindowFn<T
     pub fn kaiser(parent: &Dbg, size: usize, width: usize, offset: usize, betta: T) -> Result<Self, Error> {
         let dbg = Dbg::new(parent, me::<Self>());
         if width > size {
-            return Err(Error::new(&dbg, "rect")
+            return Err(Error::new(&dbg, "kaiser")
                 .err(format!("Размер окна width ({width}) превысил размер выборки size ({size})")));
         }
         let end = offset.checked_add(width).ok_or_else(|| {
-            Error::new(&dbg, "hann").err("Переполнение (overflow) при вычислении границ окна")
+            Error::new(&dbg, "kaiser")
+                .err("Переполнение (overflow) при вычислении границ окна")
         })?;
         if end > size {
-            return Err(Error::new(&dbg, "hann").err(format!(
-                "Сдвиг окна offset ({offset}) с учетом ширины ({width}) выходит за пределы выборки size ({size})"
-            )));
+            return Err(Error::new(&dbg, "kaiser")
+                .err(format!("Сдвиг окна offset ({offset}) с учетом ширины ({width}) выходит за пределы выборки size ({size})")));
         }
         // 2. Подготовка констант для формулы Кайзера
         let denom_m = if width > 1 {
@@ -291,11 +292,19 @@ impl<T: rustfft::num_traits::Float + rustfft::num_traits::FloatConst> WindowFn<T
             dbg,
         })        
     }
-    /// Применяет коэффициенты окна к выборке
+    /// ### Применяет коэффициенты окна к комплексной выборке.
+    /// 
+    /// Вернет ошибку если длина `samples` не равна размеру окна `size`.
     #[inline]
-    pub fn eval(&self, samples: &mut [Complex<T>]) {
+    pub fn eval(&self, samples: &mut [Complex<T>]) -> Result<(), Error> {
+        if samples.len() != self.lookup.len() {
+            return Err(Error::new(&self.dbg, "eval")
+                .err(format!("Размер выборки ({}) не совпадает с размером lookup-таблицы ({})", samples.len(), self.lookup.len())));
+        }
         for (sample, k) in samples.iter_mut().zip(&self.lookup) {
             sample.re = *k * sample.re;
+            sample.im = *k * sample.im;
         }
+        Ok(())
     }
 }
