@@ -19,6 +19,8 @@ mod pass;
 pub use pass::*;
 mod order_spectrum;
 pub use order_spectrum::*;
+mod window_fn;
+pub use window_fn::*;
 
 
 

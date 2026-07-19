@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use rustfft::{Fft, FftPlanner};
 use sal_core::{dbg::Dbg, error::Error};
-use crate::{ImbContext, Eval, me};
+use crate::{Eval, ImbContext, WindowFn, me};
 
 /// ### Спектральный анализ сигнала в угловом домене (Order Tracking) 
 /// для низкочастотной диагностики роторного оборудования.
@@ -26,12 +26,12 @@ use crate::{ImbContext, Eval, me};
 /// 
 /// [Подробнее об Order Spectrum](../../../design/order-spectrum.md)
 pub struct OrderSpectrum<Child> {
-    /// Частота дискретизации исходного сигнала АЦП во временном домене (в Гц).
-    sample_rate: f64,
-    /// Предыдущий узел конвейера вычислений (например, угловой ресемплер или оконный фильтр).
-    child: Child,
     /// Планировщик FFT.
     fft: Arc<dyn Fft<f32>>,
+    /// Оконная функция
+    window_fn: Option<WindowFn<f32>>,
+    /// Предыдущий узел конвейера вычислений (например, угловой ресемплер или оконный фильтр).
+    child: Child,
     dbg: Dbg,
 }
 impl<Child> OrderSpectrum<Child>
@@ -42,16 +42,16 @@ where
     /// - `parent` - Идентификатор родительской сущности (для отладки).
     /// - `sample_rate` - Частота дискретизации в Гц.
     /// - `child` - Дочерний (предыдущий) расчетный шаг
-    pub fn new(parent: &Dbg, sample_rate_hz: impl Into<f64>, child: Child) -> Self {
+    pub fn new(parent: &Dbg, window_fn: Option<WindowFn<f32>>, child: Child) -> Self {
         let dbg = Dbg::new(parent, me::<Self>());
         let fft_size = Self::fft_buffer_size();
         log::debug!("{dbg}.new | fft_size: {fft_size}");
         let mut planner = FftPlanner::new();
         let fft = planner.plan_fft_forward(fft_size);
         Self {
-            sample_rate: sample_rate_hz.into(),
-            child,
             fft,
+            window_fn,
+            child,
             dbg,
         }
     }
