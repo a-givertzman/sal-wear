@@ -293,7 +293,7 @@ impl<T: rustfft::num_traits::Float + rustfft::num_traits::FloatConst> WindowFn<T
     }
     /// Применяет коэффициенты окна к выборке
     #[inline]
-    fn eval(&self, samples: &mut [Complex<T>]) {
+    pub fn eval(&self, samples: &mut [Complex<T>]) {
         for (sample, k) in samples.iter_mut().zip(&self.lookup) {
             sample.re = *k * sample.re;
         }

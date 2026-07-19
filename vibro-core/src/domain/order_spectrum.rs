@@ -93,6 +93,9 @@ where
         ctx.fft_buff.push_chunk(&ctx.order_samples[..]);
         if ctx.fft_buff.is_full() {
             ctx.fft_window.copy_from_slice(ctx.fft_buff.read_window());
+            if let Some(window_fn) = &self.window_fn {
+                window_fn.eval(&mut ctx.fft_window)
+            }
             self.fft.process(&mut ctx.fft_window);
         }
         ctx
