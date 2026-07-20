@@ -14,8 +14,6 @@ use crate::{Eval, ImbContext, KalmanFilter, Retained, Sender, ShortSigma, me};
 /// 
 /// [Подробнее о выявлении дефектов](../../../design/imbalance-detector.md)
 pub struct ImbalanceDetector<Child> {
-    /// Фильтры накопления изменений искомых гармоник
-    filters: Vec<KalmanFilter>,
     /// Предыдущий узел конвейера вычислений (например, спектральный анализ).
     child: Child,
     dbg: Dbg,
@@ -29,20 +27,7 @@ where
     /// - `child` - Дочерний (предыдущий) расчетный шаг
     pub fn new(parent: impl Into<String>, retain: Sender<(String, Retained)>, child: Child) -> Self {
         let dbg = Dbg::new(parent, me::<Self>());
-        let filters = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0].map(|order| {
-            // Идентификатор зоны для хранения в retain
-            let order_id = format!("{order}x");
-            // Скорость старения процесса
-            let q = 1e-7;
-            let retained = Retained { x_hat: todo!(), p: todo!(), timestamp: todo!() };
-            KalmanFilter::new(&dbg, order_id, q, 0.01, retained, retain, 
-                ShortSigma::new(
-                    10, retained.x_hat
-                ),
-            )
-        }).into();
         Self {
-            filters,
             child,
             dbg,
         }
@@ -62,6 +47,9 @@ where
             ctx.err = Some(Error::new(&self.dbg, "eval")
                 .err(format!("Размер входящей выборки ({}) превышает емкость FFT буфера ({})", ctx.order_samples.len(), ctx.fft_buff.capacity())));
             return ctx;
+        }
+        for filter in self.filters {
+
         }
         ctx.fft_buff.push_chunk(&ctx.order_samples[..]);
         if ctx.fft_buff.is_full() {

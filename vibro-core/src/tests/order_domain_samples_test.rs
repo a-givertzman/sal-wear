@@ -53,7 +53,7 @@ fn order_domain_smples_test () {
     );
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
     let fft_size = 4096 * 4;
-    let mut ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let mut ctx = ImbContext::new(& dbg, conf.angular.points_per_turn(), conf.angular.fft_turns());
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(fft_size);
     let mut buffer = FftBuffer::new(fft_size, 1024);

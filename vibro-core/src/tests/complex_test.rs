@@ -53,7 +53,7 @@ fn complex_test () {
         // Статический резонанс на 5 кГц с амплитудой 100
         (Frequency::Static(5000.0), 100),
     ]);
-    let mut low_range_ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.points_per_turn(), conf.angular.fft_turns());
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);
     let (high_send, high_recv) = channel::bounded(1);

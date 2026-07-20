@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use rustfft::num_complex::Complex;
 use sal_core::error::Error;
-use crate::{Frame, LowPassSignalCtx, MirroredBuffer, OrderSpectrum, Pass};
+use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer, OrderSpectrum, Pass, Retained, ShortSigma};
 
 ///
 /// Контейнер для передачи данных между вычислительными шагами
@@ -24,13 +24,16 @@ pub struct ImbContext {
     /// Первая его половина комплексный спектр амплитуд и фаз порядков от $0X$ до $32X$ с шагом $\approx 0.0078X$.
     pub fft_window: Vec<Complex<f32>>,
 
+    /// Фильтры накопления изменений гармоник исследуемых дефектов (0.5x, 1.0x, 1.5x, 2.0x, 2.5x, 3.0x)
+    filters: Vec<KalmanFilter>,
+
     /// Текущая ошибка вычислений.
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
 }
 //
 impl ImbContext {
-    pub fn new(points_per_turn: usize, fft_turns: usize) -> Self {
+    pub fn new(parent: impl Into<String>, points_per_turn: usize, fft_turns: usize) -> Self {
         // Для FFT размер буфера должен быть строгой степенью двойки.
         // В порядковом анализе длина буфера формируется из двух параметров:
         //      - Угловое разрешение (Сэмплов на оборот): Берем из конфига (points_per_turn).
@@ -43,6 +46,18 @@ impl ImbContext {
         //        $\Delta \text{Order} = \frac{1}{32} \approx 0.03125$ порядка.
         //        Это позволит детектору легко отличить, например, дисбаланс ротора ($1.0\times$) от дефекта сепаратора FTF (обычно около $0.38\times \dots 0.42\times$).
         let capacity = fft_turns * points_per_turn;
+        let filters = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0].map(|order| {
+            // Идентификатор зоны для хранения в retain
+            let order_id = format!("{order}x");
+            // Скорость старения процесса
+            let q = 1e-7;
+            let retained = Retained { x_hat: todo!(), p: todo!(), timestamp: todo!() };
+            KalmanFilter::new(parent, order_id, q, 0.01, retained, retain, 
+                ShortSigma::new(
+                    10, retained.x_hat
+                ),
+            )
+        }).into();
         Self {
             rpm: f64::EPSILON,
             frame: Arc::new(Frame::default()),
@@ -51,6 +66,7 @@ impl ImbContext {
             order_samples: Vec::with_capacity(capacity),
             fft_buff: MirroredBuffer::new(OrderSpectrum::<Pass>::fft_buffer_size()),
             fft_window: Vec::with_capacity(OrderSpectrum::<Pass>::fft_buffer_size()),
+            filters,
             err: None,
         }
     }
