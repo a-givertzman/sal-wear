@@ -28,6 +28,7 @@ pub struct ImbContext {
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
 }
+//
 impl ImbContext {
     pub fn new(points_per_turn: usize, fft_turns: usize) -> Self {
         // Для FFT размер буфера должен быть строгой степенью двойки.

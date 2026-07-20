@@ -31,11 +31,11 @@ where
         let dbg = Dbg::new(parent, me::<Self>());
         let filters = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0].map(|order| {
             // Идентификатор зоны для хранения в retain
-            let zone_id = format!("{order}x");
+            let order_id = format!("{order}x");
             // Скорость старения процесса
             let q = 1e-7;
-            let retained = todo!();
-            KalmanFilter::new(&dbg, zone_id, q, 0.01, retained, retain, 
+            let retained = Retained { x_hat: todo!(), p: todo!(), timestamp: todo!() };
+            KalmanFilter::new(&dbg, order_id, q, 0.01, retained, retain, 
                 ShortSigma::new(
                     10, retained.x_hat
                 ),

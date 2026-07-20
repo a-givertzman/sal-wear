@@ -41,6 +41,7 @@ impl ShortSigma {
     }
     /// Принимает новое значение энергии зоны из текущего спектра порядков (Order Spectrum).
     /// Возвращает текущее среднеквадратичное отклонение `Sigma`.
+    #[inline]
     pub fn eval(&self, x: f64) -> f64 {
         let beta = self.beta;
         let old_mu = self.mu.load();

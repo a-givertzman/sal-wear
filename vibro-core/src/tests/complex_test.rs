@@ -35,7 +35,8 @@ fn complex_test () {
     );
     let window_size = OrderSpectrum::<Pass>::fft_buffer_size();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
-    let low_range = ImbalanceDetector::new(&dbg,
+    let (retain, recv) = crate::channel_unbounded();
+    let low_range = ImbalanceDetector::new(&dbg, retain, 
         OrderSpectrum::new(&dbg,
             Some(window_fn),
             OrderDomainSamples::new(&dbg,
@@ -104,15 +105,18 @@ fn complex_test () {
         // для тестирования вручную обновляем rpm на входе, в работе он будет приходить извне
         inputs.set_rpm(rpm);
         ctx.push_chunk(&samples);
-        ctx = angular_grid.eval(ctx);
-        if ctx.ac_samples.is_full() {
-            let frame = Arc::new(Frame {
-                samples: samples.map(|v| v as f32 - 2048.0),
-                phases: ctx.phases.to_vec(),
-            });
-            _ = low_send.send(frame.clone());
-            _ = mid_send.send(frame.clone());
-            _ = high_send.send(frame.clone());
+        let phases;
+        (ctx, phases) = angular_grid.eval(ctx);
+        match &ctx.err {
+            Some(err) => log::warn!("{}", err),
+            None => {
+                if ctx.ac_samples.is_full() {
+                    let frame = Frame::new(samples, phases);
+                    _ = low_send.send(frame.clone());
+                    _ = mid_send.send(frame.clone());
+                    _ = high_send.send(frame.clone());
+                }
+            }
         }
     }
 }

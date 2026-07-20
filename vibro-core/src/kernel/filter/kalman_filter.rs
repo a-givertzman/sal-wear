@@ -93,6 +93,7 @@ impl KalmanFilter {
     /// 
     /// Возвращает `Some(f64)` с новым чистым значением тренда, если произошло значимое изменение,
     /// требующее обновления графиков/логики дефектов. Возвращает `None`, если тренд стабилен.
+    #[inline]
     pub fn eval(&self, x: f64) -> Option<f64> {
         let old_x_hat = self.x_hat.load();
         let old_p = self.p.load();

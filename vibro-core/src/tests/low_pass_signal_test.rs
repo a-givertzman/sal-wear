@@ -2,7 +2,7 @@ use std::sync::Arc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::{FftPlanner, num_complex::{Complex, ComplexFloat}};
 use sal_core::dbg::Dbg;
-use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, Pass, tests::{FftBuffer, Frequency, Udp}};
+use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, Pass, Phases, tests::{FftBuffer, Frequency, Udp}};
 
 ///
 /// 
@@ -63,7 +63,7 @@ fn low_pass_signal_test () {
         udp.parse(rpm, &mut samples);
         let frame = Arc::new(Frame {
             samples: samples.map(|v| v as f32 - 2047.5),    // убираем DC
-            phases: vec![0.0; Frame::SIZE],
+            phases: Phases::new(Frame::SIZE),
         });
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         ctx.update(frame);
