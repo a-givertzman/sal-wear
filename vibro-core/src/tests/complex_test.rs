@@ -1,8 +1,8 @@
-use std::{f64::consts::TAU, ops::Deref, sync::Arc};
+use std::sync::Arc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, OrderSpectrum, Pass, ReadInputs, WindowFn, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderSpectrum, Pass, ReadInputs, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -35,15 +35,16 @@ fn complex_test () {
     );
     let window_size = OrderSpectrum::<Pass>::fft_buffer_size();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
-    let low_range = 
-    OrderSpectrum::new(&dbg,
-        Some(window_fn),
-        OrderDomainSamples::new(&dbg,
-            conf.angular.points_per_turn(),
-            LowPassSignal::new(&dbg,
-                conf.hardware.sample_rate_hz,
-                conf.bands.low_cutoff_order(),
-                Pass::new(),
+    let low_range = ImbalanceDetector::new(&dbg,
+        OrderSpectrum::new(&dbg,
+            Some(window_fn),
+            OrderDomainSamples::new(&dbg,
+                conf.angular.points_per_turn(),
+                LowPassSignal::new(&dbg,
+                    conf.hardware.sample_rate_hz,
+                    conf.bands.low_cutoff_order(),
+                    Pass::new(),
+                ),
             ),
         ),
     );
