@@ -62,7 +62,7 @@ impl ImbContext {
             // Полуширина захвата в долях порядка (Для плавающих режимов ±0.05..±0.1 порядка).
             let half_width = 0.05;
             KalmanFilter::new(&parent, order_id, q, 0.01, retained, retain.clone(),
-                OrderZone::new(order, half_width, n_fft, n_rev),
+                OrderZone::new(order, half_width, 3, n_fft, n_rev),
                 ShortSigma::new(
                     10, 
                     retained.x_hat,
