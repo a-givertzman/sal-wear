@@ -1,6 +1,6 @@
 use chrono::Utc;
 use sal_core::{dbg::Dbg, error::Error};
-use crate::{Eval, ImbContext, KalmanFilter, Phase, Retained, Sender, ShortSigma, me};
+use crate::{Eval, ImbContext, Phase, Retained, Sender};
 
 /// ### Выявление макро-механических дефектов на низких кратностях частоты вращения (0.5x..3x RPM).
 ///
@@ -26,8 +26,8 @@ where
     /// ### Returns `ImbalanceDetector` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
     /// - `child` - Дочерний (предыдущий) расчетный шаг
-    pub fn new(parent: impl Into<String>, retain: Sender<(String, Retained)>, child: Child) -> Self {
-        let dbg = Dbg::new(parent, me::<Self>());
+    pub fn new(parent: impl Into<String>, child: Child) -> Self {
+        let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
             child,
             dbg,

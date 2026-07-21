@@ -30,7 +30,7 @@ impl Default for Retained {
     /// Создает `Retained` с текущей меткой времени
     fn default() -> Self {
         let ts = chrono::Utc::now().timestamp().max(0) as u64;
-        Self { x_hat: f64::EPSILON, p: f64::MAX, ts }
+        Self { x_hat: f64::EPSILON, p: f64::NAN, ts }
     }
 }
 
@@ -67,6 +67,7 @@ pub struct KalmanFilter {
     saving_threshold: f64,
     // Переменные состояния фильтра (Стейт)
     x_hat: AtomicF64,
+    /// Внутренняя ошибка/неопределенность фильтра (ковариация ошибки оценки).
     p: AtomicF64,
     // Внутренний трекер для контроля дельта-записи
     last_saved_x_hat: AtomicF64,
@@ -105,7 +106,7 @@ impl KalmanFilter {
             q,
             saving_threshold,
             x_hat: AtomicF64::new(retained.x_hat),
-            p: AtomicF64::new(retained.p),
+            p: AtomicF64::new(retained.p),  // на старте должно быть NAN, тогда начальным значением будет первая RMS 
             last_saved_x_hat: AtomicF64::new(retained.x_hat),
             retain,
             value,
@@ -127,6 +128,7 @@ impl KalmanFilter {
         let x = self.value.integrate(orders).value();
         let old_x_hat = self.x_hat.load();
         let old_p = self.p.load();
+        let old_p = if old_p.is_nan() { x } else { old_p };
         // 1. ЭТАП ПРОГНОЗА (моделирование шага времени)
         // Предполагаем, что износ равен предыдущему, но неопределенность модели (p) 
         // возрастает на величину скорости старения q.

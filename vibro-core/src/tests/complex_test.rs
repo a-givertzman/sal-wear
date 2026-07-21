@@ -36,8 +36,7 @@ fn complex_test () {
     );
     let window_size = OrderSpectrum::<Pass>::fft_buffer_size();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
-    let (retain, recv) = crate::channel_unbounded();
-    let low_range = ImbalanceDetector::new(&dbg, retain, 
+    let low_range = ImbalanceDetector::new(&dbg, 
         OrderSpectrum::new(&dbg,
             Some(window_fn),
             OrderDomainSamples::new(&dbg,
