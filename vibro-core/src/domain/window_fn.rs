@@ -1,4 +1,4 @@
-use rustfft::num_complex::Complex;
+use crate::num_complex::Complex;
 use sal_core::{dbg::Dbg, error::Error};
 use crate::me;
 
@@ -20,7 +20,7 @@ pub struct WindowFn<T> {
     lookup: Vec<T>,
     dbg: Dbg,
 }
-impl<T: rustfft::num_traits::Float + rustfft::num_traits::FloatConst> WindowFn<T> {
+impl<T: crate::num_traits::Float + crate::num_traits::FloatConst> WindowFn<T> {
     /// ### Оконная функция для подготовки данных к FFT.
     /// 
     /// Прямоугольное окно (Rectengular) обрезает сигнал без сглаживания краев.

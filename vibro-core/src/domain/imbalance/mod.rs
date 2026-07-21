@@ -6,3 +6,5 @@ mod order_domain_samples;
 pub use order_domain_samples::*;
 mod imbalance_detector;
 pub use imbalance_detector::*;
+mod order_zone;
+pub use order_zone::*;

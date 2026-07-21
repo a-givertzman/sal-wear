@@ -33,7 +33,7 @@ where
     }
     /// Пересчитывает коэффициенты Баттерворта 2-го порядка при изменении скорости вала.
     fn update_coeffs(&self, mut ctx: ImbContext) -> ImbContext {
-        let fc = (ctx.rpm / 60.0) * self.cutoff_order;
+        let fc = ctx.rpm.to_hz() * self.cutoff_order;
         let omega0 = Self::PI2 * fc / self.sample_rate;
         let alpha = omega0.sin() / (2.0 * std::f64::consts::FRAC_1_SQRT_2);
         let cos_w0 = omega0.cos();
@@ -60,12 +60,12 @@ where
             return ctx.pass_err(&self.dbg, "eval");
         }
         // Защита от деления на ноль при старте системы
-        if ctx.rpm <= 0.1 {
+        if ctx.rpm.value() <= 0.1 {
             ctx.err = Some(Error::new(&self.dbg, "eval").err("Low RPM"));
             return ctx
         }
         // Пересчитываем математику фильтра, только если обороты изменились более чем на 1 RPM
-        if (ctx.rpm - ctx.low_pass_signal.last_rpm).abs() > 1.0 {
+        if (ctx.rpm - ctx.low_pass_signal.last_rpm).value().abs() > 1.0 {
             ctx = self.update_coeffs(ctx);
         }
         let coeffs = ctx.low_pass_signal.coeffs;

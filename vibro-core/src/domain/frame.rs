@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
+use chrono::{DateTime, Utc};
+
 use crate::Phases;
 
 /// Контейнер для раздачи имутабельных данных вычислительным потокам
 pub struct Frame {
+    ///  Метка времени выборки
+    pub ts: DateTime<Utc>,
     /// Сырые выборки из АЦП
     /// Размер: `Frame::SIZE`
     pub samples: [f32; Self::SIZE],
@@ -22,8 +26,9 @@ impl Frame {
     /// - `phases` - Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
     /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
     /// Размер: `Frame::SIZE`
-    pub fn new(samples: [u16; Self::SIZE], phases: Phases<f32>) -> Arc<Self> {
+    pub fn new(samples: [u16; Self::SIZE], phases: Phases<f32>, ts: DateTime<Utc>) -> Arc<Self> {
         Arc::new(Frame {
+            ts,
             samples: samples.map(|v| v as f32 - 2048.0),
             phases,
         })
@@ -32,6 +37,7 @@ impl Frame {
 impl Default for Frame {
     fn default() -> Self {
         Self {
+            ts: Utc::now(),
             samples: [0.0; Self::SIZE],
             phases: Phases::new(Self::SIZE),
         }

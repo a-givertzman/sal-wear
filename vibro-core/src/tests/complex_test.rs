@@ -1,8 +1,9 @@
 use std::sync::Arc;
+use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderSpectrum, Pass, ReadInputs, WindowFn, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderSpectrum, Pass, ReadInputs, Retain, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -40,7 +41,7 @@ fn complex_test () {
         OrderSpectrum::new(&dbg,
             Some(window_fn),
             OrderDomainSamples::new(&dbg,
-                conf.angular.points_per_turn(),
+                conf.angular.n_rev(),
                 LowPassSignal::new(&dbg,
                     conf.hardware.sample_rate_hz,
                     conf.bands.low_cutoff_order(),
@@ -53,7 +54,8 @@ fn complex_test () {
         // Статический резонанс на 5 кГц с амплитудой 100
         (Frequency::Static(5000.0), 100),
     ]);
-    let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let retain = Arc::new(Retain::new(&dbg));
+    let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.n_rev(), conf.angular.fft_turns(), retain);
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);
     let (high_send, high_recv) = channel::bounded(1);
@@ -102,6 +104,7 @@ fn complex_test () {
         let rpm = 3000.0;
         // Имитируем получение АЦП выборки из сети
         udp.parse(rpm, &mut samples);
+        let ts = Utc::now();
         // для тестирования вручную обновляем rpm на входе, в работе он будет приходить извне
         inputs.set_rpm(rpm);
         ctx.push_chunk(&samples);
@@ -111,7 +114,7 @@ fn complex_test () {
             Some(err) => log::warn!("{}", err),
             None => {
                 if ctx.ac_samples.is_full() {
-                    let frame = Frame::new(samples, phases);
+                    let frame = Frame::new(samples, phases, ts);
                     _ = low_send.send(frame.clone());
                     _ = mid_send.send(frame.clone());
                     _ = high_send.send(frame.clone());

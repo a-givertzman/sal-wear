@@ -38,21 +38,21 @@ pub struct AngularConf {
     pub resolution: f32,
     /// Плотность угловой сетки (точек на оборот).
     #[serde(alias = "points-per-turn")]
-    pub points_per_turn: Option<usize>,
+    pub n_rev: Option<usize>,
 }
 impl AngularConf {
     /// Вычисляет плотность угловой сетки (точек на оборот).
     /// Опирается на теорему Найквиста с запасом и автоматически округляет до степени двойки.
-    pub fn points_per_turn(&self) -> usize {
-        match self.points_per_turn {
+    pub fn n_rev(&self) -> usize {
+        match self.n_rev {
             Some(ppt) => {
-                log::debug!("AngularConf.points_per_turn | Manually specified: {}", ppt);
+                log::debug!("AngularConf.n_rev | Manually specified: {}", ppt);
                 ppt
             }
             None => {
                 let min_points = (self.max_order * 2.5).ceil() as usize;
                 let ppt = min_points.next_power_of_two();
-                log::debug!("AngularConf.points_per_turn | Auto calculated: {}", ppt);
+                log::debug!("AngularConf.n_rev | Auto calculated: {}", ppt);
                 ppt
             }
         }
@@ -65,11 +65,11 @@ impl AngularConf {
     }
     /// Вычисляет угловой шаг в радианах.
     pub fn angular_step_rad(&self) -> f64 {
-        std::f64::consts::TAU / (self.points_per_turn() as f64)
+        std::f64::consts::TAU / (self.n_rev() as f64)
     }
     /// Вычисляет итоговый размер буфера для спектрального анализа.
     pub fn fft_buffer_size(&self) -> usize {
-        self.points_per_turn() * self.fft_turns()
+        self.n_rev() * self.fft_turns()
     }
 }
 /// Границы частотных диапазонов для фильтрации и анализа.
@@ -149,7 +149,7 @@ mod tests {
     /// Проверяет правильность вычисления внутренних констант для FFT и ресемплинга.
     #[test]
     fn test_conf_contracts() {
-        // Допустим, points_per_turn = 256 [cite: 341] и fft_revolutions = 32 
+        // Допустим, n_rev = 256 [cite: 341] и fft_revolutions = 32 
         let conf: AngularConf = serde_yaml::from_str(r#"
             max-order: 100
             resolution: 0.05

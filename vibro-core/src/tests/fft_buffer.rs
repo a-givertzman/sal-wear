@@ -1,4 +1,4 @@
-use rustfft::num_complex::Complex;
+use crate::num_complex::Complex;
 use slice_ring_buffer::SliceRingBuffer;
 
 /// Высокопроизводительный буфер, удобен для FFT

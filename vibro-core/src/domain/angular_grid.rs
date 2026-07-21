@@ -54,7 +54,7 @@ where
 pub struct Phases<T> {
     vals: Vec<T>,
 }
-impl<T: rustfft::num_traits::Float> Phases<T> {
+impl<T: crate::num_traits::Float> Phases<T> {
     pub fn new(size: usize) -> Self {
         if size > 0 {
             Self { vals: vec![T::zero(); size] }

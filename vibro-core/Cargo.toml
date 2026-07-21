@@ -15,6 +15,10 @@ debugging = { workspace = true }
 sal-sync = { workspace = true }
 
 #
+# Date & Time
+chrono = { version = "0.4", features = ["serde"] }
+
+#
 # Serde
 serde = { workspace = true }
 serde_yaml = { workspace = true }

@@ -1,8 +1,9 @@
 use std::sync::Arc;
+use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::{FftPlanner, num_complex::{Complex, ComplexFloat}};
 use sal_core::dbg::Dbg;
-use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, Pass, Phases, tests::{FftBuffer, Frequency, Udp}};
+use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, Pass, Phases, Retain, Rpm, tests::{FftBuffer, Frequency, Udp}};
 
 ///
 /// 
@@ -52,16 +53,19 @@ fn low_pass_signal_test () {
     );
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
     let fft_size = 4096 * 4;
-    let mut ctx = ImbContext::new(&dbg, conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let retain = Arc::new(Retain::new(&dbg));
+    let mut ctx = ImbContext::new(&dbg, conf.angular.n_rev(), conf.angular.fft_turns(), retain);
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(fft_size);
     let mut buffer = FftBuffer::new(fft_size, 1024);
     for i in 0..1000 { // Выборок из АЦП
         // для тестирования вручную имитируем изменение rpm привода
-        let rpm =  3000.0;
+        let rpm =  Rpm(3000.0);
+        let ts = Utc::now();
         // Имитируем получение АЦП выборки из сети
-        udp.parse(rpm, &mut samples);
+        udp.parse(rpm.value(), &mut samples);
         let frame = Arc::new(Frame {
+            ts,
             samples: samples.map(|v| v as f32 - 2047.5),    // убираем DC
             phases: Phases::new(Frame::SIZE),
         });
@@ -80,7 +84,7 @@ fn low_pass_signal_test () {
             // log::debug!("{dbg} | delta_f: {}", delta_f);
             for (i, (freq, _)) in freqs.iter().enumerate() {
                 let freq = match freq {
-                    Frequency::Rpm(k) => *k * rpm / 60.0,
+                    Frequency::Rpm(k) => *k * rpm.to_hz(),
                     Frequency::Static(f) => *f,
                 };
                 let n = (freq / delta_f).round() as usize;

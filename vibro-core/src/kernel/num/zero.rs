@@ -62,9 +62,9 @@ zero_impl!(i128, 0);
 zero_impl!(f32, 0.0);
 zero_impl!(f64, 0.0);
 
-impl<T: Copy + Zero> Zero for rustfft::num_complex::Complex<T> {
+impl<T: Copy + Zero> Zero for crate::num_complex::Complex<T> {
     fn zero() -> Self {
-        rustfft::num_complex::Complex { re: T::zero(), im: T::zero() }
+        crate::num_complex::Complex { re: T::zero(), im: T::zero() }
     }
     fn is_zero(&self) -> bool {
         todo!()

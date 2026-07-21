@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::{FftPlanner, num_complex::Complex};
 use sal_core::dbg::Dbg;
-use crate::{Conf, Eval, Frame, ImbContext, OrderDomainSamples, Pass, tests::{FftBuffer, Frequency, Udp}};
+use crate::{Conf, Eval, Frame, ImbContext, OrderDomainSamples, Pass, Retain, tests::{FftBuffer, Frequency, Udp}};
 
 ///
 /// ### Функциональное тестирование OrderDomainSamples (Метрология)
@@ -30,7 +32,7 @@ fn order_domain_smples_test () {
     // Выполняет ресемплинг (Order Tracking) отфильтрованного сигнала во временной области в равномерную сетку угловой области.
     // Использует локальную кубическую интерполяцию Catmull-Rom для предотвращения алиасинга.
     let low_range = OrderDomainSamples::new(&dbg,
-        conf.angular.points_per_turn(),
+        conf.angular.n_rev(),
         Pass::new(),
     );
     let freqs = [
@@ -53,15 +55,16 @@ fn order_domain_smples_test () {
     );
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
     let fft_size = 4096 * 4;
-    let mut ctx = ImbContext::new(& dbg, conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let retain = Arc::new(Retain::new(&dbg));
+    let mut ctx = ImbContext::new(& dbg, conf.angular.n_rev(), conf.angular.fft_turns(), retain);
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(fft_size);
     let mut buffer = FftBuffer::new(fft_size, 1024);
     for i in 0..1000 { // Выборок из АЦП
         // для тестирования вручную имитируем изменение rpm привода
-        let rpm =  3000.0;
+        let rpm =  crate::Rpm(3000.0);
         // Имитируем получение АЦП выборки из сети
-        udp.parse(rpm, &mut samples);
+        udp.parse(rpm.value(), &mut samples);
         *ctx.samples = samples.map(|v| v as f32 - 2047.5);    // Пишем сырую выбору в контекст и убираем DC
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         // log::debug!("{dbg} | Before filter: {:?}", low_range_ctx.frame.samples);

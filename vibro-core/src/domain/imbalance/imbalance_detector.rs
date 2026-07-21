@@ -1,5 +1,6 @@
+use chrono::Utc;
 use sal_core::{dbg::Dbg, error::Error};
-use crate::{Eval, ImbContext, KalmanFilter, Retained, Sender, ShortSigma, me};
+use crate::{Eval, ImbContext, KalmanFilter, Phase, Retained, Sender, ShortSigma, me};
 
 /// ### Выявление макро-механических дефектов на низких кратностях частоты вращения (0.5x..3x RPM).
 ///
@@ -32,6 +33,35 @@ where
             dbg,
         }
     }
+    /// ### Расчет количества бинов зоны интереса для ImbalanceDetector.
+    /// 
+    /// Чтобы сделать систему гибкой, в конфигурацию необходимо ввести параметр `W_order` полуширины захвата порядка.
+    /// - Для жестких условий (стабильные обороты) берут ±0.02 порядка.
+    /// - Для плавающих режимов (пуски/выбеги) ширину увеличивают до ±0.05..±0.1 порядка.
+    /// 
+    /// #### Математика вычисления индексов:
+    /// 
+    /// Для целевого порядка Ok (например, `Ok = 1.0` или `Ok = 2.5` и настраиваемой полуширины `W_order` (например, 0.05):
+    /// 
+    /// - Центральный бин гармоники:
+    /// 
+    ///     `idx_center = Ok/ ΔO = (Ok x Nfft) / Nrev`
+    /// 
+    /// - Полуширина в количестве бинов (округляем вверх, чтобы гарантированно захватить края):
+    /// 
+    ///     `B_half = [ W_order / ΔO ] = [ (W_order x Nfft) / Nrev ]`
+    /// 
+    /// - Границы индексов в массиве FFT:
+    /// 
+    ///     `idx_start = idx_center - B_half`,
+    ///     `idx_end = idx_center + B_half`.
+    /// 
+    /// - Общее количество бинов в зоне интегрирования всегда будет нечетным:
+    /// 
+    ///     `N_bins = 2 x B_half + 1`.
+    pub fn target_order_bins(&self) -> usize {
+        0
+    }
 }
 impl<Child> Eval<ImbContext, ImbContext> for ImbalanceDetector<Child>
 where
@@ -48,18 +78,17 @@ where
                 .err(format!("Размер входящей выборки ({}) превышает емкость FFT буфера ({})", ctx.order_samples.len(), ctx.fft_buff.capacity())));
             return ctx;
         }
-        for filter in self.filters {
-
-        }
-        ctx.fft_buff.push_chunk(&ctx.order_samples[..]);
-        if ctx.fft_buff.is_full() {
-            ctx.fft_window.copy_from_slice(ctx.fft_buff.read_window());
-            if let Some(window_fn) = &self.window_fn {
-                if let Err(err) = window_fn.eval(&mut ctx.fft_window) {
-                    log::warn!("{}.eval | {}", self.dbg, err);
-                }
+        for filter in ctx.filters.iter() {
+            if let Some(rms) = filter.eval(&ctx.fft_window) {
+                let phase = Phase(todo!("Где взять фазу соответствующую данному результату"));
+                ctx.results.push((
+                    Utc::now(),
+                    filter.order_id().to_string(),
+                    rms,
+                    phase,
+                    ctx.rpm,
+                ));
             }
-            self.fft.process(&mut ctx.fft_window);
         }
         ctx
     }

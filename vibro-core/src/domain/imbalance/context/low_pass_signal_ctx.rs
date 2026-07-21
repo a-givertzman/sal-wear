@@ -1,3 +1,5 @@
+use crate::Rpm;
+
 /// Состояние биквадратного фильтра (история отсчетов).
 #[derive(Copy, Clone, Default)]
 pub struct BiquadState {
@@ -15,7 +17,7 @@ pub struct LowPassSignalCtx {
     /// Текущие рассчитанные коэффициенты фильтра.
     pub coeffs: BiquadCoeffs,
     /// Последняя известная частота вала (для перерасчета коэффициентов).
-    pub last_rpm: f64,
+    pub last_rpm: Rpm<f64>,
     /// Внутреннее состояние фильтра (история предыдущих 2 отсчетов).
     pub state: BiquadState,
 }
@@ -23,7 +25,7 @@ impl LowPassSignalCtx {
     pub fn new() -> Self {
         Self {
             coeffs: BiquadCoeffs::default(),
-            last_rpm: 0.0,
+            last_rpm: Rpm(0.0),
             state: BiquadState::default(),
         }
     }

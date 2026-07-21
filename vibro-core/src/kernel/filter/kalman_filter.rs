@@ -1,19 +1,38 @@
-use sal_core::dbg::Dbg;
-use crate::{AtomicF64, Sender, ShortSigma, me};
+use std::sync::Arc;
 
-/// Структура, отправляемая в канал для долгосрочного сохранения состояния на диск.
+use crate::{Retain, Rms, num_complex::Complex};
+use sal_core::dbg::Dbg;
+use serde::{Deserialize, Serialize};
+use crate::{AtomicF64, OrderZone, ShortSigma, me};
+
+/// Структура, для долгосрочного сохранения состояния на диск.
 /// Содержит все переменные, необходимые для бесшовного восстановления фильтра Калмана
 /// после перезапуска системы без потери накопленной истории износа.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Retained {
     /// Чистая (отфильтрованная) оценка энергии диагностической зоны на текущий момент.
     pub x_hat: f64,
     /// Внутренняя ошибка/неопределенность фильтра (ковариация ошибки оценки).
     pub p: f64,
     /// Unix-timestamp момента последнего сохранения (для ведения долгосрочных трендов).
-    pub timestamp: u64,
+    pub ts: u64,
 }
-
+impl Retained {
+    /// Создает `Retained` с текущей меткой времени
+    /// - `x_hat` - Чистая (отфильтрованная) оценка энергии диагностической зоны на текущий момент.
+    /// - `p` - Внутренняя ошибка/неопределенность фильтра (ковариация ошибки оценки).
+    pub fn new(x_hat: f64, p: f64) -> Self {
+        let ts = chrono::Utc::now().timestamp().max(0) as u64;
+        Self { x_hat, p, ts }
+    }
+}
+impl Default for Retained {
+    /// Создает `Retained` с текущей меткой времени
+    fn default() -> Self {
+        let ts = chrono::Utc::now().timestamp().max(0) as u64;
+        Self { x_hat: f64::EPSILON, p: f64::MAX, ts }
+    }
+}
 
 /// ### Адаптивный фильтр Калмана долгосрочной памяти
 /// 
@@ -34,8 +53,8 @@ pub struct Retained {
 ///   (сигнал чистый). Фильтр открывает коэффициент K_t и плавно подтягивает долгосрочный 
 ///   тренд вслед за реальной деградацией подшипника/муфты.
 pub struct KalmanFilter {
-    /// Идентификатор зоны диагностики (например, "zone_1x_rpm", "zone_0.5x_rpm").
-    zone_id: String,
+    /// Идентификатор зоны диагностики (например, "order 1x_rpm", "0.5x_rpm").
+    order_id: String,
     /// Скорость естественного старения оборудования (дисперсия процесса Q).
     /// Задает физический предел того, насколько износ может развиться за один шаг.
     /// Поскольку дефекты растут неделями, этот параметр должен быть микроскопическим.
@@ -52,7 +71,9 @@ pub struct KalmanFilter {
     // Внутренний трекер для контроля дельта-записи
     last_saved_x_hat: AtomicF64,
     // Канал отправки обновлений в поток долгосрочной записи
-    retain: Sender<(String, Retained)>,
+    retain: Arc<Retain>,
+    // Входное значение (чистое или интегрированное по некоторой ширине полосы)
+    value: OrderZone,
     /// Текущая краткосрочная дисперсия
     sigma: ShortSigma,
     dbg: Dbg,
@@ -61,40 +82,49 @@ pub struct KalmanFilter {
 impl KalmanFilter {
     /// Создает экземпляр фильтра Калмана.
     /// - `parent` - Идентификатор родительской сущности (для отладки).
-    /// - `id` — имя зоны для маркировки в retain файле.
+    /// - `id` — имя зоны имя зоны порядка (например, 1.0x, 3.0x, BFSI...) в том числе для макировки в retain файле.
     /// - `q` — скорость старения процесса (рекомендуется 1e-7).
     /// - `saving_threshold` — порог изменения тренда для триггера записи на диск (например, 0.01 для 1%).
     /// - `retained` — ранее сохраненное состояние с диска (при первом запуске передать начальные базовые значения).
     /// - `retain` — канал отправки данных на диск.
-    /// - `` — Текущая краткосрочная дисперсия
+    /// - `value` — Входное значение (чистое или интегрированное по некоторой ширине полосы)
+    /// - `sigma` — Текущая краткосрочная дисперсия
     pub fn new(
         parent: impl Into<String>,
         id: String,
         q: f64,
         saving_threshold: f64,
         retained: Retained,
-        retain: Sender<(String, Retained)>,
+        retain: Arc<Retain>,
+        value: OrderZone,
         sigma: ShortSigma,
     ) -> Self {
         let dbg = Dbg::new(parent, format!("{}({})", me::<Self>(), id));
         Self {
-            zone_id: id,
+            order_id: id,
             q,
             saving_threshold,
             x_hat: AtomicF64::new(retained.x_hat),
             p: AtomicF64::new(retained.p),
             last_saved_x_hat: AtomicF64::new(retained.x_hat),
             retain,
+            value,
             sigma,
             dbg,
         }
     }
-    /// Основной шаг фильтрации. Принимает сырое значение энергии `x` из спектра
+    /// Возвращает имя зоны порядка (например, 1.0x, 3.0x, BFSI...)
+    pub fn order_id(&self) -> &str {
+        &self.order_id
+    }
+    /// Основной шаг фильтрации.
+    /// - `orders` - массив результатов FFT
     /// 
     /// Возвращает `Some(f64)` с новым чистым значением тренда, если произошло значимое изменение,
     /// требующее обновления графиков/логики дефектов. Возвращает `None`, если тренд стабилен.
     #[inline]
-    pub fn eval(&self, x: f64) -> Option<f64> {
+    pub fn eval(&self, orders: &[Complex<f32>]) -> Option<Rms<f64>> {
+        let x = self.value.integrate(orders).value();
         let old_x_hat = self.x_hat.load();
         let old_p = self.p.load();
         // 1. ЭТАП ПРОГНОЗА (моделирование шага времени)
@@ -127,20 +157,11 @@ impl KalmanFilter {
         if relative_change >= self.saving_threshold {
             self.last_saved_x_hat.store(new_x_hat);
             // Текущее системное время в секундах
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-            let state_to_save = Retained {
-                x_hat: new_x_hat,
-                p: new_p,
-                timestamp: now,
-            };
             // Отправляем в канал без блокировки текущего потока обработки спектра.
             // Если принимающая сторона диска занята, данные встанут в очередь.
-            let _ = self.retain.send((self.zone_id.clone(), state_to_save));
+            let _ = self.retain.store(&self.order_id, Retained::new(new_x_hat, new_p));
             // Возвращаем новое значение, так как тренд совершил значимое изменение
-            Some(new_x_hat)
+            Some(Rms(new_x_hat))
         } else {
             // Изменение слишком незначительно, логике верхнего уровня и диску сообщать не нужно
             None
