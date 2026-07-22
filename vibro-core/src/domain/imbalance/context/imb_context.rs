@@ -15,9 +15,12 @@ pub struct ImbContext {
     pub low_pass_signal: LowPassSignalCtx,
     /// Отфилтрованная выборка сырого АЦП сигнала.
     pub samples: Box<[f32; Frame::SIZE]>,
+
     /// Сигнал развернутый в равномерную сетку угловой области.
     /// Значения вибрации соответствуют каждому углу поворота вала механизма.
     pub order_samples: Vec<Complex<f32>>,
+    /// Текущая фаза, соответствующая последнему элементу в `order_samples`
+    pub last_phase: Phase<f64>,
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
     pub fft_buff: MirroredBuffer<Complex<f32>>,
@@ -75,6 +78,7 @@ impl ImbContext {
             low_pass_signal: LowPassSignalCtx::new(),
             samples: Box::new([0.0; Frame::SIZE]),
             order_samples: Vec::with_capacity(capacity),
+            last_phase: Phase(0.0),
             fft_buff: MirroredBuffer::new(n_fft),
             fft_window: Vec::with_capacity(n_fft),
             filters,

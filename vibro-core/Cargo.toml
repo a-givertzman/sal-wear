@@ -15,6 +15,12 @@ debugging = { workspace = true }
 sal-sync = { workspace = true }
 
 #
+# For strings & types
+function_name = "^0.3"
+pretty-type-name = "^1.0"
+pretty-name = "^0.4"
+
+#
 # Date & Time
 chrono = { version = "0.4", features = ["serde"] }
 
@@ -23,9 +29,12 @@ chrono = { version = "0.4", features = ["serde"] }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
 serde_json = { workspace = true }
+postcard = { version = "^1.1", features = ["alloc", "use-std"]}
 
 #
 # Collections
+foldhash = "^0.2"
+scc = "^3.8"
 
 #
 # Math
@@ -34,6 +43,10 @@ rustfft = "^6.4"
 
 
 [dev-dependencies]
+
+#
+# IO
+tempfile = "^3.27"
 
 #
 # Collections

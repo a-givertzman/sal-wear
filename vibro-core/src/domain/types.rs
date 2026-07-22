@@ -83,7 +83,7 @@ impl<T: Float> Phase<T> {
     #[inline]
     pub fn normalize_signed(&self) -> Self {
         let pi = T::from(std::f64::consts::PI).unwrap();
-        let two_pi = T::from(std::f64::consts::PI * 2.0).unwrap();
+        let two_pi = T::from(std::f64::consts::TAU).unwrap();
         let mut r = self.0 % two_pi;
         if r > pi { r = r - two_pi; }
         else if r < -pi { r = r + two_pi; }

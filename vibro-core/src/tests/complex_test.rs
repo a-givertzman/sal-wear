@@ -53,7 +53,7 @@ fn complex_test () {
         // Статический резонанс на 5 кГц с амплитудой 100
         (Frequency::Static(5000.0), 100),
     ]);
-    let retain = Arc::new(Retain::new(&dbg));
+    let retain = Arc::new(Retain::mock(&dbg, []));
     let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.n_rev(), conf.angular.fft_turns(), retain);
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);

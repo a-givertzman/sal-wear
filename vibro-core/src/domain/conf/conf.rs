@@ -58,7 +58,7 @@ impl AngularConf {
         }
     }
     /// Вычисляет количество полных оборотов для достижения нужного разрешения.
-    /// Округляет до степени двойки для быстрого FFT.
+    /// Округляет до степени двойки для FFT.
     pub fn fft_turns(&self) -> usize {
         let min_turns = (1.0 / self.resolution).ceil() as usize;
         min_turns.next_power_of_two()

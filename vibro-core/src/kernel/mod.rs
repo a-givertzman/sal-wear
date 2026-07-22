@@ -10,9 +10,13 @@ mod filter;
 pub use filter::*;
 mod atomic_f64;
 pub(crate) use atomic_f64::*;
+mod error;
+pub(crate) use error::*;
 
 pub(crate) use sal_sync::sync::channel::bounded as channel_bounded;
 pub(crate) use sal_sync::sync::channel::unbounded as channel_unbounded;
+pub(crate) use sal_sync::services::RECV_TIMEOUT as RECV_TIMEOUT;
 pub(crate) type Sender<T> = sal_sync::sync::channel::Sender<T>;
 pub(crate) type Receiver<T> = sal_sync::sync::channel::Receiver<T>;
 pub(crate) type RecvTimeoutError = sal_sync::sync::channel::RecvTimeoutError;
+pub(crate) type FxSccHashMap<K, V> = scc::HashMap<K, V, foldhash::fast::RandomState>;

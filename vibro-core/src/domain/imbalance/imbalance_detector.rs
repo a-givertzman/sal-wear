@@ -1,6 +1,8 @@
+use std::f64::consts::TAU;
+
 use chrono::Utc;
-use sal_core::{dbg::Dbg, error::Error};
-use crate::{Eval, ImbContext, Phase, Retained, Sender};
+use sal_core::dbg::Dbg;
+use crate::{Eval, ImbContext, Phase};
 
 /// ### Выявление макро-механических дефектов на низких кратностях частоты вращения (0.5x..3x RPM).
 ///
@@ -33,35 +35,6 @@ where
             dbg,
         }
     }
-    /// ### Расчет количества бинов зоны интереса для ImbalanceDetector.
-    /// 
-    /// Чтобы сделать систему гибкой, в конфигурацию необходимо ввести параметр `W_order` полуширины захвата порядка.
-    /// - Для жестких условий (стабильные обороты) берут ±0.02 порядка.
-    /// - Для плавающих режимов (пуски/выбеги) ширину увеличивают до ±0.05..±0.1 порядка.
-    /// 
-    /// #### Математика вычисления индексов:
-    /// 
-    /// Для целевого порядка Ok (например, `Ok = 1.0` или `Ok = 2.5` и настраиваемой полуширины `W_order` (например, 0.05):
-    /// 
-    /// - Центральный бин гармоники:
-    /// 
-    ///     `idx_center = Ok/ ΔO = (Ok x Nfft) / Nrev`
-    /// 
-    /// - Полуширина в количестве бинов (округляем вверх, чтобы гарантированно захватить края):
-    /// 
-    ///     `B_half = [ W_order / ΔO ] = [ (W_order x Nfft) / Nrev ]`
-    /// 
-    /// - Границы индексов в массиве FFT:
-    /// 
-    ///     `idx_start = idx_center - B_half`,
-    ///     `idx_end = idx_center + B_half`.
-    /// 
-    /// - Общее количество бинов в зоне интегрирования всегда будет нечетным:
-    /// 
-    ///     `N_bins = 2 x B_half + 1`.
-    pub fn target_order_bins(&self) -> usize {
-        0
-    }
 }
 impl<Child> Eval<ImbContext, ImbContext> for ImbalanceDetector<Child>
 where
@@ -73,14 +46,17 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        if ctx.order_samples.len() > ctx.fft_buff.capacity() {
-            ctx.err = Some(Error::new(&self.dbg, "eval")
-                .err(format!("Размер входящей выборки ({}) превышает емкость FFT буфера ({})", ctx.order_samples.len(), ctx.fft_buff.capacity())));
-            return ctx;
-        }
+        let points_per_turn = 256.0;
+        let delta_phase = (2.0 * std::f64::consts::PI) / points_per_turn;
+        // Вычисляем точный угол начала БПФ-окна
+        let start_phase = ctx.last_phase.to_radians() - (ctx.fft_window.len() as f64 - 1.0) * delta_phase;
         for filter in ctx.filters.iter() {
             if let Some(rms) = filter.eval(&ctx.fft_window) {
-                let phase = Phase(todo!("Где взять фазу соответствующую данному результату"));
+                let ix = filter.order_index();
+                let fft_val = ctx.fft_window[ix];
+                let local_phase = f64::atan2(fft_val.im as f64, fft_val.re as f64);
+                let order = filter.target_order();
+                let phase = Phase(local_phase - (order * start_phase)).normalize_signed();
                 ctx.results.push((
                     Utc::now(),
                     filter.order_id().to_string(),

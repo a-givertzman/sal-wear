@@ -114,7 +114,15 @@ impl KalmanFilter {
             dbg,
         }
     }
-    /// Возвращает имя зоны порядка (например, 1.0x, 3.0x, BFSI...)
+    /// Возвращает индекс целевого порядка (например, 1.0x => 128, 3.0x => 256, BFSI => 1204...)
+    pub fn order_index(&self) -> usize {
+        self.value.target_index()
+    }
+    /// Возвращает целевого порядка (например, 1.0x => 1.0, 3.0x => 3.0...)
+    pub fn target_order(&self) -> f64 {
+        self.value.target_order()
+    }
+    /// Возвращает имя целевого порядка (например, 1.0x, 3.0x, BFSI...)
     pub fn order_id(&self) -> &str {
         &self.order_id
     }

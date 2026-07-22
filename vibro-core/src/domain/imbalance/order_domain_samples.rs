@@ -1,5 +1,5 @@
 use std::f64::consts::TAU;
-use crate::num_complex::Complex;
+use crate::{Phase, num_complex::Complex};
 use sal_core::{dbg::Dbg, error::Error};
 use crate::{Eval, domain::imbalance::context::ImbContext, me};
 
@@ -74,6 +74,7 @@ where
             if target_theta < (phases[idx] as f64) || idx >= phases.len() - 2 {
                 continue; 
             }
+            ctx.last_phase = Phase(target_theta);
             let phase_start = phases[idx] as f64;
             let phase_end = phases[idx + 1] as f64;
             let t = (target_theta - phase_start) / (phase_end - phase_start);

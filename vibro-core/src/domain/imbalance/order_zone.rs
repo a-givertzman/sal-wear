@@ -5,6 +5,10 @@ use crate::{Rms, num_complex::{Complex, ComplexFloat}};
 pub struct OrderZone {
     /// Коэффициент для восстановления среднеквадратичного значения амплитуды (RMS) из спектра FFT, `k = sqrt(2) / n_fft`.
     amplitude_factor: f64,
+    /// Целевой порядок гармоники
+    target_order: f64,
+    /// Бин соответствующий целевому порядку гармоники
+    target_index: usize,
     /// Стартовый индекс бина в массиве FFT для сканирования зоны
     idx_start: usize,
     /// Конечный индекс бина в массиве FFT для сканирования зоны
@@ -35,10 +39,20 @@ impl OrderZone {
         // Генерируем веса окна Ханна (полупериод косинуса / колокол) [1, 2]
         Self {
             amplitude_factor: 2.0.sqrt() / n_fft as f64,
+            target_order,
+            target_index: idx_center as usize,
             idx_start,
             idx_end,
             leakage: leakage / 2,
         }
+    }
+    /// Возвращает индекс целевого порядка (например, 1.0x => 128, 3.0x => 256, BFSI => 1204...)
+    pub fn target_index(&self) -> usize {
+        self.target_index
+    }
+    /// Возвращает целевой порядка (например, 1.0x => 1.0, 3.0x => 3.0)
+    pub fn target_order(&self) -> f64 {
+        self.target_order
     }
     /// Возвращает RMS энергию зоны.
     /// - `orders` - Массив комплексных амплитуд спектра FFT (размером N_fft / 2).
