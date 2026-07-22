@@ -39,6 +39,7 @@ fn order_domain_stationary_test() {
     
     let inputs = Arc::new(Inputs::new());
     let mut ctx = Context::new();
+    ctx.dt = 1.0 / f_sample as f64; 
     let angular_grid = AngularGrid::new(
         &dbg,
         Autocorrelation::new(
@@ -53,7 +54,7 @@ fn order_domain_stationary_test() {
     let mut i_ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
 
     // Увеличиваем размер FFT для обеспечения максимальной узкости пика
-    let fft_size = 8192; 
+    let fft_size = 16384; 
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(fft_size);
     let mut buffer = FftBuffer::new(fft_size, 1024);
@@ -82,7 +83,7 @@ fn order_domain_stationary_test() {
         inputs.set_rpm(rpm);
         ctx.push_chunk(&samples);
         ctx = angular_grid.eval(ctx);
-        
+        println!("{:?}", ctx.phases);
         let frame = Arc::new(Frame {
             samples: samples.map(|v| v as f32 - 2048.0),
             phases: ctx.phases.to_vec(),
