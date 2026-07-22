@@ -55,7 +55,7 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        let samples = &ctx.samples;
+        let samples = &ctx.frame.samples;
         let phases = &ctx.frame.phases;
         if samples.len() < 4 || phases.len() != samples.len() {
             ctx.err = Some(Error::new(&self.dbg, "eval").err("Недостаточно данных для сплайна"));
