@@ -83,7 +83,7 @@ impl AngularConf {
     pub fn samples_per_rev(&self) -> usize {
         match self.samples_per_rev {
             Some(ppt) => {
-                log::debug!("AngularConf.samples_per_rev | Manually specified: {}", ppt);
+                // log::debug!("AngularConf.samples_per_rev | Manually specified: {}", ppt);
                 ppt
             }
             None => {

@@ -1,8 +1,9 @@
+use std::sync::Arc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::{FftPlanner, num_complex::Complex};
 use sal_core::dbg::Dbg;
 
-use crate::{Conf, Eval, Frame, ImbContext, OrderDomainSamples, Pass, tests::{FftBuffer, Frequency, Udp}};
+use crate::{Conf, Eval, Frame, ImbContext, OrderDomainSamples, Pass, Retain, tests::{FftBuffer, Frequency, Udp}};
 
 ///
 /// Функциональное тестирование [OrderDomainSamples] на стационарность при разгоне
@@ -17,7 +18,7 @@ fn order_domain_stationary_test() {
             chunk-size: 512
         angular:
             max-order: 100
-            resolution: 0.05
+            order-resolution: 0.05
         bands:
             low-order: 0.5..5.0
             mid-hz: ..5000
@@ -25,7 +26,7 @@ fn order_domain_stationary_test() {
     "#)).unwrap();
     let mut samples = [0u16; Frame::SIZE];
     let low_range = OrderDomainSamples::new(&dbg,
-        conf.angular.points_per_turn(),
+        conf.angular.samples_per_rev(),
         Pass::new(),
     );
     // Полезный сигнал — заданный порядками (кратностями к обороту)
@@ -37,7 +38,8 @@ fn order_domain_stationary_test() {
     let mut udp = Udp::new(Frame::SIZE, conf.hardware.sample_rate_hz, freqs.clone());
     let mut results: Vec<Vec<f32>> = freqs.iter().map(|_| vec![]).collect();
     let fft_size = 4096 * 4;
-    let mut ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let retain = Arc::new(Retain::mock(&dbg, []));
+    let mut ctx = ImbContext::new(&dbg, conf.angular.samples_per_rev(), conf.angular.n_fft(), retain);
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(fft_size);
     let mut buffer = FftBuffer::new(fft_size, 1024);
@@ -45,27 +47,27 @@ fn order_domain_stationary_test() {
     let rpm_start = 500.0;
     let rpm_end = 3000.0;
     let n_iters = 1000;
+    let samples_per_rev = conf.angular.samples_per_rev() as f64;
+    let delta_order = samples_per_rev / fft_size as f64;
     for iter in 0..n_iters {
         // Линейный разгон ротора — частота вибрации 1-го порядка растёт синхронно
         let progress = iter as f64 / n_iters as f64;
         let rpm = rpm_start + (rpm_end - rpm_start) * progress;
         udp.parse(rpm, &mut samples);
-        *ctx.samples = samples.map(|v| v as f32 - 2047.5);
-        ctx.rpm = rpm; // Передаём текущую частоту вращения в контекст
+        *ctx.samples = samples.map(|v| v as f32 - 2048.0);
+        ctx.rpm = crate::Rpm(rpm); // Передаём текущую частоту вращения в контекст
         ctx = low_range.eval(ctx); // в ctx.order_samples теперь лежит сигнал в угловой области
         let mut fft_buf = vec![Complex { re: 0.0, im: 0.0 }; fft_size];
         buffer.add(ctx.samples.iter().map(|v| Complex { re: *v, im: 0.0 })); // Добавляем сэмплы угловой области в буфер для FFT
         if buffer.is_full() {
             buffer.copy_into(&mut fft_buf);
             fft.process(&mut fft_buf); // Выполняем FFT на сигнале в угловой области
-            let points_per_turn = conf.angular.points_per_turn() as f64;
-            let delta_order = points_per_turn / fft_size as f64;
             for (j, (freq, _amp)) in freqs.iter().enumerate() {
                 let target_order = match freq {
                     Frequency::Rpm(k) => *k,
                     // Статические резонансы после ресемплинга "плывут" по порядку
                     // вместе с текущими оборотами — переводим в порядок здесь же
-                    Frequency::Static(f_hz) => f_hz / (ctx.rpm / 60.0),
+                    Frequency::Static(f_hz) => f_hz / ctx.rpm.to_hz(),
                 };
                 let bin = (target_order / delta_order).round() as usize;
                 let amplitude = fft_buf.get(bin).map(|c| c.norm()).unwrap_or(0.0);
