@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::{BufRead, BufReader, Read}, path::Path, sync::Arc};
+use std::{fs::File, io::{BufRead, BufReader, Read}, path::Path, sync::Arc};
 use function_name::named;
 use sal_core::{dbg::Dbg, error::Error};
 use crate::{Eval, FxSccHashMap, domain::retain::RetainValue, err, err_pass};
@@ -72,7 +72,7 @@ impl<Child> LoadJournal<Child> {
     /// 
     /// Устойчив к повреждению хвоста файла. При обнаружении бинарного мусора
     /// или неожиданного конца файла чтение останавливается, а корректно загруженные данные сохраняются.
-    fn load(&self, path: &Path, txid: usize, cache: &Arc<FxSccHashMap<String, Vec<u8>>>) -> Result<(), Error> {
+    fn load(&self, path: &Path, cache: &Arc<FxSccHashMap<String, Vec<u8>>>) -> Result<(), Error> {
         let dat_path = path.with_extension("dat");
         // let file = File::open(&dat_path).map_err(|err| err_pass!(self.dbg, err, "Can't open file '{}'", dat_path.display()))?;
         match File::open(&dat_path) {
@@ -113,7 +113,7 @@ impl<Child> LoadJournal<Child> {
                         Ok(line) => {
                             // 1. Парсим строку в легковесный дескриптор (без копирования тела структуры)
                             match serde_json::from_str::<RawLine>(&line) {
-                                Ok(mut raw_line) => {
+                                Ok(raw_line) => {
                                     if let Some((key, bytes)) = raw_line.entry() {
                                         _ = cache.upsert_sync(key, bytes.to_vec());
                                     } else {
@@ -153,7 +153,7 @@ where
     #[named]
     fn eval(&self, ctx: RetainCtx) -> EvalResult {
         let ctx = self.child.eval(ctx).map_err(|err: Error| err_pass!(self.dbg, err))?;
-        self.load(&ctx.path, ctx.txid, &ctx.cache).map_err(|err| err_pass!(self.dbg, err))?;
+        self.load(&ctx.path, &ctx.cache).map_err(|err| err_pass!(self.dbg, err))?;
         Ok(ctx)
     }
     //

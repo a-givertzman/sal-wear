@@ -34,10 +34,12 @@ fn complex_test () {
             ReadInputs::new(&dbg, inputs.clone())
         ),
     );
-    let window_size = OrderSpectrum::<Pass>::fft_buffer_size();
+    let window_size = conf.angular.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
-    let low_range = ImbalanceDetector::new(&dbg, 
+    let low_range = ImbalanceDetector::new(&dbg,
+        conf.angular.angular_step_rad(),
         OrderSpectrum::new(&dbg,
+            conf.angular.n_fft(),
             Some(window_fn),
             OrderDomainSamples::new(&dbg,
                 conf.angular.n_rev(),
@@ -54,7 +56,7 @@ fn complex_test () {
         (Frequency::Static(5000.0), 100),
     ]);
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.n_rev(), conf.angular.fft_turns(), retain);
+    let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.n_rev(), conf.angular.n_fft(), retain);
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);
     let (high_send, high_recv) = channel::bounded(1);

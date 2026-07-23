@@ -1,5 +1,3 @@
-use std::f64::consts::TAU;
-
 use chrono::Utc;
 use sal_core::dbg::Dbg;
 use crate::{Eval, ImbContext, Phase};
@@ -17,6 +15,8 @@ use crate::{Eval, ImbContext, Phase};
 /// 
 /// [Подробнее о выявлении дефектов](../../../design/imbalance-detector.md)
 pub struct ImbalanceDetector<Child> {
+    /// Шаг угловой сетки в радианах.
+    angular_step_rad: f64,
     /// Предыдущий узел конвейера вычислений (например, спектральный анализ).
     child: Child,
     dbg: Dbg,
@@ -27,10 +27,12 @@ where
     ///
     /// ### Returns `ImbalanceDetector` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
+    /// - `angular_step_rad` - Шаг угловой сетки в радианах.
     /// - `child` - Дочерний (предыдущий) расчетный шаг
-    pub fn new(parent: impl Into<String>, child: Child) -> Self {
+    pub fn new(parent: impl Into<String>, angular_step_rad: f64, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
+            angular_step_rad,
             child,
             dbg,
         }
@@ -46,10 +48,8 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        let points_per_turn = 256.0;
-        let delta_phase = (2.0 * std::f64::consts::PI) / points_per_turn;
         // Вычисляем точный угол начала БПФ-окна
-        let start_phase = ctx.last_phase.to_radians() - (ctx.fft_window.len() as f64 - 1.0) * delta_phase;
+        let start_phase = ctx.last_phase.to_radians() - (ctx.fft_window.len() as f64 - 1.0) * self.angular_step_rad;
         for filter in ctx.filters.iter() {
             if let Some(rms) = filter.eval(&ctx.fft_window) {
                 let ix = filter.order_index();

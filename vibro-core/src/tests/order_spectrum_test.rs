@@ -34,10 +34,11 @@ fn order_spectrum_test () {
             high-hz: 5000..10000
     "#)).unwrap();
     let mut samples = [0u16; Frame::SIZE];
-    let window_size = OrderSpectrum::<Pass>::fft_buffer_size();
+    let window_size = conf.angular.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
     // Выполняет Спектральный анализ сигнала в угловом домене (Order Tracking).
     let low_range = OrderSpectrum::new(&dbg,
+        conf.angular.n_fft(),
         // Кайзер с умеренным beta 5.65 — отличная альтернатива Ханну:
         // Он дает такую же острую вершину (1.25 бина), но сужает основание на уровне -40 дБ до 3.75 бина (против 5.50 у Ханна).
         // Это дает даже лучшую селективность между 1X и 2X.

@@ -1,7 +1,6 @@
 use std::{path::{Path, PathBuf}, sync::Arc, time::Duration};
 use function_name::named;
 use sal_core::dbg::Dbg;
-use sal_sync::services::entity::Point;
 use crate::{Eval, FxSccHashMap, err_pass};
 use super::{RetainCtx, RetainMode, RetainConf, EvalResult};
 

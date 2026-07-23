@@ -1,7 +1,7 @@
 use std::{io::Write, path::PathBuf, sync::Arc, time::{Duration, Instant}};
 use function_name::named;
 use sal_core::{dbg::Dbg, error::Error};
-use sal_sync::{kernel::state::ExitNotify, services::{Service, Services, entity::{Name, Object, Point, PointConf}}, sync::{Handles, Owner}, thread_pool::Scheduler};
+use sal_sync::{kernel::state::ExitNotify, services::{Service, Services, entity::{Name, Object, PointConf}}, sync::{Handles, Owner}, thread_pool::Scheduler};
 use serde::{Serialize, de::DeserializeOwned};
 use crate::{Eval, FxSccHashMap, RECV_TIMEOUT, Receiver, RecvTimeoutError, Sender, RetainConf, err, err_pass};
 use super::{RetainValue, AppendJournal, CompactateJournal, FlushJournal, InitialCtx, LoadJournal, MarkOldJournal, OpenJournal};
@@ -89,10 +89,6 @@ impl Retain {
             exit: Arc::new(ExitNotify::new(&dbg, None, None)),
             dbg,
         }
-    }
-    /// ### Returns link to send `Point` to be retained
-    pub fn link(&self) -> Sender<RetainValue> {
-        self.send.clone()
     }
     /// ### Returns retained `T` for the specified `key`
     #[inline]
