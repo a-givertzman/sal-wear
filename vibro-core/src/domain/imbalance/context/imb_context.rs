@@ -2,7 +2,7 @@ use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use crate::{OrderZone, Phase, Retain, Retained, Rms, Rpm, ShortSigma, num_complex::Complex};
 use sal_core::error::Error;
-use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer, OrderSpectrum, Pass};
+use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 
 ///
 /// Контейнер для передачи данных между вычислительными шагами
@@ -40,6 +40,7 @@ pub struct ImbContext {
 impl ImbContext {
     /// - `n_rev` - Плотность угловой сетки (точек на оборот) (из конфига).
     /// - `n_fft` - Размер буфера FFT (из конфига).
+    /// - `retain` - Инструмент хранения пар Key-Value на диске.
     pub fn new(parent: impl Into<String>, n_rev: usize, n_fft: usize, retain: Arc<Retain>) -> Self {
         let parent = parent.into();
         // TODO: Исправить размер, он должен быть равен предполагаемому количеству углов исходя из размера входной выборки и максимальных оборотов
