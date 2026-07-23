@@ -64,12 +64,12 @@ fn order_spectrum_test () {
         freqs.clone(),
     );
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
-    let fft_size = 4096 * 4;
+    let n_fft = 4096 * 4;
     let retain = Arc::new(Retain::mock(&dbg, []));
     let mut ctx = ImbContext::new(&dbg, conf.angular.samples_per_rev(), conf.angular.fft_turns(), retain);
     let mut planner = FftPlanner::new();
-    let fft = planner.plan_fft_forward(fft_size);
-    let mut buffer = FftBuffer::new(fft_size, 1024);
+    let fft = planner.plan_fft_forward(n_fft);
+    let mut buffer = FftBuffer::new(n_fft, 1024);
     for i in 0..1000 { // Выборок из АЦП
         // для тестирования вручную имитируем изменение rpm привода
         let rpm =  crate::Rpm(3000.0);
@@ -79,14 +79,14 @@ fn order_spectrum_test () {
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         // log::debug!("{dbg} | Before filter: {:?}", low_range_ctx.frame.samples);
         ctx = low_range.eval(ctx);
-        let mut fft_buf = vec![Complex{re: 0.0, im: 0.0}; fft_size];
+        let mut fft_buf = vec![Complex{re: 0.0, im: 0.0}; n_fft];
         // buffer.add(samples.iter().map(|v| Complex{re: *v as f32, im: 0.0}));
         buffer.add(ctx.samples.iter().map(|v| Complex{re: *v, im: 0.0}));
         // log::debug!("{dbg} | After filter: {:?}", low_range_ctx.samples);
         if buffer.is_full() {
             buffer.copy_into(&mut fft_buf);
             fft.process(&mut fft_buf);
-            let delta_f = f_sample as f64 / fft_size as f64;
+            let delta_f = f_sample as f64 / n_fft as f64;
             // log::debug!("{dbg} | delta_f: {}", delta_f);
             for (i, (freq, target)) in freqs.iter().enumerate() {
             }
