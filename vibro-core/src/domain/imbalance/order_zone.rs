@@ -25,9 +25,9 @@ impl OrderZone {
     ///     - Для плавающих режимов (пуски/выбеги) ширину увеличивают до ±0.05..±0.1 порядка.
     /// * `leakage` — сколько всего бинов интегрировать в зоне найденного пика (обычно 3..5).
     /// * `n_fft` — размер буфера FFT (например, 8192).
-    /// * `n_rev` — количество отсчетов на один оборот вала.
-    pub fn new(target_order: f64, half_width: f64, leakage: usize, n_fft: usize, n_rev: usize) -> Self {
-        let delta_o = n_rev as f64 / n_fft as f64; // Разрешение спектра порядков [1, 2, 3]
+    /// * `samples_per_rev` — количество отсчетов на один оборот вала.
+    pub fn new(target_order: f64, half_width: f64, leakage: usize, n_fft: usize, samples_per_rev: usize) -> Self {
+        let delta_o = samples_per_rev as f64 / n_fft as f64; // Разрешение спектра порядков [1, 2, 3]
         // Находим центральный бин и полуширину в бинах [1, 2, 3]
         let idx_center = (target_order / delta_o).round() as isize;
         let b_half = (half_width / delta_o).ceil() as isize;
@@ -176,12 +176,12 @@ mod tests {
     #[test]
     fn test_1_1_perfect_sine_in_single_center() {
         let n_fft = 8192;
-        let n_rev = 64;
+        let samples_per_rev = 64;
         // Разрешение спектра: ΔO = 64 / 8192 = 0.0078125 порядка.
         let target_order = 1.0;
         let half_width = 0.007; // ±0.007 порядка, сужаем окно Ханна до одного бина
         let leakage = 0;
-        let zone = OrderZone::new(target_order, half_width, leakage, n_fft, n_rev);
+        let zone = OrderZone::new(target_order, half_width, leakage, n_fft, samples_per_rev);
         // Создаем пустой спектр порядков
         let mut spectrum = vec![Complex::new(0.0, 0.0); n_fft / 2];
         // Для target_order = 1.0 центр находится строго на индексе 128
@@ -202,12 +202,12 @@ mod tests {
     #[test]
     fn test_1_1_perfect_sine_in_center() {
         let n_fft = 8192;
-        let n_rev = 64;
+        let samples_per_rev = 64;
         // Разрешение спектра: ΔO = 64 / 8192 = 0.0078125 порядка.
         let target_order = 1.0;
         let half_width = 0.05; // окно Ханна будет 2 * 0.05 / 0.0078125 = 2 * 6.4 => 14 бинов
         let leakage = 5;
-        let zone = OrderZone::new(target_order, half_width, leakage, n_fft, n_rev);
+        let zone = OrderZone::new(target_order, half_width, leakage, n_fft, samples_per_rev);
         // Создаем пустой спектр порядков
         let mut spectrum = vec![Complex::new(0.0, 0.0); n_fft / 2];
         // Для target_order = 1.0 центр находится строго на индексе 128
@@ -254,11 +254,11 @@ mod tests {
     #[test]
     fn test_1_2_white_noise_energy_conservation() {
         let n_fft = 8192;
-        let n_rev = 64;
+        let samples_per_rev = 64;
         let target_order = 2.0; // Центр на 256 бине
         let half_width = 0.05; 
         let leakage = 3;
-        let zone = OrderZone::new(target_order, half_width, leakage, n_fft, n_rev);
+        let zone = OrderZone::new(target_order, half_width, leakage, n_fft, samples_per_rev);
         let mut spectrum = vec![Complex::new(0.0, 0.0); n_fft / 2];
         // Задаем константную амплитуду шума в каждом бине внутри зоны интереса
         let noise_amplitude = 15.0; 
@@ -296,11 +296,11 @@ mod tests {
     #[test]
     fn test_2_1_peak_shift_leakage_protection() {
         let n_fft = 8192;
-        let n_rev = 64;
+        let samples_per_rev = 64;
         let target_order = 1.0; // Центр на 128 бине
         let half_width = 0.08; 
         let leakage = 7;
-        let zone = OrderZone::new(target_order, half_width, leakage, n_fft, n_rev);
+        let zone = OrderZone::new(target_order, half_width, leakage, n_fft, samples_per_rev);
         // Спектр 1: Идеальный пик синусоиды 1.0 g строго в центре (из Теста 1.1)
         let mut spectrum_center = vec![Complex::new(0.0, 0.0); n_fft / 2];
         let center_idx = 128;

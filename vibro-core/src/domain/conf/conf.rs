@@ -51,8 +51,8 @@ pub struct AngularConf {
     /// 
     /// Например, шаг 0.05 порядка создаст на графике "бины" 0.00, 0.05, 0.10 и т.д.
     /// Это позволит отличить дефект на 4.20X от шума на 4.25X.
-    #[serde(alias = "resolution")]
-    pub resolution: f32,
+    #[serde(alias = "order-resolution")]
+    pub order_resolution: f32,
     /// ### Плотность угловой дискретизации (сэмплов на оборот).
     /// 
     /// Количество отсчетов (сэмплов), фиксируемых или рассчитываемых
@@ -63,8 +63,8 @@ pub struct AngularConf {
     /// 
     /// Согласно теореме Найквиста-Котельникова, должен быть как минимум в 2 раза
     /// (на практике с учетом спада фильтра — в 2.56 раза) больше, чем `max_order`.
-    #[serde(alias = "points-per-turn")]
-    n_rev: Option<usize>,
+    #[serde(alias = "samples-per-rev")]
+    samples_per_rev: Option<usize>,
 }
 impl AngularConf {
     /// ### Плотность угловой дискретизации (сэмплов на оборот).
@@ -80,16 +80,16 @@ impl AngularConf {
     ///
     /// Автоматически округляется до ближайшей большей степени двойки.
     #[inline]
-    pub fn n_rev(&self) -> usize {
-        match self.n_rev {
+    pub fn samples_per_rev(&self) -> usize {
+        match self.samples_per_rev {
             Some(ppt) => {
-                log::debug!("AngularConf.n_rev | Manually specified: {}", ppt);
+                log::debug!("AngularConf.samples_per_rev | Manually specified: {}", ppt);
                 ppt
             }
             None => {
                 let min_points = (self.max_order * 2.5).ceil() as usize;
                 let ppt = min_points.next_power_of_two();
-                log::debug!("AngularConf.n_rev | Auto calculated: {}", ppt);
+                log::debug!("AngularConf.samples_per_rev | Auto calculated: {}", ppt);
                 ppt
             }
         }
@@ -102,7 +102,7 @@ impl AngularConf {
     /// необходимо для оптимизации алгоритма FFT.
     #[inline]
     pub fn fft_turns(&self) -> usize {
-        let min_turns = (1.0 / self.resolution).ceil() as usize;
+        let min_turns = (1.0 / self.order_resolution).ceil() as usize;
         min_turns.next_power_of_two()
     }
     /// Вычисляет угловой шаг в радианах.
@@ -114,7 +114,7 @@ impl AngularConf {
     /// который при изменении скорости вращения постоянно меняется.
     #[inline]
     pub fn angular_step_rad(&self) -> f64 {
-        std::f64::consts::TAU / (self.n_rev() as f64)
+        std::f64::consts::TAU / (self.samples_per_rev() as f64)
     }
     /// ### Размер FFT выборки (длина буфера) для спектрального анализа в угловой области.
     /// 
@@ -131,7 +131,7 @@ impl AngularConf {
     /// - Данные накапливаются за `≈128` полных оборотов ротора.
     #[inline]
     pub fn n_fft(&self) -> usize {
-        self.n_rev() * self.fft_turns()
+        self.samples_per_rev() * self.fft_turns()
     }
 }
 
@@ -212,10 +212,10 @@ mod tests {
     /// Проверяет правильность вычисления внутренних констант для FFT и ресемплинга.
     #[test]
     fn test_conf_contracts() {
-        // Допустим, n_rev = 256 [cite: 341] и fft_revolutions = 32 
+        // Допустим, samples_per_rev = 256 [cite: 341] и fft_revolutions = 32 
         let conf: AngularConf = serde_yaml::from_str(r#"
             max-order: 100
-            resolution: 0.05
+            order-resolution: 0.05
         "#).unwrap();
         // Шаг угла должен вычисляться в f64 [cite: 341]
         let expected_step = 2.0 * PI / 256.0;

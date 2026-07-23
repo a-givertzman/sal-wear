@@ -26,8 +26,8 @@ fn order_spectrum_test () {
             chunk-size: 512
         angular:
             max-order: 100
-            resolution: 0.05
-            # points-per-turn: 
+            order-resolution: 0.05
+            # samples-per-turn: 
         bands:
             low-order: 0.5..5.0
             mid-hz: ..5000
@@ -66,7 +66,7 @@ fn order_spectrum_test () {
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
     let fft_size = 4096 * 4;
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut ctx = ImbContext::new(&dbg, conf.angular.n_rev(), conf.angular.fft_turns(), retain);
+    let mut ctx = ImbContext::new(&dbg, conf.angular.samples_per_rev(), conf.angular.fft_turns(), retain);
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(fft_size);
     let mut buffer = FftBuffer::new(fft_size, 1024);

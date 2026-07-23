@@ -19,7 +19,7 @@ fn complex_test () {
             chunk-size: 512
         angular:
             max-order: 100
-            resolution: 0.05
+            order-resolution: 0.05
         bands:
             low-order: 0.5..10.0
             mid-hz: ..5000
@@ -42,7 +42,7 @@ fn complex_test () {
             conf.angular.n_fft(),
             Some(window_fn),
             OrderDomainSamples::new(&dbg,
-                conf.angular.n_rev(),
+                conf.angular.samples_per_rev(),
                 LowPassSignal::new(&dbg,
                     conf.hardware.sample_rate_hz,
                     conf.bands.low_cutoff_order(),
@@ -56,7 +56,7 @@ fn complex_test () {
         (Frequency::Static(5000.0), 100),
     ]);
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.n_rev(), conf.angular.n_fft(), retain);
+    let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.samples_per_rev(), conf.angular.n_fft(), retain);
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);
     let (high_send, high_recv) = channel::bounded(1);

@@ -7,7 +7,7 @@ use crate::{Eval, domain::imbalance::context::ImbContext, me};
 /// Использует локальную кубическую интерполяцию Catmull-Rom для предотвращения алиасинга.
 pub struct OrderDomainSamples<Child> {
     /// Плотность угловой сетки (точек на оборот).
-    n_rev: usize,
+    samples_per_rev: usize,
     child: Child,
     dbg: Dbg,
 }
@@ -17,13 +17,13 @@ where
     ///
     /// ### Returns `OrderDomainSamples` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
-    /// - `n_rev` - Плотность угловой сетки (точек на оборот).
+    /// - `samples_per_rev` - Плотность угловой сетки (точек на оборот).
     /// - `child` - Дочерний (предыдущий) расчетный шаг
-    pub fn new(parent: &Dbg, n_rev: usize, child: Child) -> Self {
+    pub fn new(parent: &Dbg, samples_per_rev: usize, child: Child) -> Self {
         let dbg = Dbg::new(parent, me::<Self>());
         Self {
-            n_rev,
-            // angles: (0..n_rev).map(|i| (i as f64) * TAU / n_rev as f64).collect(),
+            samples_per_rev,
+            // angles: (0..samples_per_rev).map(|i| (i as f64) * TAU / samples_per_rev as f64).collect(),
             child,
             dbg,
         }
@@ -60,7 +60,7 @@ where
             return ctx;
         }
         // Запрашиваем идеальные углы, которые попадают в текущий физический кадр
-        let ideal_angles = TargetAngles::new(phases[0], phases[phases.len() - 1], self.n_rev);
+        let ideal_angles = TargetAngles::new(phases[0], phases[phases.len() - 1], self.samples_per_rev);
         let mut idx = 1;
         ctx.order_samples.clear();
         for target_theta in ideal_angles {
@@ -95,7 +95,7 @@ where
 pub struct TargetAngles {
     current_idx: usize,
     end_idx: usize,
-    n_rev: usize,
+    samples_per_rev: usize,
     delta_theta: f64,
 }
 impl TargetAngles {
@@ -106,11 +106,11 @@ impl TargetAngles {
     /// Аргументы:
     /// - `theta1`: Начальный угол физического чанка (в радианах).
     /// - `theta2`: Конечный угол физического чанка (в радианах).
-    /// - `n_rev`: Плотность угловой сетки (точек на оборот).
-    pub fn new(theta1: impl Into<f64>, theta2: impl Into<f64>, n_rev: usize) -> Self {
+    /// - `samples_per_rev`: Плотность угловой сетки (точек на оборот).
+    pub fn new(theta1: impl Into<f64>, theta2: impl Into<f64>, samples_per_rev: usize) -> Self {
         let theta1 = theta1.into();
         let theta2 = theta2.into();
-        let delta_theta = std::f64::consts::TAU / (n_rev as f64);
+        let delta_theta = std::f64::consts::TAU / (samples_per_rev as f64);
         let mut t2 = theta2;
         if theta2 < theta1 {
             t2 += std::f64::consts::TAU;
@@ -120,7 +120,7 @@ impl TargetAngles {
         Self {
             current_idx,
             end_idx,
-            n_rev,
+            samples_per_rev,
             delta_theta,
         }
     }
@@ -129,7 +129,7 @@ impl Iterator for TargetAngles {
     type Item = f64;
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_idx < self.end_idx {
-            let wrapped_idx = self.current_idx % self.n_rev;
+            let wrapped_idx = self.current_idx % self.samples_per_rev;
             let angle = (wrapped_idx as f64) * self.delta_theta;
             self.current_idx += 1;
             Some(angle)

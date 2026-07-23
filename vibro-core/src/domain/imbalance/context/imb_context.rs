@@ -38,10 +38,10 @@ pub struct ImbContext {
 }
 //
 impl ImbContext {
-    /// - `n_rev` - Плотность угловой сетки (точек на оборот) (из конфига).
+    /// - `samples_per_rev` - Плотность угловой сетки (точек на оборот) (из конфига).
     /// - `n_fft` - Размер буфера FFT (из конфига).
     /// - `retain` - Инструмент хранения пар Key-Value на диске.
-    pub fn new(parent: impl Into<String>, n_rev: usize, n_fft: usize, retain: Arc<Retain>) -> Self {
+    pub fn new(parent: impl Into<String>, samples_per_rev: usize, n_fft: usize, retain: Arc<Retain>) -> Self {
         let parent = parent.into();
         // TODO: Исправить размер, он должен быть равен предполагаемому количеству углов исходя из размера входной выборки и максимальных оборотов
         let capacity = n_fft;
@@ -54,7 +54,7 @@ impl ImbContext {
             // Полуширина захвата в долях порядка (Для плавающих режимов ±0.05..±0.1 порядка).
             let half_width = 0.05;
             KalmanFilter::new(&parent, order_id, q, 0.01, retained, retain.clone(),
-                OrderZone::new(order, half_width, 3, n_fft, n_rev),
+                OrderZone::new(order, half_width, 3, n_fft, samples_per_rev),
                 ShortSigma::new(
                     10, 
                     retained.x_hat,
