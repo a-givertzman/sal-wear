@@ -3,7 +3,7 @@ use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::dbg::Dbg;
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderSpectrum, Pass, ReadInputs, Retain, WindowFn, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, OrderFeatureFilter, Inputs, LowPassSignal, OrderDomainSamples, OrderSpectrum, Pass, ReadInputs, Retain, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -37,7 +37,8 @@ fn complex_test () {
     );
     let window_size = conf.angular.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
-    let low_range = ImbalanceDetector::new(&dbg,
+    let low_range = OrderFeatureFilter::new(&dbg,
+        conf.angular.n_fft(),
         conf.angular.angular_step_rad(),
         OrderSpectrum::new(&dbg,
             conf.angular.n_fft(),

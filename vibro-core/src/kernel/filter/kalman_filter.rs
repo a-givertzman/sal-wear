@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{Retain, Rms, num_complex::Complex};
+use crate::{Order, Retain, Rms, num_complex::Complex};
 use sal_core::dbg::Dbg;
 use serde::{Deserialize, Serialize};
 use crate::{AtomicF64, OrderZone, ShortSigma, me};
@@ -119,7 +119,7 @@ impl KalmanFilter {
         self.value.target_index()
     }
     /// Возвращает целевого порядка (например, 1.0x => 1.0, 3.0x => 3.0...)
-    pub fn target_order(&self) -> f64 {
+    pub fn target_order(&self) -> Order {
         self.value.target_order()
     }
     /// Возвращает имя целевого порядка (например, 1.0x, 3.0x, BFSI...)

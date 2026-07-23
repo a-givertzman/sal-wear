@@ -1,4 +1,4 @@
-use crate::{Rms, num_complex::{Complex, ComplexFloat}};
+use crate::{Order, Rms, num_complex::{Complex, ComplexFloat}};
 
 /// Интегрирует спектральную энергию для заданной зоны порядков.
 /// Находит максимум энергии гармоники и интегрирует зону растекания (Leakage).
@@ -6,7 +6,7 @@ pub struct OrderZone {
     /// Коэффициент для восстановления среднеквадратичного значения амплитуды (RMS) из спектра FFT, `k = sqrt(2) / n_fft`.
     amplitude_factor: f64,
     /// Целевой порядок гармоники
-    target_order: f64,
+    target_order: Order,
     /// Бин соответствующий целевому порядку гармоники
     target_index: usize,
     /// Стартовый индекс бина в массиве FFT для сканирования зоны
@@ -26,17 +26,16 @@ impl OrderZone {
     /// * `leakage` — сколько всего бинов интегрировать в зоне найденного пика (обычно 3..5).
     /// * `n_fft` — размер буфера FFT (например, 8192).
     /// * `samples_per_rev` — количество отсчетов на один оборот вала.
-    pub fn new(target_order: f64, half_width: f64, leakage: usize, n_fft: usize, samples_per_rev: usize) -> Self {
+    pub fn new(target_order: Order, half_width: f64, leakage: usize, n_fft: usize, samples_per_rev: usize) -> Self {
         let delta_o = samples_per_rev as f64 / n_fft as f64; // Разрешение спектра порядков [1, 2, 3]
         // Находим центральный бин и полуширину в бинах [1, 2, 3]
-        let idx_center = (target_order / delta_o).round() as isize;
+        let idx_center = (target_order.value() / delta_o).round() as isize;
         let b_half = (half_width / delta_o).ceil() as isize;
         let isize_start = idx_center - b_half;
         let isize_end = idx_center + b_half;
         // Защита от выхода за границы спектра (от 0 до N_fft / 2)
         let idx_start = isize_start.max(0) as usize;
         let idx_end = isize_end.min((n_fft / 2) as isize) as usize;
-        // Генерируем веса окна Ханна (полупериод косинуса / колокол) [1, 2]
         Self {
             amplitude_factor: 2.0.sqrt() / n_fft as f64,
             target_order,
@@ -51,7 +50,7 @@ impl OrderZone {
         self.target_index
     }
     /// Возвращает целевой порядка (например, 1.0x => 1.0, 3.0x => 3.0)
-    pub fn target_order(&self) -> f64 {
+    pub fn target_order(&self) -> Order {
         self.target_order
     }
     /// Возвращает RMS энергию зоны.
@@ -178,7 +177,7 @@ mod tests {
         let n_fft = 8192;
         let samples_per_rev = 64;
         // Разрешение спектра: ΔO = 64 / 8192 = 0.0078125 порядка.
-        let target_order = 1.0;
+        let target_order = Order(1.0);
         let half_width = 0.007; // ±0.007 порядка, сужаем окно Ханна до одного бина
         let leakage = 0;
         let zone = OrderZone::new(target_order, half_width, leakage, n_fft, samples_per_rev);
@@ -204,7 +203,7 @@ mod tests {
         let n_fft = 8192;
         let samples_per_rev = 64;
         // Разрешение спектра: ΔO = 64 / 8192 = 0.0078125 порядка.
-        let target_order = 1.0;
+        let target_order = Order(1.0);
         let half_width = 0.05; // окно Ханна будет 2 * 0.05 / 0.0078125 = 2 * 6.4 => 14 бинов
         let leakage = 5;
         let zone = OrderZone::new(target_order, half_width, leakage, n_fft, samples_per_rev);
@@ -255,7 +254,7 @@ mod tests {
     fn test_1_2_white_noise_energy_conservation() {
         let n_fft = 8192;
         let samples_per_rev = 64;
-        let target_order = 2.0; // Центр на 256 бине
+        let target_order = Order(2.0); // Центр на 256 бине
         let half_width = 0.05; 
         let leakage = 3;
         let zone = OrderZone::new(target_order, half_width, leakage, n_fft, samples_per_rev);
@@ -297,7 +296,7 @@ mod tests {
     fn test_2_1_peak_shift_leakage_protection() {
         let n_fft = 8192;
         let samples_per_rev = 64;
-        let target_order = 1.0; // Центр на 128 бине
+        let target_order = Order(1.0); // Центр на 128 бине
         let half_width = 0.08; 
         let leakage = 7;
         let zone = OrderZone::new(target_order, half_width, leakage, n_fft, samples_per_rev);

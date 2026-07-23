@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
-use crate::{OrderZone, Phase, Retain, Retained, Rms, Rpm, ShortSigma, num_complex::Complex};
+use crate::{DiagResult, Order, OrderZone, Phase, Retain, Retained, Rms, Rpm, ShortSigma, num_complex::Complex};
 use sal_core::error::Error;
 use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 
@@ -31,7 +31,8 @@ pub struct ImbContext {
     /// Фильтры накопления изменений гармоник исследуемых дефектов (0.5x, 1.0x, 1.5x, 2.0x, 2.5x, 3.0x)
     pub filters: Vec<KalmanFilter>,
     /// Массив результатов. Формат: (timestamp, Имя порядка, RMS, фаза, RPM).
-    pub results: Vec<(DateTime<Utc>, String, Rms<f64>, Phase<f64>, Rpm<f64>)>,
+    pub results: Vec<DiagResult>,
+    // pub results: Vec<(DateTime<Utc>, String, Rms<f64>, Phase<f64>, Rpm<f64>)>,
     /// Текущая ошибка вычислений.
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -54,7 +55,7 @@ impl ImbContext {
             // Полуширина захвата в долях порядка (Для плавающих режимов ±0.05..±0.1 порядка).
             let half_width = 0.05;
             KalmanFilter::new(&parent, order_id, q, 0.01, retained, retain.clone(),
-                OrderZone::new(order, half_width, 3, n_fft, samples_per_rev),
+                OrderZone::new(Order(order), half_width, 3, n_fft, samples_per_rev),
                 ShortSigma::new(
                     10, 
                     retained.x_hat,
