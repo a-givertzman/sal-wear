@@ -1,13 +1,14 @@
 use std::sync::Arc;
 use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
-use sal_core::{dbg::Dbg, error::Error};
+use sal_core::dbg::Dbg;
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
 use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderSpectrum, Pass, ReadInputs, Retain, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
 #[test]
+#[ignore = "Manual Test"]
 fn complex_test () {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("complex-test");
