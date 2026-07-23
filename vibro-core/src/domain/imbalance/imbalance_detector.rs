@@ -49,6 +49,7 @@ where
             .map(|r| (r.order, r.rms))
             .collect();
         let results = self.diag.diagnose(&values);
+        // ctx.update_results(results);
         ctx
     }
     //
@@ -144,10 +145,10 @@ impl DiagnosticDetector {
         Order(2.5),
         Order(3.0),
     ];
-    /// ### Создает новый экземпляр `DiagnosticDetector`
-    /// Инициализирует базу эталонных шаблонов 
-    /// дефектов (`Imbalance`, `Misalignment`, `MechanicalLooseness`) с их весовыми 
-    /// коэффициентами и пороговыми значениями зон опасности.
+    /// ### Создает новый экземпляр `DiagnosticDetector`.
+    /// 
+    /// Инициализирует базу эталонных шаблонов дефектов (`Imbalance`, `Misalignment`, `MechanicalLooseness`)
+    /// с их весовыми коэффициентами и пороговыми значениями зон опасности.
     pub fn new() -> Self {
         Self {
             patterns: vec![
@@ -222,17 +223,17 @@ impl DiagnosticDetector {
             Self::get_rms_for_order(&order, values).value()
         });
         let mut results = Vec::with_capacity(self.patterns.len());
-        // Нормализуем входной вектор, чтобы оценивать форму спектра, а не абсолютную амплитуду
+        // Находим максимальную амплитуду для нормализации входного вектора
         let max_val = features.iter().cloned().fold(f64::NAN, f64::max);
-        // Базовая защита: если вибрация на нуле, машина гарантированно в порядке
+        // Базовая защита от ложных срабатываний на фоновом шуме остановленного оборудования
         if max_val < 0.01 {
             return results;
         }
-        // Нормализация для анализа формы спектра
+        // Нормализация входного вектора для анализа геометрического профиля (распределения энергии по порядкам)
         let normalized = features.map(|feature| feature / max_val);
         // Проверяем каждый RMS в результатах по форме (принадлежность дефектам) и классификируем по величине
         for pattern in &self.patterns {
-            // Считаем косинусное сходство или скалярное произведение
+            // Расчет скалярного произведения векторов (метрика сходства профилей спектра)
             let score: f64 = normalized.iter()
                 .zip(pattern.weights.iter())
                 .map(|(f, w)| f * w)
@@ -251,7 +252,7 @@ impl DiagnosticDetector {
                     Severity::Green
                 };
                 // Добавляем дефект в отчет, если он вышел из зеленой зоны 
-                // или если у него очень высокая степень уверенности по форме
+                // либо если геометрическое сходство критически высокое (скрытый/зарождающийся дефект)
                 if severity != Severity::Green || score > 0.85 {
                     results.push(DiagnosticResult {
                         fault: pattern.fault,
@@ -261,8 +262,7 @@ impl DiagnosticDetector {
                 }
             }
         }
-        // ЭТАП 3: Сортируем результаты по критичности (сначала Red, потом Orange и т.д.)
-        // Это позволит вызывающему коду сразу видеть самые опасные проблемы
+        // Сортировка по убыванию критичности дефектов (сначала Red, затем Orange, Yellow, Green)
         results.sort_by(|a, b| b.severity.partial_cmp(&a.severity).unwrap());
         results
     }
