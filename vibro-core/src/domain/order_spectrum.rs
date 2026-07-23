@@ -40,7 +40,8 @@ where
     ///
     /// ### Returns `OrderSpectrum` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
-    /// - `n_fft` - Размер буфера FFT (N_fft) на основе требований к дискретизации и разрешению (из конфига).
+    /// - `n_fft` - Размер буфера FFT (из конфига).
+    /// - `window_fn` - Оконная функция для подготовки данных к FFT
     /// - `child` - Дочерний (предыдущий) расчетный шаг
     pub fn new(parent: &Dbg, n_fft: usize, window_fn: Option<WindowFn<f32>>, child: Child) -> Self {
         let dbg = Dbg::new(parent, me::<Self>());
