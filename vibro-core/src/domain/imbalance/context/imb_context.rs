@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
-use crate::{DiagResult, Order, OrderZone, Phase, Retain, Retained, Rms, Rpm, ShortSigma, num_complex::Complex};
+use crate::{DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rms, Rpm, ShortSigma, num_complex::Complex};
 use sal_core::error::Error;
 use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 
@@ -30,9 +30,11 @@ pub struct ImbContext {
 
     /// Фильтры накопления изменений гармоник исследуемых дефектов (0.5x, 1.0x, 1.5x, 2.0x, 2.5x, 3.0x)
     pub filters: Vec<KalmanFilter>,
-    /// Массив результатов. Формат: (timestamp, Имя порядка, RMS, фаза, RPM).
-    pub results: Vec<DiagResult>,
-    // pub results: Vec<(DateTime<Utc>, String, Rms<f64>, Phase<f64>, Rpm<f64>)>,
+    /// Массив результатов фильтрации целевых гармоник спектрального анализа сигнала в угловом домене.
+    pub features: Vec<DiagFeatures>,
+    /// Результаты диагностического анализа, содержащий информацию об обнаруженных дефектах
+    pub results: Vec<DiagnosticResult>,
+
     /// Текущая ошибка вычислений.
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -72,6 +74,7 @@ impl ImbContext {
             fft_buff: MirroredBuffer::new(n_fft),
             fft_window: Vec::with_capacity(n_fft),
             filters,
+            features: vec![],
             results: vec![],
             err: None,
         }
@@ -81,7 +84,7 @@ impl ImbContext {
     /// - Сбрасывает ошибки.
     pub fn update(&mut self, frame: Arc<Frame>) {
         self.frame = frame;
-        self.results = vec![];
+        self.features = vec![];
         self.err = None;
     }
     /// Эскалирует ошибку

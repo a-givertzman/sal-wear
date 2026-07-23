@@ -42,14 +42,14 @@ where
     #[inline]
     fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
+        ctx.results.clear();
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        let values: Vec<(Order, Rms<f64>)> = ctx.results.iter()
+        let values: Vec<(Order, Rms<f64>)> = ctx.features.iter()
             .map(|r| (r.order, r.rms))
             .collect();
-        let results = self.diag.diagnose(&values);
-        // ctx.update_results(results);
+        ctx.results = self.diag.diagnose(&values);
         ctx
     }
     //
@@ -112,11 +112,23 @@ pub struct FaultPattern {
     pub thresholds: SeverityThresholds,
 }
 
-/// Детектирование вида и степени развития дефектов
+/// Результат диагностического анализа, содержащий информацию об обнаруженном дефекте,
+/// степени уверенности алгоритма и уровне эксплуатационной опасности.
 #[derive(Debug, Clone, Copy)]
 pub struct DiagnosticResult {
+    /// Вид (тип) выявленного механического дефекта роторного оборудования.
     pub fault: FaultKind,
-    pub confidence: f64,
+    /// Метрика геометрического сходства формы текущего спектра с эталонным шаблоном дефекта.
+    /// 
+    /// Представляет собой скалярное произведение нормированного вектора признаков 
+    /// и вектора весов дефекта. Лежит в диапазоне `[0.0, 1.0]`, где:
+    /// - `1.0` — идеальное совпадение профиля распределения энергии по гармоникам;
+    /// - `0.0` — полное отсутствие признаков данного дефекта в спектре.
+    pub score: f64,
+    /// Степень (уровень) развития дефекта, определяющая эксплуатационную пригодность узла.
+    /// 
+    /// Рассчитывается на основе сопоставления абсолютной амплитуды (RMS) доминантного 
+    /// порядка с пороговыми зонами (Green, Yellow, Orange, Red) согласно стандартам ISO.
     pub severity: Severity,
 }
 
@@ -256,7 +268,7 @@ impl DiagnosticDetector {
                 if severity != Severity::Green || score > 0.85 {
                     results.push(DiagnosticResult {
                         fault: pattern.fault,
-                        confidence: score,
+                        score,
                         severity,
                     });
                 }

@@ -44,6 +44,7 @@ where
     #[inline]
     fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
+        ctx.features.clear();
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
@@ -55,7 +56,7 @@ where
                 let local_phase = f64::atan2(fft_val.im as f64, fft_val.re as f64);
                 let order = filter.target_order();
                 let phase = Phase(local_phase - (order.value() * start_phase)).normalize_signed();
-                ctx.results.push(super::DiagResult::new(
+                ctx.features.push(super::DiagFeatures::new(
                     Utc::now(),
                     filter.target_order(),
                     filter.order_id().to_string(),
