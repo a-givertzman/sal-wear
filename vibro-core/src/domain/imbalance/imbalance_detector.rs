@@ -1,7 +1,7 @@
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use sal_core::dbg::Dbg;
 use sal_sync::collections::FxHashMap;
-use crate::{Eval, ImbContext, Order, Phase, Rms};
+use crate::{Eval, ImbContext, Order, Phase, Rms, Rpm};
 
 /// ### Выявление и классификация макро-механических дефектов на низких кратностях частоты вращения (0.5x..3x RPM).
 ///
@@ -49,7 +49,7 @@ where
         let values: Vec<(Order, Rms<f64>)> = ctx.features.iter()
             .map(|r| (r.order, r.rms))
             .collect();
-        ctx.results = self.diag.diagnose(&values);
+        ctx.results = self.diag.diagnose(ctx.frame.ts, ctx.rpm, &values);
         ctx
     }
     //
@@ -79,6 +79,18 @@ pub enum Severity {
     /// Преждевременный отказ (Alarm). Опасные вибрации, требуется немедленная остановка.
     Red,
 }
+impl std::fmt::Display for Severity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Green => "green",
+            Self::Yellow => "yellow",
+            Self::Orange => "orange",
+            Self::Red => "red",
+        };
+        write!(f, "{s}")
+    }
+}
+/// Границы зон развития дефектов
 pub struct SeverityThresholds {
     pub yellow: f64, // Граница Зеленый -> Желтый
     pub orange: f64, // Граница Желтый -> Оранжевый
@@ -96,7 +108,17 @@ pub enum FaultKind {
     /// Механический люфт
     MechanicalLooseness,
 }
-
+impl std::fmt::Display for FaultKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Healthy => "Healthy",
+            Self::Imbalance => "Imbalance",
+            Self::Misalignment => "Misalignment",
+            Self::MechanicalLooseness => "MechanicalLooseness",
+        };
+        write!(f, "{s}")
+    }
+}
 /// Шаблон дефекта для сопоставления
 pub struct FaultPattern {
     pub fault: FaultKind,
@@ -116,6 +138,8 @@ pub struct FaultPattern {
 /// степени уверенности алгоритма и уровне эксплуатационной опасности.
 #[derive(Debug, Clone, Copy)]
 pub struct DiagnosticResult {
+    /// Дата и время фиксации дефекта
+    pub ts: DateTime<Utc>,
     /// Вид (тип) выявленного механического дефекта роторного оборудования.
     pub fault: FaultKind,
     /// Метрика геометрического сходства формы текущего спектра с эталонным шаблоном дефекта.
@@ -130,6 +154,8 @@ pub struct DiagnosticResult {
     /// Рассчитывается на основе сопоставления абсолютной амплитуды (RMS) доминантного 
     /// порядка с пороговыми зонами (Green, Yellow, Orange, Red) согласно стандартам ISO.
     pub severity: Severity,
+    /// Скорость вращения вала в момент фиксации дефекта
+    pub rpm: Rpm<f64>,
 }
 
 /// ### Выявление, классификация и оценка критичности макро-механических дефектов 
@@ -230,7 +256,7 @@ impl DiagnosticDetector {
     /// отсортированные по уровню их опасности (от критических к предупредительным). 
     /// Если уровень вибрации ниже порога чувствительности (0.01) или дефекты не обнаружены, 
     /// возвращается пустой вектор.
-    pub fn diagnose(&self, values: &[(Order, Rms<f64>)]) -> Vec<DiagnosticResult> {
+    pub fn diagnose(&self, ts: DateTime<Utc>, rpm: Rpm<f64>, values: &[(Order, Rms<f64>)]) -> Vec<DiagnosticResult> {
         let features = Self::ORDER_INDEX.map(|order| {
             Self::get_rms_for_order(&order, values).value()
         });
@@ -267,9 +293,11 @@ impl DiagnosticDetector {
                 // либо если геометрическое сходство критически высокое (скрытый/зарождающийся дефект)
                 if severity != Severity::Green || score > 0.85 {
                     results.push(DiagnosticResult {
+                        ts,
                         fault: pattern.fault,
                         score,
                         severity,
+                        rpm,
                     });
                 }
             }

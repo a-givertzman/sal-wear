@@ -25,6 +25,8 @@ mod types;
 pub use types::*;
 mod retain;
 pub(crate) use retain::*;
+mod sql_export;
+pub use sql_export::*;
 
 
 pub struct Inputs {

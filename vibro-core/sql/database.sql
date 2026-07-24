@@ -15,7 +15,7 @@ CREATE TABLE equipment_wear (
 );
 
 -- 3. Обновленная таблица трендов вибрации
-CREATE TABLE order_vibration_trends (
+CREATE TABLE vibration_trends (
     timestamp      TIMESTAMPTZ NOT NULL,
     equipment_id   INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
     order_id       VARCHAR(10) NOT NULL,       -- '1x', '2x', '3x', '0.5x' и т.д.
@@ -27,31 +27,68 @@ CREATE TABLE order_vibration_trends (
 );
 
 -- Индекс для быстрой фильтрации по конкретному агрегату и гармонике
-CREATE INDEX idx_equip_order_trends ON order_vibration_trends (equipment_id, order_id, timestamp DESC);
+CREATE INDEX idx_equip_order_trends ON vibration_trends (equipment_id, order_id, timestamp DESC);
 
-CREATE TABLE equipment_vibration_thresholds (
-    equipment_id  INTEGER REFERENCES equipment(id) ON DELETE CASCADE,
-     -- `0.5x`, `1.5x`, `2.5x` - Субгармоники. Механическое ослабление (подшипник «болтается» в корпусе), задевание вала, люфт подшипников скольжения.
-     -- `1.0x` - Дисбаланс ротора или погнутость вала.
-     -- `2.0x` - Несоосность валов (расцентровка муфты), трещина в валу или механические зазоры.
-     -- `3.0x` - Механическое ослабление (люфт опор) или расцентровка трехпальцевых/кулачковых муфт.
-     -- `BPFI`- Развитый дефект внутреннего кольца (пики с боковыми полосами + / - 1.0x).
-     -- `BPFO`- Развитый дефект наружного кольца (четкий пик и много его гармоник).
-     -- `FTF` - Развитый дефект сепаратора (серьезный износ, часто модулирует другие частоты).
-     -- `BSF` - Развитый дефект тел качения (шариков/роликов, часто с боковыми полосами + / - FTF).
-     -- `BPFI-high`- Ранняя стадия зарождающегося дефекта внутреннего кольца (микросколы).
-     -- `BPFO-high`- Ранняя стадия зарождающегося дефекта внешнего кольца (микросколы).
-     -- `BSF-high` - Ранняя стадия зарождающегося дефекта тел качения (периодические ВЧ-вспышки при входе шарика в зону нагрузки).
-    order_id      VARCHAR(10) NOT NULL,
-    
-    -- Абсолютные пороги по ГОСТу для конкретной гармоники (в RMS)
-    level_b REAL NOT NULL,        -- Желтая зона (1.12 – 2.8 мм/с) - Пригодна для длительной эксплуатации без ограничений.
-    level_с REAL NOT NULL,        -- Оранжевая зона (2.8 – 7.1 мм/с) - Непригодна для длительной работы. Требуется планирование ремонта.
-    level_d REAL NOT NULL,        -- Красная зона (> 7.1 мм/с) - Опасные вибрации. Риск аварии. Немедленный останов.
-    
-    -- Порог скорости роста (критический прирост в сутки, например, мм/с в день)
-    warn_growth_per_day REAL NOT NULL,  -- Оранжевая зона
-    alarm_growth_per_day REAL NOT NULL, -- Красная зона
-    
-    PRIMARY KEY (equipment_id, order_id)
+-- Справочник видов дефектов
+CREATE TABLE fault_kind (
+    id          VARCHAR(64) NOT NULL,
+    description TEXT NOT NULL,
+
+    PRIMARY KEY (id)
+)
+INSERT INTO fault_kind (id, description) VALUES
+    ('Imbalance', 'Дисбаланс'),
+    ('Misalignment', 'Расцентровка'),
+    ('MechanicalLooseness', 'Механический люфт');
+
+-- Степень развития дефекта (Зоны ISO 10816 / 20816)
+CREATE TYPE vibration_severity AS ENUM (
+    'green',   -- Отличное или новое состояние.
+    'yellow',  -- Пригодно для длительной эксплуатации без ограничений.
+    'orange',  -- Предупреждение (Warn). Пригодно для ограниченной эксплуатации, требуется планирование ремонта.
+    'red'      -- Преждевременный отказ (Alarm). Опасные вибрации, требуется немедленная остановка.
 );
+COMMENT ON TYPE vibration_severity VALUE 'green' IS 'Отличное или новое состояние.';
+COMMENT ON TYPE vibration_severity VALUE 'yellow' IS 'Пригодно для длительной эксплуатации без ограничений.';
+COMMENT ON TYPE vibration_severity VALUE 'orange' IS 'Предупреждение (Warn). Пригодно для ограниченной эксплуатации, требуется планирование ремонта.';
+COMMENT ON TYPE vibration_severity VALUE 'red' IS 'Преждевременный отказ (Alarm). Опасные вибрации, требуется немедленная остановка.';
+
+-- Оценка состояния оборудования на основании вибрации
+CREATE TABLE vibration_faults (
+    timestamp      TIMESTAMPTZ NOT NULL,
+    equipment_id   INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+    -- Вид неисправности
+    fault_kind     VARCHAR(64) NOT NULL REFERENCES fault_kind(id),
+    -- Метрика сходства с патерном дефекта [0.0, 1.0]
+    score          DOUBLE PRECISION NOT NULL,
+    -- Степень опасности текущего дефекта
+    -- Green, Yellow, Orange, Red
+    severity       vibration_severity NOT NULL,
+    -- Текущие обороты расчете, для валидации диагноза
+    rpm            DOUBLE PRECISION NOT NULL 
+    -- Гарантирует, что для каждого оборудования 
+    -- хранится ровно ОДНА запись по конкретному дефекту
+    PRIMARY KEY (equipment_id, fault_kind)
+);
+
+
+-- SQL-запрос для вывода списка оборудования с худшим статусом
+SELECT 
+    e.id AS equipment_id,
+    e.name AS equipment_name,
+    -- MAX() для ENUM в Postgres выберет самое критическое состояние (последнее в списке ENUM)
+    MAX(vf.severity) AS overall_severity,
+    -- Собираем список всех обнаруженных дефектов, которые вышли из зоны 'green'
+    STRING_AGG(
+        CASE WHEN vf.severity != 'green' THEN fk.description END, 
+        ', '
+    ) AS active_faults,
+    MAX(vf.timestamp) AS last_update
+FROM equipment e
+LEFT JOIN vibration_faults vf ON e.id = vf.equipment_id
+LEFT JOIN fault_kind fk ON vf.fault_kind = fk.id
+GROUP BY e.id, e.name
+ORDER BY 
+    -- Сначала показываем самое "красное" и "оранжевое" оборудование
+    overall_severity DESC NULLS LAST, 
+    e.name;

@@ -32,9 +32,11 @@
         - `LowPassSignal` - Фильтр низких частот (0.5X..10X)
             - `OrderDomainSamples` - Order Tracking, Resample
             - `OrderSpectrum` - FFT, Копит буфер заданного размера, считает по готовности
-            - `ImbalanceDetector` - Детектор изменения энергии в зоне 1x, 2x, 3x
+            - `OrderFeatureFilter` - Фильтрует целевые кратности частот вращения (0.5x..3x RPM).
                 - `Threshold` для 1x - Дисбаланс, 2/3x - расцентровка, ослабление опор.
                 - Наличие изменений отправятся в БД
+            - `ImbalanceDetector` - Выявление и классификация макро-механических дефектов на низких кратностях частоты вращения (0.5x..3x RPM)
+            - `SqlExport` - Формирование запросов в БД
     - `TimeDomainSamples`
         - `BandpassSignal` - Полосовой Фильтр ВЧ-резонанса (5..10 кГц)
             - `SignalEnvelope` - Детектор огибающей (Full-Wave Rectification + Low Pass Filter)
@@ -43,6 +45,7 @@
             - `DefectDetector` - Детектор дефектов BPFI, BPFO, FTF, BSF подшипника
                 - `Threshold` для BPFI, BPFO, FTF, BSF на ранней стадии
                 - Наличие изменений отправятся в БД
+
     - `TimeDomainSamples`
         - `BandpassSignal` - Полосовой Фильтр Среднего диапазона (10X..5 кГц)
             - `OrderDomainSamples` - Order Tracking, Resample
@@ -66,16 +69,21 @@ let angular_grid = Arc::new(AngularGrid::New(
     conf.angular_step,
     Autocorrelation::new(inputs)
 ));
-let imbalance = SqlExport::new(             // Wraps results into sql and export
+let imbalance = SqlExport::new(                 // Wraps results into sql and export
     api_client_link.clone(),
-    ImbalanceDetector::new(
-        conf.imbalance.threshold,           // for BPFI, BPFO, FTF, BSF
-        OrderSpectrum::new(
-            conf.imbalance.fft_size,
-            OrderDomainSamples::new(
-                angular_grid.clone(),
-                LowPassSignal::new(         // Баттерворт 2-го порядка
-                    conf.imbalance.edge,    // 10x
+    |ctx: &ImbContext| ctx.results.map(|r| {
+        format!("insert into table () values ()")
+    },
+    OrderFeatureFilter::new(                    // Детекция изменений гармоник 0.5x..3x RPM
+        ImbalanceDetector::new(
+            conf.low_range.threshold,           // for 0.5x..3x RPM
+            OrderSpectrum::new(
+                conf.imbalance.fft_size,
+                OrderDomainSamples::new(
+                    angular_grid.clone(),
+                    LowPassSignal::new(         // Баттерворт 2-го порядка
+                        conf.imbalance.edge,    // 10x
+                    )
                 )
             )
         )

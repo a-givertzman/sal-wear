@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::{fmt::Write, sync::Arc};
 use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::dbg::Dbg;
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadInputs, Retain, WindowFn, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadInputs, Retain, Severity, SqlExport, WindowFn, escape, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -37,19 +37,67 @@ fn complex_test () {
     );
     let window_size = conf.angular.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
-    let low_range = ImbalanceDetector::new(&dbg,
-        OrderFeatureFilter::new(&dbg,
-            conf.angular.n_fft(),
-            conf.angular.angular_step_rad(),
-            OrderSpectrum::new(&dbg,
+    let (api_link, api_recv) = crate::channel_unbounded();
+    let equipment_id = 1212;
+    let low_range = SqlExport::new(&dbg, api_link, move |ctx| {
+            if ctx.err.is_some() { return vec![]; }
+            let mut sqls = Vec::with_capacity(2);
+            let mut sql = String::with_capacity(ctx.results.len() * 120 + 150);
+            let mut results = ctx.results.iter().filter(|r| r.severity != Severity::Green).peekable();
+            if results.peek().is_some() {
+                sql.push_str("INSERT INTO vibration_faults (timestamp, equipment_id, fault_kind, score, severity, rpm) VALUES ");
+                for (i, r) in results.enumerate() {
+                    if i > 0 { sql.push_str(", "); }
+                    _ = write!(
+                        sql,
+                        "('{}', {}, '{}', {}, '{}', {})",
+                        r.ts.to_rfc3339(),
+                        equipment_id,
+                        r.fault,
+                        r.score,
+                        r.severity,
+                        r.rpm.value()
+                    );
+                }
+                sql.push_str(" ON CONFLICT (equipment_id, fault_kind) DO UPDATE SET ");
+                sql.push_str("timestamp = EXCLUDED.timestamp, score = EXCLUDED.score, severity = EXCLUDED.severity, rpm = EXCLUDED.rpm;");
+                sqls.push(sql);
+            }
+            if !ctx.features.is_empty() {
+                let mut sql = String::with_capacity(ctx.features.len() * 120 + 150);
+                sql.push_str("INSERT INTO order_vibration_trends (timestamp, equipment_id, order_id, rms_value, phase, rpm) VALUES ");
+                for (i, r) in ctx.features.iter().enumerate() {
+                    if i > 0 { sql.push_str(", "); }
+                    _ = write!(
+                        sql,
+                        "('{}', {}, '{}', {}, {}, {})",
+                        r.ts.to_rfc3339(),
+                        equipment_id,
+                        r.order_id,
+                        r.rms.value(),
+                        r.phase.to_degrees(),
+                        r.rpm.value()
+                    );
+                }
+                sql.push_str(" ON CONFLICT (timestamp, equipment_id, order_id) DO NOTHING;");
+                sqls.push(sql);
+            }
+            sqls
+        },
+        ImbalanceDetector::new(&dbg,
+            OrderFeatureFilter::new(&dbg,
                 conf.angular.n_fft(),
-                Some(window_fn),
-                OrderDomainSamples::new(&dbg,
-                    conf.angular.samples_per_rev(),
-                    LowPassSignal::new(&dbg,
-                        conf.hardware.sample_rate_hz,
-                        conf.bands.low_cutoff_order(),
-                        Pass::new(),
+                conf.angular.angular_step_rad(),
+                OrderSpectrum::new(&dbg,
+                    conf.angular.n_fft(),
+                    Some(window_fn),
+                    OrderDomainSamples::new(&dbg,
+                        conf.angular.samples_per_rev(),
+                        LowPassSignal::new(&dbg,
+                            conf.hardware.sample_rate_hz,
+                            conf.bands.low_cutoff_order(),
+                            Pass::new(),
+                        ),
                     ),
                 ),
             ),
