@@ -117,7 +117,7 @@ fn order_domain_stationary_test() {
         for order_peak in result {
             assert!(
                 (order_peak - freqs[i].1 as f64).abs() < 40.0,
-                "1x amplitude mismatched: {order_peak}"
+                "1x amplitude mismatched: \n actual {order_peak} \n expected {}", freqs[i].1
             );
         }
     }
