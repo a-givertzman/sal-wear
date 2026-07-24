@@ -20,7 +20,7 @@ fn order_domain_stationary_test() {
             chunk-size: 512
         angular:
             max-order: 100
-            order-resolution: 0.05
+            order-resolution: 0.01
             # samples-per-rev: 
         bands:
             low-order: 0.5..5.0
@@ -46,7 +46,7 @@ fn order_domain_stationary_test() {
     let mut results: Vec<Vec<f64>> = freqs.iter().map(|_| vec![]).collect();
     let retain = Arc::new(Retain::mock(&dbg, []));
     let mut i_ctx = ImbContext::new(&dbg, conf.angular.samples_per_rev(), conf.angular.n_fft(), retain);
-    let fft_size = 1024;
+    let fft_size = 4096;
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(fft_size);
     let mut buffer = FftBuffer::new(fft_size, 1024);
@@ -78,7 +78,7 @@ fn order_domain_stationary_test() {
             // Применяем окно Хемминга для уменьшения утечек спектра
             let n_len = fft_buf.len();
             for i in 0..n_len {
-                let angle = (2.0 * std::f64::consts::PI * i as f64) / (n_len - 1) as f64;
+                let angle = (std::f64::consts::TAU * i as f64) / (n_len - 1) as f64;
                 let w = 0.54 - 0.46 * angle.cos();
                 fft_buf[i].re *= w;
                 fft_buf[i].im *= w;
@@ -102,11 +102,11 @@ fn order_domain_stationary_test() {
                     Frequency::Static(f_hz) => f_hz / (rpm / 60.0),
                 };
                 let n = (target_order / delta_order).round() as usize;
-                if n > 0 && n < fft_buf.len() - 1 {
+                if n > 0 && n < fft_buf.len()/2 - 2 {
                     let result = (amp(fft_buf[n - 1]).powi(2)
                         + amp(fft_buf[n]).powi(2)
-                        + amp(fft_buf[n + 1]).powi(2))
-                    .sqrt();
+                        + amp(fft_buf[n + 1]).powi(2)
+                    ).sqrt();
                     results[i].push(result);
                 }
             }
@@ -116,7 +116,7 @@ fn order_domain_stationary_test() {
     for (i, result) in results.iter().enumerate() {
         for order_peak in result {
             assert!(
-                (order_peak - freqs[i].1 as f64).abs() < 40.0,
+                (order_peak - freqs[i].1 as f64).abs() < 0.1,
                 "1x amplitude mismatched: \n actual {order_peak} \n expected {}", freqs[i].1
             );
         }
