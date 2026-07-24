@@ -6,8 +6,6 @@ use crate::{
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::{FftPlanner, num_complex::Complex};
 use sal_core::dbg::Dbg;
-use std::{fs::File, time::Instant};
-use std::io::{BufWriter, Write};
 use std::sync::Arc;
 ///
 /// Функциональное тестирование [OrderDomainSamples] на стационарность при разгоне
@@ -57,7 +55,6 @@ fn order_domain_stationary_test() {
     let n_iters = 40;
     let mut last_fft_spectrum: Vec<f64> = Vec::new();
     for iter in 0..n_iters {
-        let time = Instant::now();
         log::debug!("Iteration: {}/{}", iter, n_iters);
         let progress = iter as f64 / n_iters as f64;
         let progress_sin = (progress * std::f64::consts::PI / 2.0).sin();
@@ -65,13 +62,7 @@ fn order_domain_stationary_test() {
         udp.parse(rpm, &mut samples);
         inputs.set_rpm(rpm);
         ctx.push_chunk(&samples);
-        if iter == 0 || iter == n_iters - 1 {
-            println!("{:?}", time);
-        }
         ctx = angular_grid.eval(ctx);
-        if iter == 0 || iter == n_iters - 1 {
-            println!("{:?}", time.elapsed());
-        }
         let frame = Arc::new(Frame {
             samples: samples.map(|v| v as f32 - 2048.0),
             phases: ctx.phases.to_vec(),
