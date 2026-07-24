@@ -94,8 +94,8 @@ where
 /// Математический генератор идеальной угловой сетки (Zero-Cost).
 /// Вычисляет целевые углы на лету без выделения памяти.
 pub struct TargetAngles {
-    current_idx: usize,
-    end_idx: usize,
+    current_idx: isize,
+    end_idx: isize,
     delta_theta: f64,
 }
 impl TargetAngles {
@@ -111,9 +111,8 @@ impl TargetAngles {
         let theta1 = theta1.into();
         let theta2 = theta2.into();
         let delta_theta = std::f64::consts::TAU / (samples_per_rev as f64);
-        let t2 = theta2;
-        let current_idx = (theta1 / delta_theta).ceil() as usize;
-        let end_idx = (t2 / delta_theta).floor() as usize + 1;
+        let current_idx = (theta1 / delta_theta).ceil() as isize;
+        let end_idx = (theta2 / delta_theta).floor() as isize + 1;
         Self {
             current_idx,
             end_idx,
@@ -166,13 +165,33 @@ mod tests {
     }
     #[test]
     fn test_target_angles_phase_wrap() {
-        // Перехлест оборота: чанк начался на 5.0 рад (конец старого оборота), 
-        // а закончился на 1.0 рад (начало нового оборота).
-        // Должны попасть: 3*PI/2 (4.71 - мимо, так как меньше 5.0), 
-        // 0.0 (перехлест) и мы не доходим до PI/2 (1.57)
-        let angles: Vec<f64> = TargetAngles::new(5.0, 1.0, 4).collect();
-        assert_angles_eq(angles, &[TAU]);
+        // Перехлест оборота в новой концепции (непрерывная ось углов):
+        // Чанк начался в конце первого оборота (5.0 рад) 
+        // и закончился в начале следующего оборота.
+        // Вместо "1.0 рад" мы пишем "TAU + 1.0 рад", показывая движение вперед.
+        let theta1 = 5.0;
+        let theta2 = std::f64::consts::TAU + 1.0; // ~7.283... рад
+        
+        // Сетка 4 точки на оборот: 0, PI/2 (~1.57), PI (~3.14), 3*PI/2 (~4.71), TAU (~6.28), TAU + PI/2 (~7.85)
+        let angles: Vec<f64> = TargetAngles::new(theta1, theta2, 4).collect();
+        
+        // В этот диапазон (от 5.0 до 7.283) идеально попадает только точка начала нового оборота (TAU, то есть 2*PI)
+        // Предыдущая точка (3*PI/2 = 4.71) осталась позади, а следующая (TAU + PI/2 = 7.85) еще впереди.
+        let expected_angle = std::f64::consts::TAU;
+        
+        assert_eq!(angles.len(), 1);
+        assert!((angles[0] - expected_angle).abs() < 1e-9, "Expected {}, got {}", expected_angle, angles[0]);
     }
+    
+    #[test]
+    // fn test_target_angles_phase_wrap() {
+    //     // Перехлест оборота: чанк начался на 5.0 рад (конец старого оборота), 
+    //     // а закончился на 1.0 рад (начало нового оборота).
+    //     // Должны попасть: 3*PI/2 (4.71 - мимо, так как меньше 5.0), 
+    //     // 0.0 (перехлест) и мы не доходим до PI/2 (1.57)
+    //     let angles: Vec<f64> = TargetAngles::new(5.0, 1.0, 4).collect();
+    //     assert_angles_eq(angles, &[0.0]);
+    // }
     #[test]
     fn test_target_angles_exact_bounds() {
         // Сетка 8 точек на оборот.
@@ -198,5 +217,50 @@ mod tests {
         // Например, от 0.1 до 1.0 при сетке из 4 точек (первая точка PI/2 ~ 1.57).
         let angles: Vec<f64> = TargetAngles::new(0.1, 1.0, 4).collect();
         assert!(angles.is_empty(), "Итератор должен быть пустым");
+    }
+    // Хелпер для сравнения f64 с плавающей точкой
+    fn close_enough(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-9
+    }
+    #[test]
+    fn test_standard_range() {
+        // Сетка 4 точки на оборот (delta = PI/2 = 1.57079...)
+        // Диапазон от 1.0 до 4.0. Должны попасть: PI/2 (1.57), PI (3.14)
+        let mut it = TargetAngles::new(1.0, 4.0, 4);
+        let p1 = it.next().unwrap();
+        assert!(close_enough(p1, PI / 2.0), "Expected PI/2, got {}", p1);
+        let p2 = it.next().unwrap();
+        assert!(close_enough(p2, PI), "Expected PI, got {}", p2);
+        assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_exact_boundaries() {
+        // Проверяем включение границ, если углы идеально совпадают с сеткой
+        // Сетка 4 точки на оборот. Диапазон ровно от PI/2 до PI
+        let mut it = TargetAngles::new(PI / 2.0, PI, 4);
+        let p1 = it.next().unwrap();
+        assert!(close_enough(p1, PI / 2.0));
+        let p2 = it.next().unwrap();
+        assert!(close_enough(p2, PI));
+        assert!(it.next().is_none());
+    }
+    #[test]
+    fn test_negative_angles() {
+        // Диапазон от -3.2415 до -0.5. Шаг сетки 1.5707.
+        // Должны попасть: -PI (-3.1415) и -PI/2 (-1.5707)
+        let mut it = TargetAngles::new(-PI - 0.1, -0.5, 4);
+        let p1 = it.next().unwrap();
+        assert!(close_enough(p1, -PI), "Expected -PI, got {}", p1);
+        let p2 = it.next().unwrap();
+        assert!(close_enough(p2, -PI / 2.0), "Expected -PI/2, got {}", p2);
+        assert!(it.next().is_none());
+    }
+    #[test]
+    fn test_no_points_in_chunk() {
+        // Физический чанк слишком мал и находится между узлами сетки
+        // Сетка с шагом PI/2. Чанк от 0.1 до 1.0. Внутри узлов нет.
+        let mut it = TargetAngles::new(0.1, 1.0, 4);
+        assert!(it.next().is_none());
     }
 }
