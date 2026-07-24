@@ -32,12 +32,14 @@ where
         if ctx.err.is_some() {
             return (ctx.pass_err(&self.dbg, "eval"), Phases::new(0));
         }
+        // Делаем сброс ТОЛЬКО кратно полным оборотам (TAU) и только тут, больше ни где сбрасывать не нужно!
+        if ctx.current_theta >= TAU {
+            let full_turns = (ctx.current_theta / TAU).floor();
+            ctx.current_theta -= full_turns * TAU;
+        }
         let mut phases = Phases::new(Frame::SIZE);
         for i in 0..ctx.phases_size {
             ctx.current_theta += ctx.omega * ctx.dt;
-            if ctx.current_theta >= TAU {
-                ctx.current_theta -= TAU;
-            }
             phases[i] = ctx.current_theta as f32;
         }
         (ctx, phases)

@@ -8,7 +8,7 @@ use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 pub struct ImbContext {
     /// Уточненная частота вращения вала, об/мин.
     pub rpm: Rpm<f64>,
-    /// Сырые выборки из АЦП и угловая сетка.
+    /// Сырые выборки из АЦП и угловая сетка. Приходят из AngularGrid
     pub frame: Arc<Frame>,
     /// LowPassSinal Context.
     pub low_pass_signal: LowPassSignalCtx,
@@ -18,8 +18,10 @@ pub struct ImbContext {
     /// Сигнал развернутый в равномерную сетку угловой области.
     /// Значения вибрации соответствуют каждому углу поворота вала механизма.
     pub order_samples: Vec<Complex<f32>>,
-    /// Текущая фаза, соответствующая последнему элементу в `order_samples`
-    pub last_phase: Phase<f64>,
+    /// Текущий абсолютный вычисленный угол θ поворота вала (не сбрасывается), не используется в расчетах, для отчетности.
+    /// Соответствует последнему элементу в `order_samples`
+    pub total_phase: Phase<f64>,
+
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
     pub fft_buff: MirroredBuffer<Complex<f32>>,
@@ -69,7 +71,7 @@ impl ImbContext {
             low_pass_signal: LowPassSignalCtx::new(),
             samples: Box::new([0.0; Frame::SIZE]),
             order_samples: Vec::with_capacity(capacity),
-            last_phase: Phase(0.0),
+            total_phase: Phase(0.0),
             fft_buff: MirroredBuffer::new(n_fft),
             fft_window: Vec::with_capacity(n_fft),
             filters,

@@ -167,7 +167,7 @@ fn complex_test () {
             Some(err) => log::warn!("{}", err),
             None => {
                 if ctx.ac_samples.is_full() {
-                    let frame = Frame::new(samples, phases, ts);
+                    let frame = Frame::new(ts, samples, phases);
                     _ = low_send.send(frame.clone());
                     _ = mid_send.send(frame.clone());
                     _ = high_send.send(frame.clone());

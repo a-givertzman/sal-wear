@@ -48,7 +48,7 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        let start_phase = self.start_phase(ctx.last_phase);
+        let start_phase = self.start_phase(ctx.total_phase);
         for filter in ctx.filters.iter() {
             if let Some(rms) = filter.eval(&ctx.fft_window) {
                 let ix = filter.order_index();
