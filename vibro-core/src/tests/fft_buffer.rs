@@ -43,7 +43,6 @@ impl<T: Copy> FftBuffer<T> {
         self.buf.len() >= self.size && self.new_samples >= self.step
     }
     pub fn reset(&mut self) {
-        self.buf = SliceRingBuffer::with_capacity(self.size);
         self.new_samples = 0;
     }
 }
