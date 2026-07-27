@@ -60,7 +60,7 @@ impl<T: crate::num_traits::Float> Phases<T> {
         if size > 0 {
             Self { vals: vec![T::zero(); size] }
         } else {
-            Self { vals: vec![T::zero(); size] }
+            Self { vals: vec![] }
         }
     }
     pub fn len(&self) -> usize {

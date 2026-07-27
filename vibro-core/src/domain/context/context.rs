@@ -1,9 +1,13 @@
+use std::sync::Arc;
+
 use sal_core::error::Error;
-use crate::{Frame, MirroredBuffer};
+use crate::{DecimationCtx, Frame, MirroredBuffer};
 
 ///
 /// Контейнер для передачи данных между вычислительными шагами
 pub struct Context {
+    /// Сырые выборки из АЦП и угловая сетка.
+    pub frame: Arc<Frame>,
     /// Аккумулятор сырых сэмплов, окно Автокорреляции.
     /// Должен вмещать 2–3 полных оборота вала
     pub(crate) ac_samples: MirroredBuffer<u16>,
@@ -24,10 +28,10 @@ pub struct Context {
     pub current_theta: f64,
     /// Размер угловой сетки
     pub phases_size: usize,
-    // /// Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
-    // /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
-    // pub phases: Box<[f32; Frame::SIZE]>,
     
+    /// Прореживание сырого входного сигнала
+    pub decimation: DecimationCtx,
+
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -49,6 +53,8 @@ impl Context {
         // Для привода 1500: `3 * 320 000 * 60 / 600 => 96 000`
         let capacity = 96_000;
         Self {
+            frame: Arc::new(Frame::default()),
+            decimation: DecimationCtx::default(),
             ac_samples: MirroredBuffer::new(capacity),
             raw_rpm: f64::NAN,
             raw_period: f64::NAN,
@@ -59,6 +65,11 @@ impl Context {
             phases_size: Frame::SIZE,
             err: None,
         }
+    }
+    /// Добавляет новый массив сэмплов из АЦП в обработку
+    pub fn push_frame(&mut self, frame: &Arc<Frame>) {
+        self.frame = frame.clone();
+        self.err = None;
     }
     /// Добавляет новый массив сэмплов из АЦП в обработку
     pub fn push_chunk(&mut self, samples: &[u16; Frame::SIZE]) {
