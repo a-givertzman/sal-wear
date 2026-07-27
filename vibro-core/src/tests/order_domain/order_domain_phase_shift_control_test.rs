@@ -61,9 +61,9 @@ fn full_signal_simulation(
     panic!("Пик не сошёлся к амплитуде");
 }
 ///
-/// Функциональное тестирование [OrderDomainSamples] на стационарность при разгоне
+/// Функциональное тестирование [OrderDomainSamples] на корректность фазового сдвига в угловой области.
 #[test]
-fn order_domain_stationary_test() {
+fn order_domain_phase_shift_test() {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderDomainSamples-test");
     let f_sample = 320_000; // Частота семплирования АЦП (Гц)
@@ -118,13 +118,20 @@ fn order_domain_stationary_test() {
         ctx = new_ctx;
         i_ctx = new_i_ctx;
         i_ctx = low_range.eval(i_ctx);
-        for (i, order_sample) in i_ctx.order_samples.iter().enumerate() {
+        let closest = i_ctx.order_phases
+            .iter()
+            .enumerate()
+            .min_by(|(_, a), (_, b)| {
+                let da = (**a as f64 - angle_of_signal_peak).abs();
+                let db = (**b as f64 - angle_of_signal_peak).abs();
+                da.partial_cmp(&db).unwrap()
+            });
+        if let Some((idx, closest_phase)) = closest {
+            let angle_diff = (*closest_phase as f64 - angle_of_signal_peak).abs();
+            let amp_diff = (i_ctx.order_samples[idx].re - freqs[0].1 as f32).abs();
             let solution_error = (freqs[0].1 as f32 / 100.0) * 10.0;
-            if (order_sample.re - freqs[0].1 as f32).abs() <= solution_error {
-                if (i_ctx.order_phases[i] - angle_of_signal_peak).abs() <= 0.5 {
-                    found[*step] = true;
-                    break;
-                }
+            if angle_diff <= 0.5 && amp_diff <= solution_error {
+                found[*step] = true;
             }
         }
     }
