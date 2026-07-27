@@ -19,8 +19,9 @@ fn complex_test () {
             sample-rate-hz: 320000
             chunk-size: 512
         angular:
-            max-order: 100
-            order-resolution: 0.05
+            max-order: 300              # Максимальный порядок (кратность частоты вращения), до которого производится спектральный анализ.
+            order-resolution: 0.01      # Требуемая спектральное разрешение в угловом домене.
+            # samples-per-rev: 256      # Плотность угловой дискретизации (сэмплов на оборот).
         bands:
             low-order: 0.5..10.0
             mid-hz: ..5000
