@@ -17,7 +17,8 @@ pub struct ImbContext {
     /// Сигнал развернутый в равномерную сетку угловой области.
     /// Значения вибрации соответствуют каждому углу поворота вала механизма.
     pub order_samples: Vec<Complex<f32>>,
-
+    /// Значения углов для каждого значения вибрации массива в угловой области `order_samples`
+    pub order_phases: Vec<f32>,
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
     pub fft_buff: MirroredBuffer<Complex<f32>>,
     /// Буфер результатов FFT (OrderSpectrum).
@@ -48,6 +49,7 @@ impl ImbContext {
             low_pass_signal: LowPassSignalCtx::new(),
             samples: Box::new([0.0; Frame::SIZE]),
             order_samples: Vec::with_capacity(capacity),
+            order_phases: Vec::with_capacity(capacity),
             fft_buff: MirroredBuffer::new(OrderSpectrum::<Pass>::fft_buffer_size()),
             fft_window: Vec::with_capacity(OrderSpectrum::<Pass>::fft_buffer_size()),
             err: None,

@@ -83,6 +83,7 @@ where
             let p3 = samples[idx + 2] as f64;
             let resampled_val = Self::catmull_rom(p0, p1, p2, p3, t);
             ctx.order_samples.push(Complex { re: resampled_val as f32, im: 0.0 });
+            ctx.order_phases.push(target_theta as f32);
         }
         ctx
     }

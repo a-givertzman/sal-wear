@@ -1,11 +1,24 @@
 use crate::{
-    AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs,
+    AngularGrid, 
+    Autocorrelation, 
+    Conf, 
+    Context, 
+    Eval, 
+    Frame, 
+    ImbContext, 
+    Inputs,
     OrderDomainSamples, Pass, ReadInputs,
-    tests::{Frequency, Udp},
+    tests::{
+        Frequency, 
+        Udp
+    },
 };
-use debugging::session::debug_session::{DebugSession, LogLevel};
+use debugging::session::debug_session::{
+    DebugSession, 
+    LogLevel
+};
 use sal_core::dbg::Dbg;
-use std::{fs::File, io::{BufWriter, Write}, sync::Arc};
+use std::sync::Arc;
 ///
 /// Симулирует сигнал, пока пик в order_samples не сойдётся
 /// к ожидаемой амплитуде рассматриваемой гармоники (с допуском).
@@ -19,9 +32,9 @@ fn full_signal_simulation(
     samples: &mut [u16; Frame::SIZE],
 ) -> (Context, ImbContext) {
     const MAX_CHUNKS: usize = 10_000; // защита от бесконечного цикла
-    let mut file_time = BufWriter::new(
-        File::create("/home/debian/Documents/python_test/input/sim_time_signal.txt").unwrap()
-    );
+    // let mut file_time = BufWriter::new(
+    //     File::create("/home/debian/Documents/python_test/input/sim_time_signal.txt").unwrap()
+    // );
     for chunk_idx in 0..MAX_CHUNKS {
         udp.parse(rpm, samples);
         inputs.set_rpm(rpm);
@@ -31,39 +44,21 @@ fn full_signal_simulation(
             samples: samples.map(|v| v as f32 - 2048.0),
             phases: ctx.phases.to_vec(),
         });
-        for i in 0..Frame::SIZE {
-            writeln!(file_time, "{}", frame.samples[i]).unwrap();
-        }
-        println!("{:?}", frame.samples);
+        // for i in 0..Frame::SIZE {
+        //     writeln!(file_time, "{}", frame.samples[i]).unwrap();
+        // }
+        // println!("{:?}", frame.samples);
         for sample in frame.samples.iter() {
             if *sample == 200.0 {
                 i_ctx.update(frame.clone());
                 i_ctx.rpm = rpm;
-                file_time.flush().unwrap();
-                log::info!("Симуляция прервана по условию на чанке №{}", chunk_idx);
+                // file_time.flush().unwrap();
+                // log::info!("Симуляция прервана по условию на чанке №{}", chunk_idx);
                 return (ctx, i_ctx);
             }
         }
     }
     panic!("Пик не сошёлся к амплитуде");
-}
-/// Переводит индекс k в order_samples в реальный угол (градусы),
-/// повторяя логику TargetAngles::new из прод-кода OrderDomainSamples.
-fn order_sample_index_to_angle_deg(
-    phases: &[f32],
-    points_per_turn: usize,
-    k: usize,
-) -> f64 {
-    let delta_theta = std::f64::consts::TAU / points_per_turn as f64;
-    let theta1 = phases[0] as f64;
-
-    let start_idx = (theta1 / delta_theta).ceil() as usize;
-    let wrapped_start_idx = start_idx % points_per_turn;
-
-    let step_deg = 360.0 / points_per_turn as f64;
-    let theta_start_deg = wrapped_start_idx as f64 * step_deg;
-
-    (theta_start_deg + k as f64 * step_deg) % 360.0
 }
 ///
 /// Функциональное тестирование [OrderDomainSamples] на стационарность при разгоне
@@ -103,11 +98,13 @@ fn order_domain_stationary_test() {
     );
     let mut i_ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
     let test_data = [
-        (1, 600.0,  [(Frequency::Rpm(1.0), 200)]),
-        (2, 1200.0, [(Frequency::Rpm(2.0), 200)]),
-        (3, 1800.0, [(Frequency::Rpm(3.0), 200)]),
+        (0, 1.57, 600.0,  [(Frequency::Rpm(1.0), 200)]),
+        (1, 1.57, 1200.0, [(Frequency::Rpm(2.0), 200)]),
+        (2, 1.57, 1800.0, [(Frequency::Rpm(3.0), 200)]),
     ];
-    for (step, rpm, freqs) in test_data.iter() {
+    let mut found: Vec<bool> = vec![false; test_data.len()];
+    for (step, angle_of_signal_peak, rpm, freqs) in test_data.iter() {
+        ctx.current_theta = 0.0;
         let mut udp = Udp::new(Frame::SIZE, conf.hardware.sample_rate_hz, freqs.clone());
         let (new_ctx, new_i_ctx) = full_signal_simulation(
             &mut udp,
@@ -120,5 +117,22 @@ fn order_domain_stationary_test() {
         );
         ctx = new_ctx;
         i_ctx = new_i_ctx;
+        i_ctx = low_range.eval(i_ctx);
+        for (i, order_sample) in i_ctx.order_samples.iter().enumerate() {
+            let solution_error = (freqs[0].1 as f32 / 100.0) * 10.0;
+            if (order_sample.re - freqs[0].1 as f32).abs() <= solution_error {
+                if (i_ctx.order_phases[i] - angle_of_signal_peak).abs() <= 0.5 {
+                    found[*step] = true;
+                    break;
+                }
+            }
+        }
+    }
+    for (i, f) in found.iter().enumerate() {
+        assert!(
+            f,
+            "Шаг {}: пик амплитуды не найден на ожидаемом угле",
+            i
+        );
     }
 }
