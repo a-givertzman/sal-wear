@@ -249,7 +249,6 @@ mod tests {
     #[test]
     fn lenear_grow_test () {
         DebugSession::new().filter(LogLevel::Debug).init();
-        todo!("Проверка профиля разгона (Run-up/Coast-down) - Еще не написан, это лишь набросок");
         let dbg = Dbg::own("adc-emulator-test");
         let sample_rate_hz = 320_000; // Частота семплирования АЦП (Гц)
         const FRAME: usize = 512;    // Размер эдногого набора сэмплов из АЦП
@@ -266,6 +265,8 @@ mod tests {
             sample_rate_hz,
             freqs.clone(),
         );
+        let start_rpm = 600.0;
+        let end_rpm = 3000.0;
         // Период вращения вала (Tприв):
         //      При 3000 об/мин вал делает 3000 / 60 = 50 оборотов в секунду (50 Гц).
         //      Tприв = 1 / 50 = 0.02 сек.
@@ -274,12 +275,16 @@ mod tests {
         // Количество точек на один оборот:
         //      0.02 / (3.125 * 10^{-6}) = 6400 точек.
         // 13 выборок из АЦП (13 * 512 = 6656) содержат 6400 из них - один период
-        let n = 6400;
-        let size = 512 * 26;
-        let mut buffer = Vec::with_capacity(size);
-        for _ in 0..26 {
+        // Симулируем 0.5 секунды разгона
+        let total_samples = (sample_rate_hz as f64 * 0.5) as usize;
+        let total_frames = total_samples / FRAME;
+        let mut buffer = Vec::with_capacity(total_frames * FRAME);
+        for frame_idx in 0..total_frames {
+            // Линейно интерполируем RPM от времени
+            let progress = frame_idx as f64 / total_frames as f64;
+            let rpm = start_rpm + (end_rpm - start_rpm) * progress;
             // Имитируем получение АЦП выборки из сети
-            udp.parse(rpm.get(), &mut samples);
+            udp.parse(rpm, &mut samples);
             buffer.extend(samples);
         }
         // for i in 0..16 {
@@ -289,42 +294,41 @@ mod tests {
         // for i in (n-8)..(n+8) {
         //     log::debug!("{dbg} | period 1 [{i}]: {} period 2 [{i}]: {}", buffer[i], buffer[n + i]);
         // }
-        for i in 0..n {
-            assert!(buffer[i] == buffer[n + i], "\n period 1 [{i}]: {} \n period 2 [{}]: {}", buffer[i], n + i, buffer[n + i]);
+        // 2. АНАЛИЗ РЕЗУЛЬТАТА: Поиск точек перехода через ноль (снизу вверх)
+        let mut zero_crossings = Vec::new();
+        let offset = 2048;
+        for i in 0..(buffer.len() - 1) {
+            // Ищем строго момент пересечения средней линии снизу вверх
+            if buffer[i] <= offset && buffer[i + 1] > offset {
+                zero_crossings.push(i);
+            }
         }
-        let max = buffer[..n].iter().max().unwrap();
-        log::debug!("{dbg} | period 1 max: {:?}", max);
-        let min = buffer[..n].iter().min().unwrap();
-        log::debug!("{dbg} | period 1 min: {:?}", min);
-        let max = buffer[n..(n * 2)].iter().max().unwrap();
-        log::debug!("{dbg} | period 2 max: {:?}", max);
-        let min = buffer[n..(n * 2)].iter().min().unwrap();
-        log::debug!("{dbg} | period 2 min: {:?}", min);
-        // Проверяем, пики сигналов амплитуды +/- 100
-        // Максимум: 2048 + 100 = 2148
-        // Минимум: 2048 - 100 = 1948
-        assert!(*max == 2148, "Неверный максимум: {max}");
-        assert!(*min == 1948, "Неверный минимум: {min}");
-        // ТОЧКИ ПЕРЕСЕЧЕНИЯ НУЛЯ И ПИКИ (ГЕОМЕТРИЯ) ---
-        // На старте (i = 0) sin(0) = 0 -> ожидаем чистый offset 2048.0 (округляется до 2048)
-        assert_eq!(buffer[0], 2048, "Неверная начальная точка периода (должна быть на нулевой линии) {}", buffer[0]);
-        // Ровно на 1/4 периода (i = 1600) sin(pi/2) = 1 -> пик вверх (2048.0 + 100 = 2148.0 -> 2148)
-        assert_eq!(buffer[n / 4], 2148, "Положительный пик смещен или имеет неверную амплитуду {}", buffer[n / 4]);
-        // Ровно на 1/2 периода (i = 3200) sin(pi) = 0 -> переход через ноль (2048.0 -> 2048)
-        assert_eq!(buffer[n / 2], 2048, "Точка перехода через ноль (середина периода) смещена {}", buffer[n / 2]);
-        // Ровно на 3/4 периода (i = 4800) sin(3pi/2) = -1 -> пик вниз (2048.0 - 100 = 1948.0 -> 1948)
-        assert_eq!(buffer[3 * n / 4], 1948, "Отрицательный пик смещен или имеет неверную амплитуду {}", buffer[3 * n / 4]);
-        // ПРОВЕРКА АНТИСИММЕТРИИ (ФОРМА СИНУСОИДЫ) ---
-        // Проверяем, что первая половина волны зеркально противоположна второй половине
-        for i in 0..(n / 2) {
-            let first_half_centered = buffer[i] as f64 - 2048.0;
-            let second_half_centered = buffer[i + n / 2] as f64 - 2048.0;
-            // Сумма отклонений противоположных точек должна быть практически равна нулю.
-            // Из-за целочисленного округляющего квантования допускаем микроскопическую погрешность в 1 АЦП-знак.
+        // 3. Расчет периодов между пересечениями нуля
+        let mut distances = Vec::new();
+        for window in zero_crossings.windows(2) {
+            distances.push(window[1] - window[0]);
+        }
+        log::debug!("Реальные периоды волны (в сэмплах) при разгоне: {:?}", distances);
+        // 4. ПРОВЕРКА ТРЕНДА: Частота растет -> период строго уменьшается
+        // Из-за дискретизации соседние периоды могут быть равны, но следующий не должен быть БОЛЬШЕ предыдущего.
+        for i in 1..distances.len() {
             assert!(
-                (first_half_centered + second_half_centered).abs() <= 0.1,
-                "Искажение формы синусоиды: нарушена антисимметрия полупериодов в точке {i}"
+                distances[i] <= distances[i - 1],
+                "Ошибка разгона на шаге {}! Период увеличился: {} -> {}",
+                i, distances[i - 1], distances[i]
             );
         }
+        // 5. ПРОВЕРКА ГРАНИЦ (для 320кГц и 600->3000 RPM)
+        // (с учетом динамического ускорения за 0.5 сек)
+        // Первая волна сжимается из-за мгновенного старта разгона (~24.5k вместо 32k)
+        assert!(
+            distances[0] >= 24000 && distances[0] <= 25000, 
+            "Начальный период вне ожидаемого диапазона разгона: {}", distances[0]
+        );
+        // Конечный период на 50 Гц стремится к 6400 сэмплов
+        assert!(
+            *distances.last().unwrap() < 6800, 
+            "Конечный период слишком велик: {}", distances.last().unwrap()
+        );
     }
 }

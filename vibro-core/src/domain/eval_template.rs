@@ -12,8 +12,6 @@ pub struct Autocorrelation<Child> {
 impl<Child> Autocorrelation<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
-    /// 2 * PI
-    const PI2: f64 = std::f64::consts::PI * 2.0;
     ///
     /// ### Returns `Autocorrelation` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).

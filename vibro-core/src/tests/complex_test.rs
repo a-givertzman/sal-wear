@@ -1,57 +1,116 @@
-use std::{f64::consts::TAU, ops::Deref, sync::Arc};
+use std::{fmt::Write, sync::Arc};
+use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
-use sal_core::{dbg::Dbg, error::Error};
+use sal_core::dbg::Dbg;
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, LowPassSignal, OrderDomainSamples, OrderSpectrum, Pass, ReadInputs, WindowFn, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadInputs, Retain, Severity, SqlExport, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
 #[test]
+#[ignore = "Manual Test"]
 fn complex_test () {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("complex-test");
     let tp = ThreadPool::new(&dbg, Some(8));
     let scheduler = tp.scheduler();
     let conf: Conf = serde_yaml::from_str(r#"
-        hardware:
+        adc:
             sample-rate-hz: 320000
             chunk-size: 512
-        angular:
-            max-order: 100
-            resolution: 0.05
-        bands:
-            low-order: 0.5..10.0
-            mid-hz: ..5000
-            high-hz: 5000..10000
+        analysis:
+            order-tracking:
+                max-order: 300              # Максимальный порядок (кратность частоты вращения), до которого производится спектральный анализ.
+                order-resolution: 0.01      # Требуемая спектральное разрешение в угловом домене.
+                # samples-per-rev: 256      # Плотность угловой дискретизации (сэмплов на оборот).
+            bands:
+                low-order: 0.5..10.0
+                mid-hz: ..5000
+                high-hz: 5000..10000
     "#).unwrap();
     let inputs = Arc::new(Inputs::new());
     let mut samples = [0u16; Frame::SIZE];
     let mut ctx = Context::new();
     let angular_grid = AngularGrid::new(&dbg,
         Autocorrelation::new(&dbg,
-            conf.hardware.sample_rate_hz,
+            conf.adc.sample_rate_hz,
             ReadInputs::new(&dbg, inputs.clone())
         ),
     );
-    let window_size = OrderSpectrum::<Pass>::fft_buffer_size();
+    let window_size = conf.analysis.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
-    let low_range = 
-    OrderSpectrum::new(&dbg,
-        Some(window_fn),
-        OrderDomainSamples::new(&dbg,
-            conf.angular.points_per_turn(),
-            LowPassSignal::new(&dbg,
-                conf.hardware.sample_rate_hz,
-                conf.bands.low_cutoff_order(),
-                Pass::new(),
+    let (api_link, api_recv) = crate::channel_unbounded();
+    let equipment_id = 1212;
+    let low_range = SqlExport::new(&dbg, api_link, move |ctx| {
+            if ctx.err.is_some() { return vec![]; }
+            let mut sqls = Vec::with_capacity(2);
+            let mut sql = String::with_capacity(ctx.results.len() * 120 + 150);
+            let mut results = ctx.results.iter().filter(|r| r.severity != Severity::Green).peekable();
+            if results.peek().is_some() {
+                sql.push_str("INSERT INTO vibration_faults (timestamp, equipment_id, fault_kind, score, severity, rpm) VALUES ");
+                for (i, r) in results.enumerate() {
+                    if i > 0 { sql.push_str(", "); }
+                    _ = write!(
+                        sql,
+                        "('{}', {}, '{}', {}, '{}', {})",
+                        r.ts.to_rfc3339(),
+                        equipment_id,
+                        r.fault,
+                        r.score,
+                        r.severity,
+                        r.rpm.value()
+                    );
+                }
+                sql.push_str(" ON CONFLICT (equipment_id, fault_kind) DO UPDATE SET ");
+                sql.push_str("timestamp = EXCLUDED.timestamp, score = EXCLUDED.score, severity = EXCLUDED.severity, rpm = EXCLUDED.rpm;");
+                sqls.push(sql);
+            }
+            if !ctx.features.is_empty() {
+                let mut sql = String::with_capacity(ctx.features.len() * 120 + 150);
+                sql.push_str("INSERT INTO order_vibration_trends (timestamp, equipment_id, order_id, rms_value, phase, rpm) VALUES ");
+                for (i, r) in ctx.features.iter().enumerate() {
+                    if i > 0 { sql.push_str(", "); }
+                    _ = write!(
+                        sql,
+                        "('{}', {}, '{}', {}, {}, {})",
+                        r.ts.to_rfc3339(),
+                        equipment_id,
+                        r.order_id,
+                        r.rms.value(),
+                        r.phase.to_degrees(),
+                        r.rpm.value()
+                    );
+                }
+                sql.push_str(" ON CONFLICT (timestamp, equipment_id, order_id) DO NOTHING;");
+                sqls.push(sql);
+            }
+            sqls
+        },
+        ImbalanceDetector::new(&dbg,
+            OrderFeatureFilter::new(&dbg,
+                conf.analysis.n_fft(),
+                conf.analysis.angular_step_rad(),
+                OrderSpectrum::new(&dbg,
+                    conf.analysis.n_fft(),
+                    Some(window_fn),
+                    OrderDomainSamples::new(&dbg,
+                        conf.analysis.samples_per_rev(),
+                        LowPassSignal::new(&dbg,
+                            conf.adc.sample_rate_hz,
+                            conf.analysis.bands.low_cutoff_order(),
+                            Pass::new(),
+                        ),
+                    ),
+                ),
             ),
         ),
     );
-    let mut udp = Udp::new(Frame::SIZE, conf.hardware.sample_rate_hz, [
+    let mut udp = Udp::new(Frame::SIZE, conf.adc.sample_rate_hz, [
         // Статический резонанс на 5 кГц с амплитудой 100
         (Frequency::Static(5000.0), 100),
     ]);
-    let mut low_range_ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let retain = Arc::new(Retain::mock(&dbg, []));
+    let mut low_range_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), retain);
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);
     let (high_send, high_recv) = channel::bounded(1);
@@ -100,18 +159,22 @@ fn complex_test () {
         let rpm = 3000.0;
         // Имитируем получение АЦП выборки из сети
         udp.parse(rpm, &mut samples);
+        let ts = Utc::now();
         // для тестирования вручную обновляем rpm на входе, в работе он будет приходить извне
         inputs.set_rpm(rpm);
         ctx.push_chunk(&samples);
-        ctx = angular_grid.eval(ctx);
-        if ctx.ac_samples.is_full() {
-            let frame = Arc::new(Frame {
-                samples: samples.map(|v| v as f32 - 2048.0),
-                phases: ctx.phases.to_vec(),
-            });
-            _ = low_send.send(frame.clone());
-            _ = mid_send.send(frame.clone());
-            _ = high_send.send(frame.clone());
+        let phases;
+        (ctx, phases) = angular_grid.eval(ctx);
+        match &ctx.err {
+            Some(err) => log::warn!("{}", err),
+            None => {
+                if ctx.ac_samples.is_full() {
+                    let frame = Frame::new(ts, samples, phases);
+                    _ = low_send.send(frame.clone());
+                    _ = mid_send.send(frame.clone());
+                    _ = high_send.send(frame.clone());
+                }
+            }
         }
     }
 }

@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::{FftPlanner, num_complex::Complex};
 use sal_core::dbg::Dbg;
-use crate::{Conf, Eval, Frame, ImbContext, OrderDomainSamples, OrderSpectrum, Pass, WindowFn, tests::{FftBuffer, Frequency, Udp}};
+use crate::{Conf, Eval, Frame, ImbContext, OrderDomainSamples, OrderSpectrum, Pass, Retain, WindowFn, tests::{FftBuffer, Frequency, Udp}};
 
 /// ### Функциональное тестирование OrderDomainSamples (Метрология)
 /// 
@@ -19,23 +21,25 @@ fn order_spectrum_test () {
     let dbg = Dbg::own("OrderSpectrum-test");
     let f_sample = 320_000; // Частота семплирования АЦП (Гц)
     let conf: Conf = serde_yaml::from_str(&format!(r#"
-        hardware:
+        adc:
             sample-rate-hz: {f_sample}
             chunk-size: 512
-        angular:
-            max-order: 100
-            resolution: 0.05
-            # points-per-turn: 
-        bands:
-            low-order: 0.5..5.0
-            mid-hz: ..5000
-            high-hz: 5000..10000
+        analysis:
+            order-tracking:
+                max-order: 100
+                order-resolution: 0.05
+                # samples-per-turn: 
+            bands:
+                low-order: 0.5..5.0
+                mid-hz: ..5000
+                high-hz: 5000..10000
     "#)).unwrap();
     let mut samples = [0u16; Frame::SIZE];
-    let window_size = OrderSpectrum::<Pass>::fft_buffer_size();
+    let window_size = conf.analysis.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
     // Выполняет Спектральный анализ сигнала в угловом домене (Order Tracking).
     let low_range = OrderSpectrum::new(&dbg,
+        conf.analysis.n_fft(),
         // Кайзер с умеренным beta 5.65 — отличная альтернатива Ханну:
         // Он дает такую же острую вершину (1.25 бина), но сужает основание на уровне -40 дБ до 3.75 бина (против 5.50 у Ханна).
         // Это дает даже лучшую селективность между 1X и 2X.
@@ -57,32 +61,33 @@ fn order_spectrum_test () {
     ];
     let mut udp = Udp::new(
         Frame::SIZE,    // 512
-        conf.hardware.sample_rate_hz,
+        conf.adc.sample_rate_hz,
         freqs.clone(),
     );
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
-    let fft_size = 4096 * 4;
-    let mut ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let n_fft = 4096 * 4;
+    let retain = Arc::new(Retain::mock(&dbg, []));
+    let mut ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), retain);
     let mut planner = FftPlanner::new();
-    let fft = planner.plan_fft_forward(fft_size);
-    let mut buffer = FftBuffer::new(fft_size, 1024);
+    let fft = planner.plan_fft_forward(n_fft);
+    let mut buffer = FftBuffer::new(n_fft, 1024);
     for i in 0..1000 { // Выборок из АЦП
         // для тестирования вручную имитируем изменение rpm привода
-        let rpm =  3000.0;
+        let rpm =  crate::Rpm(3000.0);
         // Имитируем получение АЦП выборки из сети
-        udp.parse(rpm, &mut samples);
+        udp.parse(rpm.value(), &mut samples);
         *ctx.samples = samples.map(|v| v as f32 - 2047.5);    // Пишем сырую выбору в контекст и убираем DC
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         // log::debug!("{dbg} | Before filter: {:?}", low_range_ctx.frame.samples);
         ctx = low_range.eval(ctx);
-        let mut fft_buf = vec![Complex{re: 0.0, im: 0.0}; fft_size];
+        let mut fft_buf = vec![Complex{re: 0.0, im: 0.0}; n_fft];
         // buffer.add(samples.iter().map(|v| Complex{re: *v as f32, im: 0.0}));
         buffer.add(ctx.samples.iter().map(|v| Complex{re: *v, im: 0.0}));
         // log::debug!("{dbg} | After filter: {:?}", low_range_ctx.samples);
         if buffer.is_full() {
             buffer.copy_into(&mut fft_buf);
             fft.process(&mut fft_buf);
-            let delta_f = f_sample as f64 / fft_size as f64;
+            let delta_f = f_sample as f64 / n_fft as f64;
             // log::debug!("{dbg} | delta_f: {}", delta_f);
             for (i, (freq, target)) in freqs.iter().enumerate() {
             }

@@ -1,88 +1,156 @@
 use std::ops::{Bound, RangeBounds};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// Главная конфигурация конвейера обработки вибросигнала.
 /// Инкапсулирует базовые аппаратные константы, параметры сетки и границы фильтров.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Conf {
-    /// Параметры аппаратной части (АЦП, чанки).
-    pub hardware: HardwareConf,
-    /// Настройки угловой сетки и буферов для Order Tracking.
-    pub angular: AngularConf,
+    /// # Параметры сбора сырых данных с АЦП
+    pub adc: HardwareConf,
+    /// Параметры цифровой обработки и виброаналитики
+    pub analysis: AnalysisConf,
+}
+
+/// ### Параметры цифровой обработки и виброаналитики
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AnalysisConf {
+    pub order_tracking: OrderTrackingConf,
     /// Частотные диапазоны для детекторов.
     pub bands: BandsConf,
 }
-/// Аппаратные параметры источника данных.
-#[derive(Clone, Debug, Deserialize)]
-pub struct HardwareConf {
-    /// Возвращает базовую частоту дискретизации в Гц.
-    #[serde(alias = "sample-rate-hz")]
-    pub sample_rate_hz: f32,
-    /// Возвращает размер пакета данных, поступающего из сети.
-    #[serde(alias = "chunk-size")]
-    pub chunk_size: usize,
-}
-/// Настройки углового домена (Order Tracking).
-#[derive(Clone, Debug, Deserialize)]
-pub struct AngularConf {
-    /// Максимальный порядок для анализа.
-    /// Определяет верхнюю границу спектра.
-    /// Связь с Герцами: F_max [Гц] = max_order * (RPM / 60).
-    /// При 3000 об/мин (50 Гц) и max_order = 100, спектр покроет полосу от 0 до 5000 Гц.
-    #[serde(alias = "max-order")]
-    pub max_order: f32,
-    /// Шаг спектра (разрешение) от 0 до max_order.
-    /// Например, шаг 0.05 порядка создаст на графике "бины" 0.00, 0.05, 0.10 и т.д.
-    /// Это позволит отличить дефект на 4.20X от шума на 4.25X.
-    #[serde(alias = "resolution")]
-    pub resolution: f32,
-    /// Плотность угловой сетки (точек на оборот).
-    #[serde(alias = "points-per-turn")]
-    pub points_per_turn: Option<usize>,
-}
-impl AngularConf {
-    /// Вычисляет плотность угловой сетки (точек на оборот).
-    /// Опирается на теорему Найквиста с запасом и автоматически округляет до степени двойки.
-    pub fn points_per_turn(&self) -> usize {
-        match self.points_per_turn {
+impl AnalysisConf {
+    /// ### Плотность угловой дискретизации (сэмплов на оборот).
+    /// 
+    /// Количество отсчетов (сэмплов), фиксируемых или рассчитываемых
+    /// за один полный оборот ротора (на 2π радиан).
+    /// 
+    /// По аналогии с временным доменом (где есть частота дискретизации `Fs` в Гц),
+    /// этот параметр является "угловой частотой дискретизации" и измеряется в отсчетах на оборот.
+    /// 
+    /// Согласно теореме Найквиста-Котельникова, должен быть как минимум в 2 раза
+    /// (на практике с учетом спада фильтра — в 2.56 раза) больше, чем `max_order`.
+    ///
+    /// Автоматически округляется до ближайшей большей степени двойки.
+    #[inline]
+    pub fn samples_per_rev(&self) -> usize {
+        match self.order_tracking.samples_per_rev {
             Some(ppt) => {
-                log::debug!("AngularConf.points_per_turn | Manually specified: {}", ppt);
+                // log::debug!("AngularConf.samples_per_rev | Manually specified: {}", ppt);
                 ppt
             }
             None => {
-                let min_points = (self.max_order * 2.5).ceil() as usize;
+                let min_points = (self.order_tracking.max_order * 2.5).ceil() as usize;
                 let ppt = min_points.next_power_of_two();
-                log::debug!("AngularConf.points_per_turn | Auto calculated: {}", ppt);
+                log::debug!("AngularConf.samples_per_rev | Auto calculated: {}", ppt);
                 ppt
             }
         }
     }
-    /// Вычисляет количество полных оборотов для достижения нужного разрешения.
-    /// Округляет до степени двойки для быстрого FFT.
+    /// ### Длина окна FFT анализа, выраженная в количестве полных оборотов вала.
+    /// 
+    /// Теоретически показывает, за какой угловой интервал (`2π x N_rev` радиан)
+    /// собираются данные для выполнения одного БПФ. Зависит исключительно от
+    /// требуемого разрешения спектра. Округление до ближайшей степени двойки
+    /// необходимо для оптимизации алгоритма FFT.
+    #[inline]
     pub fn fft_turns(&self) -> usize {
-        let min_turns = (1.0 / self.resolution).ceil() as usize;
+        let min_turns = (1.0 / self.order_tracking.order_resolution).ceil() as usize;
         min_turns.next_power_of_two()
     }
     /// Вычисляет угловой шаг в радианах.
+    /// ### Шаг угловой сетки (дискрет угла) в радианах.
+    /// 
+    /// Величина изменения фазового угла ротора между двумя соседними ресемплированными
+    /// отсчетами в угловом домене. Вычисляется как `Δtheta = 2π / N_rev`.
+    /// В Order Tracking этот шаг является строго константным, в отличие от временного шага Δt,
+    /// который при изменении скорости вращения постоянно меняется.
+    #[inline]
     pub fn angular_step_rad(&self) -> f64 {
-        std::f64::consts::TAU / (self.points_per_turn() as f64)
+        std::f64::consts::TAU / (self.samples_per_rev() as f64)
     }
-    /// Вычисляет итоговый размер буфера для спектрального анализа.
-    pub fn fft_buffer_size(&self) -> usize {
-        self.points_per_turn() * self.fft_turns()
+    /// ### Размер FFT выборки (длина буфера) для спектрального анализа в угловой области.
+    /// 
+    /// Общее количество эквидистантных по углу отсчетов, подаваемых на вход БПФ.
+    /// Равен произведению количества точек на оборот на количество оборотов в окне.
+    /// Является прямым аналогом размера БПФ временного сигнала (N_fft).
+    ///
+    /// **Пример математического расчета*
+    /// - Требуемое разрешение `ΔO = 0.01` порядка
+    /// - Минимально необходимое число точек: `Nmin = Nrev / ΔO = 64 / 0.01 = 6400` отсчетов.
+    /// - Для эффективной FFT значение округляется вверх до ближайшей степени двойки через `next_power_of_two()`.
+    /// - Если заданный размер окна: `Nfft = 8192` точки.
+    /// - При этом реальное разрешение спектра составляет `ΔO = 64 / 8192 ≈ 0.0078` порядка 
+    /// - Данные накапливаются за `≈128` полных оборотов ротора.
+    #[inline]
+    pub fn n_fft(&self) -> usize {
+        self.samples_per_rev() * self.fft_turns()
     }
 }
+
+/// Аппаратные параметры источника данных.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct HardwareConf {
+    /// Возвращает базовую частоту дискретизации в Гц.
+    pub sample_rate_hz: f32,
+    /// Возвращает размер пакета данных, поступающего из сети.
+    pub chunk_size: usize,
+}
+
+/// ### Настройки углового домена (Order Tracking).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct OrderTrackingConf {
+    /// ### Максимальный порядок (кратность частоты вращения), до которого производится спектральный анализ.
+    /// 
+    /// Определяет верхнюю границу частотного диапазона в угловой области.
+    /// По теории синхронного накопления и Order Tracking, он напрямую связан с максимальной
+    /// анализируемой физической частотой:
+    /// 
+    ///     `F_max [Гц] = max_order * (RPM / 60)`.
+    /// 
+    /// Например при 3000 об/мин (50 Гц) и max_order = 100, спектр покроет полосу от 0 до 5 кГц.
+    /// Или max_order = 300 покроет полосу от 0 до 15 кГц.
+    pub max_order: f32,
+    /// ### Требуемая спектральное разрешение в угловом домене.
+    /// 
+    /// Шаг между соседними спектральными линиями.
+    /// Определяет способность алгоритма разделять близко расположенные по частоте дефекты
+    /// (например, отличить гармонику вала от близкой частоты перекатывания подшипника).
+    /// 
+    /// Физически равен единице, деленной на количество полных оборотов в окне БПФ:
+    /// 
+    ///     `ΔO = 1 / N_rev`.
+    /// 
+    /// Например, шаг 0.05 порядка создаст на графике "бины" 0.00, 0.05, 0.10 и т.д.
+    /// Это позволит отличить дефект на 4.20X от шума на 4.25X.
+    pub order_resolution: f32,
+    /// ### Плотность угловой дискретизации (сэмплов на оборот).
+    /// 
+    /// Количество отсчетов (сэмплов), фиксируемых или рассчитываемых
+    /// за один полный оборот ротора (на 2π радиан).
+    /// 
+    /// По аналогии с временным доменом (где есть частота дискретизации `Fs` в Гц),
+    /// этот параметр является "угловой частотой дискретизации" и измеряется в отсчетах на оборот.
+    /// 
+    /// Согласно теореме Найквиста-Котельникова, должен быть как минимум в 2 раза
+    /// (на практике с учетом спада фильтра — в 2.56 раза) больше, чем `max_order`.
+    samples_per_rev: Option<usize>,
+}
+
 /// Границы частотных диапазонов для фильтрации и анализа.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct BandsConf {
     /// Границы низкочастотной зоны в порядках (Orders).
-    #[serde(alias = "low-order", deserialize_with = "parse_range")]
+    #[serde(deserialize_with = "parse_range")]
     pub low_order: (Bound<f32>, Bound<f32>),
     /// Верхняя граница среднего диапазона в Герцах (нижняя определяется порядками).
-    #[serde(alias = "mid-hz", deserialize_with = "parse_range")]
+    #[serde(deserialize_with = "parse_range")]
     pub mid_hz: (Bound<f32>, Bound<f32>),
     /// Границы высокочастотной зоны в Герцах.
-    #[serde(alias = "high-hz", deserialize_with = "parse_range")]
+    #[serde(deserialize_with = "parse_range")]
     pub high_hz: (Bound<f32>, Bound<f32>),
 }
 impl BandsConf {
@@ -149,15 +217,21 @@ mod tests {
     /// Проверяет правильность вычисления внутренних констант для FFT и ресемплинга.
     #[test]
     fn test_conf_contracts() {
-        // Допустим, points_per_turn = 256 [cite: 341] и fft_revolutions = 32 
-        let conf: AngularConf = serde_yaml::from_str(r#"
-            max-order: 100
-            resolution: 0.05
+        // Допустим, samples_per_rev = 256 [cite: 341] и fft_revolutions = 32 
+        let conf: AnalysisConf = serde_yaml::from_str(r#"
+            order-tracking:
+                max-order: 100              # Максимальный порядок (кратность частоты вращения), до которого производится спектральный анализ.
+                order-resolution: 0.05      # Требуемая спектральное разрешение в угловом домене.
+                # samples-per-rev: 256      # Плотность угловой дискретизации (сэмплов на оборот).
+            bands:
+                low-order: 0.5..10.0
+                mid-hz: ..5000
+                high-hz: 5000..10000
         "#).unwrap();
         // Шаг угла должен вычисляться в f64 [cite: 341]
         let expected_step = 2.0 * PI / 256.0;
         assert!((conf.angular_step_rad() - expected_step).abs() < 1e-12);
         // Буфер FFT должен математически гарантированно быть 8192 [cite: 344]
-        assert_eq!(conf.fft_buffer_size(), 8192);
+        assert_eq!(conf.n_fft(), 8192);
     }
 }

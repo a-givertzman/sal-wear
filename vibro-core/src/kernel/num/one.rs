@@ -62,9 +62,9 @@ one_impl!(i128, 1);
 one_impl!(f32, 1.0);
 one_impl!(f64, 1.0);
 
-impl<T: Copy + One> One for rustfft::num_complex::Complex<T> {
+impl<T: Copy + One> One for crate::num_complex::Complex<T> {
     fn one() -> Self {
-        rustfft::num_complex::Complex { re: T::one(), im: T::one() }
+        crate::num_complex::Complex { re: T::one(), im: T::one() }
     }
     fn is_one(&self) -> bool {
         todo!()

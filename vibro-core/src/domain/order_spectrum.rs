@@ -40,14 +40,14 @@ where
     ///
     /// ### Returns `OrderSpectrum` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
-    /// - `sample_rate` - Частота дискретизации в Гц.
+    /// - `n_fft` - Размер буфера FFT (из конфига).
+    /// - `window_fn` - Оконная функция для подготовки данных к FFT
     /// - `child` - Дочерний (предыдущий) расчетный шаг
-    pub fn new(parent: &Dbg, window_fn: Option<WindowFn<f32>>, child: Child) -> Self {
+    pub fn new(parent: &Dbg, n_fft: usize, window_fn: Option<WindowFn<f32>>, child: Child) -> Self {
         let dbg = Dbg::new(parent, me::<Self>());
-        let fft_size = Self::fft_buffer_size();
-        log::debug!("{dbg}.new | fft_size: {fft_size}");
+        log::debug!("{dbg}.new | n_fft: {n_fft}");
         let mut planner = FftPlanner::new();
-        let fft = planner.plan_fft_forward(fft_size);
+        let fft = planner.plan_fft_forward(n_fft);
         Self {
             fft,
             window_fn,
@@ -55,25 +55,6 @@ where
             dbg,
         }
     }
-    /// ### Возвращает оптимальный размер буфера FFT ($N_{fft}$) на основе требований к дискретизации и разрешению.
-    ///
-    /// #### Математический расчет
-    /// 1. Минимально необходимое число точек: $N_{min} = N_{rev} / \Delta O = 64 / 0.01 = 6400$ отсчетов.
-    /// 2. Для эффективной FFT значение округляется вверх до ближайшей степени двойки через `next_power_of_two()`.
-    ///
-    /// ### Результат расчета
-    /// Возвращает жестко заданный размер окна: $N_{fft} = 8192$ точки.
-    /// При этом реальное разрешение спектра составляет $\Delta O = 64 / 8192 \approx 0.0078$ порядка 
-    /// (данные накапливаются за $\approx 128$ полных оборотов ротора).
-    // TODO: Вынести метод в конфиг
-    pub fn fft_buffer_size() -> usize {
-        // TODO: Вынести в конфиг, сделать опциональным с дефотным значение
-        let points_per_turn = 64;
-        // TODO: Вынести в конфиг, сделать опциональным с дефотным значение
-        let resolution = 0.01;
-        ((points_per_turn as f64 / resolution).round() as usize).next_power_of_two()
-    }
-
 }
 impl<Child> Eval<ImbContext, ImbContext> for OrderSpectrum<Child>
 where

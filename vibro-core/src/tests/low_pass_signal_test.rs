@@ -1,8 +1,9 @@
 use std::sync::Arc;
+use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::{FftPlanner, num_complex::{Complex, ComplexFloat}};
 use sal_core::dbg::Dbg;
-use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, Pass, tests::{FftBuffer, Frequency, Udp}};
+use crate::{Conf, Eval, Frame, ImbContext, LowPassSignal, Pass, Phases, Retain, Rpm, tests::{FftBuffer, Frequency, Udp}};
 
 ///
 /// 
@@ -12,24 +13,25 @@ fn low_pass_signal_test () {
     let dbg = Dbg::own("LowPassSignal-test");
     let f_sample = 320_000; // Частота семплирования АЦП (Гц)
     let conf: Conf = serde_yaml::from_str(&format!(r#"
-        hardware:
+        adc:
             sample-rate-hz: {f_sample}
             chunk-size: 512
-        angular:
-            max-order: 100
-            resolution: 0.05
-        bands:
-            low-order: 0.5..5.0
-            mid-hz: ..5000
-            high-hz: 5000..10000
+        analysis:
+            order-tracking:
+                max-order: 100
+                order-resolution: 0.05
+            bands:
+                low-order: 0.5..5.0
+                mid-hz: ..5000
+                high-hz: 5000..10000
     "#)).unwrap();
     let mut samples = [0u16; Frame::SIZE];
-    let low_cutoff_order = conf.bands.low_cutoff_order();  // Возвращает верхнюю границу для ФНЧ в порядках (Orders), например 10X
+    let low_cutoff_order = conf.analysis.bands.low_cutoff_order();  // Возвращает верхнюю границу для ФНЧ в порядках (Orders), например 10X
     // Фильтр нижних частот (Баттерворт 2-го порядка) для подавления ВЧ-шумов.
     // Пропускает частоты до заданного порядка (например, 10x от текущих оборотов).
     // RPM берет из контекста ImbContext.rpm
     let low_range = LowPassSignal::new(&dbg,
-        conf.hardware.sample_rate_hz,
+        conf.adc.sample_rate_hz,
         low_cutoff_order,
         Pass::new(),
     );
@@ -48,44 +50,47 @@ fn low_pass_signal_test () {
     ];
     let mut udp = Udp::new(
         Frame::SIZE,    // 512
-        conf.hardware.sample_rate_hz, freqs.clone(),
+        conf.adc.sample_rate_hz, freqs.clone(),
     );
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
-    let fft_size = 4096 * 4;
-    let mut ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let n_fft = 4096 * 4;
+    let retain = Arc::new(Retain::mock(&dbg, []));
+    let mut ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), retain);
     let mut planner = FftPlanner::new();
-    let fft = planner.plan_fft_forward(fft_size);
-    let mut buffer = FftBuffer::new(fft_size, 1024);
+    let fft = planner.plan_fft_forward(n_fft);
+    let mut buffer = FftBuffer::new(n_fft, 1024);
     for i in 0..1000 { // Выборок из АЦП
         // для тестирования вручную имитируем изменение rpm привода
-        let rpm =  3000.0;
+        let rpm =  Rpm(3000.0);
+        let ts = Utc::now();
         // Имитируем получение АЦП выборки из сети
-        udp.parse(rpm, &mut samples);
+        udp.parse(rpm.value(), &mut samples);
         let frame = Arc::new(Frame {
+            ts,
             samples: samples.map(|v| v as f32 - 2047.5),    // убираем DC
-            phases: vec![0.0; Frame::SIZE],
+            phases: Phases::new(Frame::SIZE),
         });
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         ctx.update(frame);
         // log::debug!("{dbg} | Before filter: {:?}", low_range_ctx.frame.samples);
         ctx = low_range.eval(ctx);
-        let mut fft_buf = vec![Complex{re: 0.0, im: 0.0}; fft_size];
+        let mut fft_buf = vec![Complex{re: 0.0, im: 0.0}; n_fft];
         // buffer.add(samples.iter().map(|v| Complex{re: *v as f32, im: 0.0}));
         buffer.add(ctx.samples.iter().map(|v| Complex{re: *v, im: 0.0}));
         // log::debug!("{dbg} | After filter: {:?}", low_range_ctx.samples);
         if buffer.is_full() {
             buffer.copy_into(&mut fft_buf);
             fft.process(&mut fft_buf);
-            let delta_f = f_sample as f64 / fft_size as f64;
+            let delta_f = f_sample as f64 / n_fft as f64;
             // log::debug!("{dbg} | delta_f: {}", delta_f);
             for (i, (freq, _)) in freqs.iter().enumerate() {
                 let freq = match freq {
-                    Frequency::Rpm(k) => *k * rpm / 60.0,
+                    Frequency::Rpm(k) => *k * rpm.to_hz(),
                     Frequency::Static(f) => *f,
                 };
                 let n = (freq / delta_f).round() as usize;
                 let amp = |v: Complex<f32>| {
-                    2.0 * v.abs() / fft_size as f32
+                    2.0 * v.abs() / n_fft as f32
                 };
                 // for offset in -4..=4 {
                 //     let idx = (n as isize).checked_add(offset).unwrap_or(0) as usize;
