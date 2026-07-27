@@ -1,9 +1,11 @@
 -- 1. Справочник оборудования
 CREATE TABLE equipment (
-    id          SERIAL PRIMARY KEY,
+    id          integer GENERATED ALWAYS AS IDENTITY,
     name        VARCHAR(255) NOT NULL,       -- Наименование (например, 'Насос НП-101')
     model       VARCHAR(100),                -- Модель/Тип агрегата
-    created_at  TIMESTAMPTZ DEFAULT NOW()
+    created_at  TIMESTAMPTZ DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT pk_equipment PRIMARY KEY (id),
+    CONSTRAINT uq_equipment_name UNIQUE (name)
 );
 
 -- 2. Таблица учета наработки и ресурса (Wear & Lifespan)
