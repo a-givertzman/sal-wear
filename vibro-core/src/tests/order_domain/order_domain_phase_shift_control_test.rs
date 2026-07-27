@@ -98,7 +98,7 @@ fn order_domain_phase_shift_test() {
     let mut found: Vec<bool> = vec![false; test_data.len()];
     for (step, angle_of_signal_peak, rpm, freqs) in test_data.iter() {
         ctx.current_theta = 0.0;
-        let mut udp = Udp::new(Frame::SIZE, conf.hardware.sample_rate_hz, freqs.clone());
+        let mut udp = Udp::new(Frame::SIZE, conf.adc.sample_rate_hz, freqs.clone());
         let (new_ctx, new_i_ctx) = full_signal_simulation(
             &mut udp,
             ctx,
