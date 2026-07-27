@@ -81,9 +81,8 @@ where
             let p3 = samples[idx + 2];
             let resampled_val = Self::catmull_rom(p0, p1, p2, p3, t);
             ctx.order_samples.push(Complex { re: resampled_val, im: 0.0 });
+            ctx.total_phase = Phase(target_theta);
         }
-        let delta_theta = std::f64::consts::TAU / (self.samples_per_rev as f64);
-        ctx.total_phase = Phase(ctx.total_phase.to_radians() + (ctx.order_samples.len() as f64) * delta_theta);
         ctx
     }
     //
