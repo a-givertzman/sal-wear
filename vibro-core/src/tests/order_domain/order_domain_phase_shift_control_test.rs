@@ -1,18 +1,10 @@
 use crate::{
-    AngularGrid, 
-    Autocorrelation, 
-    Conf, 
-    Context, 
-    Eval, 
-    Frame, 
-    ImbContext, 
-    Inputs,
-    OrderDomainSamples, Pass, ReadInputs,
-    tests::{
+    AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, OrderDomainSamples, Pass, ReadInputs, Retain, Rpm, tests::{
         Frequency, 
         Udp
-    },
+    }
 };
+use chrono::Utc;
 use debugging::session::debug_session::{
     DebugSession, 
     LogLevel
@@ -39,11 +31,13 @@ fn full_signal_simulation(
         udp.parse(rpm, samples);
         inputs.set_rpm(rpm);
         ctx.push_chunk(samples);
-        ctx = angular_grid.eval(ctx);
-        let frame = Arc::new(Frame {
-            samples: samples.map(|v| v as f32 - 2048.0),
-            phases: ctx.phases.to_vec(),
-        });
+        let phases;
+        (ctx, phases) = angular_grid.eval(ctx);
+        let frame = Frame::new(Utc::now(), samples.clone(), phases);
+        // {
+        //     samples: samples.map(|v| v as f32 - 2048.0),
+        //     phases: ctx.phases.to_vec(),
+        // });
         // for i in 0..Frame::SIZE {
         //     writeln!(file_time, "{}", frame.samples[i]).unwrap();
         // }
@@ -51,7 +45,7 @@ fn full_signal_simulation(
         for sample in frame.samples.iter() {
             if *sample == 200.0 {
                 i_ctx.update(frame.clone());
-                i_ctx.rpm = rpm;
+                i_ctx.rpm = Rpm(rpm);
                 // file_time.flush().unwrap();
                 // log::info!("Симуляция прервана по условию на чанке №{}", chunk_idx);
                 return (ctx, i_ctx);
@@ -67,36 +61,35 @@ fn order_domain_phase_shift_test() {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderDomainSamples-test");
     let f_sample = 320_000; // Частота семплирования АЦП (Гц)
-    let conf: Conf = serde_yaml::from_str(&format!(
-        r#"
-        hardware:
+    let conf: Conf = serde_yaml::from_str(&format!(r#"
+        adc:
             sample-rate-hz: {f_sample}
             chunk-size: 512
-        angular:
-            max-order: 100
-            resolution: 0.05
-            # points-per-turn: 
-        bands:
-            low-order: 0.5..5.0
-            mid-hz: ..5000
-            high-hz: 5000..10000
-    "#
-    ))
-    .unwrap();
+        analysis:
+            order-tracking:
+                max-order: 100
+                resolution: 0.05
+                # points-per-turn: 
+            bands:
+                low-order: 0.5..5.0
+                mid-hz: ..5000
+                high-hz: 5000..10000
+    "#)).unwrap();
     let mut samples = [0u16; Frame::SIZE];
     let inputs = Arc::new(Inputs::new());
-    let low_range = OrderDomainSamples::new(&dbg, conf.angular.points_per_turn(), Pass::new());
+    let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
     let mut inputs = Arc::new(Inputs::new());
     let mut ctx = Context::new();
     let angular_grid = AngularGrid::new(
         &dbg,
         Autocorrelation::new(
             &dbg,
-            conf.hardware.sample_rate_hz,
+            conf.adc.sample_rate_hz,
             ReadInputs::new(&dbg, inputs.clone()),
         ),
     );
-    let mut i_ctx = ImbContext::new(conf.angular.points_per_turn(), conf.angular.fft_turns());
+    let retain = Arc::new(Retain::mock(&dbg, []));
+    let mut i_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), retain);
     let test_data = [
         (0, 1.57, 600.0,  [(Frequency::Rpm(1.0), 200)]),
         (1, 1.57, 1200.0, [(Frequency::Rpm(2.0), 200)]),
