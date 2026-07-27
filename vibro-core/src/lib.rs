@@ -1,14 +1,12 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod domain;
+pub use domain::*;
+mod kernel;
+pub use kernel::*;
+
+pub(crate) use sal_core::error::Error as Error;
+pub(crate) use kernel::short_type_name;
+pub(crate) use rustfft::num_traits as num_traits;
+pub(crate) use rustfft::num_complex as num_complex;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+mod tests;
