@@ -1,9 +1,9 @@
 use std::ops::{Bound, RangeBounds};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// Главная конфигурация конвейера обработки вибросигнала.
 /// Инкапсулирует базовые аппаратные константы, параметры сетки и границы фильтров.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Conf {
     /// # Параметры сбора сырых данных с АЦП
     pub adc: HardwareConf,
@@ -12,9 +12,9 @@ pub struct Conf {
 }
 
 /// ### Параметры цифровой обработки и виброаналитики
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct AnalysisConf {
-    #[serde(alias = "order-tracking")]
     pub order_tracking: OrderTrackingConf,
     /// Частотные диапазоны для детекторов.
     pub bands: BandsConf,
@@ -89,18 +89,18 @@ impl AnalysisConf {
 }
 
 /// Аппаратные параметры источника данных.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct HardwareConf {
     /// Возвращает базовую частоту дискретизации в Гц.
-    #[serde(alias = "sample-rate-hz")]
     pub sample_rate_hz: f32,
     /// Возвращает размер пакета данных, поступающего из сети.
-    #[serde(alias = "chunk-size")]
     pub chunk_size: usize,
 }
 
 /// ### Настройки углового домена (Order Tracking).
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct OrderTrackingConf {
     /// ### Максимальный порядок (кратность частоты вращения), до которого производится спектральный анализ.
     /// 
@@ -112,7 +112,6 @@ pub struct OrderTrackingConf {
     /// 
     /// Например при 3000 об/мин (50 Гц) и max_order = 100, спектр покроет полосу от 0 до 5 кГц.
     /// Или max_order = 300 покроет полосу от 0 до 15 кГц.
-    #[serde(alias = "max-order")]
     pub max_order: f32,
     /// ### Требуемая спектральное разрешение в угловом домене.
     /// 
@@ -126,7 +125,6 @@ pub struct OrderTrackingConf {
     /// 
     /// Например, шаг 0.05 порядка создаст на графике "бины" 0.00, 0.05, 0.10 и т.д.
     /// Это позволит отличить дефект на 4.20X от шума на 4.25X.
-    #[serde(alias = "order-resolution")]
     pub order_resolution: f32,
     /// ### Плотность угловой дискретизации (сэмплов на оборот).
     /// 
@@ -138,21 +136,21 @@ pub struct OrderTrackingConf {
     /// 
     /// Согласно теореме Найквиста-Котельникова, должен быть как минимум в 2 раза
     /// (на практике с учетом спада фильтра — в 2.56 раза) больше, чем `max_order`.
-    #[serde(alias = "samples-per-rev")]
     samples_per_rev: Option<usize>,
 }
 
 /// Границы частотных диапазонов для фильтрации и анализа.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct BandsConf {
     /// Границы низкочастотной зоны в порядках (Orders).
-    #[serde(alias = "low-order", deserialize_with = "parse_range")]
+    #[serde(deserialize_with = "parse_range")]
     pub low_order: (Bound<f32>, Bound<f32>),
     /// Верхняя граница среднего диапазона в Герцах (нижняя определяется порядками).
-    #[serde(alias = "mid-hz", deserialize_with = "parse_range")]
+    #[serde(deserialize_with = "parse_range")]
     pub mid_hz: (Bound<f32>, Bound<f32>),
     /// Границы высокочастотной зоны в Герцах.
-    #[serde(alias = "high-hz", deserialize_with = "parse_range")]
+    #[serde(deserialize_with = "parse_range")]
     pub high_hz: (Bound<f32>, Bound<f32>),
 }
 impl BandsConf {
