@@ -13,24 +13,25 @@ fn low_pass_signal_test () {
     let dbg = Dbg::own("LowPassSignal-test");
     let f_sample = 320_000; // Частота семплирования АЦП (Гц)
     let conf: Conf = serde_yaml::from_str(&format!(r#"
-        hardware:
+        adc:
             sample-rate-hz: {f_sample}
             chunk-size: 512
-        angular:
-            max-order: 100
-            order-resolution: 0.05
-        bands:
-            low-order: 0.5..5.0
-            mid-hz: ..5000
-            high-hz: 5000..10000
+        analysis:
+            order-tracking:
+                max-order: 100
+                order-resolution: 0.05
+            bands:
+                low-order: 0.5..5.0
+                mid-hz: ..5000
+                high-hz: 5000..10000
     "#)).unwrap();
     let mut samples = [0u16; Frame::SIZE];
-    let low_cutoff_order = conf.bands.low_cutoff_order();  // Возвращает верхнюю границу для ФНЧ в порядках (Orders), например 10X
+    let low_cutoff_order = conf.analysis.bands.low_cutoff_order();  // Возвращает верхнюю границу для ФНЧ в порядках (Orders), например 10X
     // Фильтр нижних частот (Баттерворт 2-го порядка) для подавления ВЧ-шумов.
     // Пропускает частоты до заданного порядка (например, 10x от текущих оборотов).
     // RPM берет из контекста ImbContext.rpm
     let low_range = LowPassSignal::new(&dbg,
-        conf.hardware.sample_rate_hz,
+        conf.adc.sample_rate_hz,
         low_cutoff_order,
         Pass::new(),
     );
@@ -49,12 +50,12 @@ fn low_pass_signal_test () {
     ];
     let mut udp = Udp::new(
         Frame::SIZE,    // 512
-        conf.hardware.sample_rate_hz, freqs.clone(),
+        conf.adc.sample_rate_hz, freqs.clone(),
     );
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
     let n_fft = 4096 * 4;
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut ctx = ImbContext::new(&dbg, conf.angular.samples_per_rev(), conf.angular.fft_turns(), retain);
+    let mut ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), retain);
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(n_fft);
     let mut buffer = FftBuffer::new(n_fft, 1024);

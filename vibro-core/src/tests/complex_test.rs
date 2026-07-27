@@ -3,7 +3,7 @@ use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::dbg::Dbg;
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadInputs, Retain, Severity, SqlExport, WindowFn, escape, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadInputs, Retain, Severity, SqlExport, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -15,28 +15,29 @@ fn complex_test () {
     let tp = ThreadPool::new(&dbg, Some(8));
     let scheduler = tp.scheduler();
     let conf: Conf = serde_yaml::from_str(r#"
-        hardware:
+        adc:
             sample-rate-hz: 320000
             chunk-size: 512
-        angular:
-            max-order: 300              # Максимальный порядок (кратность частоты вращения), до которого производится спектральный анализ.
-            order-resolution: 0.01      # Требуемая спектральное разрешение в угловом домене.
-            # samples-per-rev: 256      # Плотность угловой дискретизации (сэмплов на оборот).
-        bands:
-            low-order: 0.5..10.0
-            mid-hz: ..5000
-            high-hz: 5000..10000
+        analysis:
+            order-tracking:
+                max-order: 300              # Максимальный порядок (кратность частоты вращения), до которого производится спектральный анализ.
+                order-resolution: 0.01      # Требуемая спектральное разрешение в угловом домене.
+                # samples-per-rev: 256      # Плотность угловой дискретизации (сэмплов на оборот).
+            bands:
+                low-order: 0.5..10.0
+                mid-hz: ..5000
+                high-hz: 5000..10000
     "#).unwrap();
     let inputs = Arc::new(Inputs::new());
     let mut samples = [0u16; Frame::SIZE];
     let mut ctx = Context::new();
     let angular_grid = AngularGrid::new(&dbg,
         Autocorrelation::new(&dbg,
-            conf.hardware.sample_rate_hz,
+            conf.adc.sample_rate_hz,
             ReadInputs::new(&dbg, inputs.clone())
         ),
     );
-    let window_size = conf.angular.n_fft();
+    let window_size = conf.analysis.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
     let (api_link, api_recv) = crate::channel_unbounded();
     let equipment_id = 1212;
@@ -87,16 +88,16 @@ fn complex_test () {
         },
         ImbalanceDetector::new(&dbg,
             OrderFeatureFilter::new(&dbg,
-                conf.angular.n_fft(),
-                conf.angular.angular_step_rad(),
+                conf.analysis.n_fft(),
+                conf.analysis.angular_step_rad(),
                 OrderSpectrum::new(&dbg,
-                    conf.angular.n_fft(),
+                    conf.analysis.n_fft(),
                     Some(window_fn),
                     OrderDomainSamples::new(&dbg,
-                        conf.angular.samples_per_rev(),
+                        conf.analysis.samples_per_rev(),
                         LowPassSignal::new(&dbg,
-                            conf.hardware.sample_rate_hz,
-                            conf.bands.low_cutoff_order(),
+                            conf.adc.sample_rate_hz,
+                            conf.analysis.bands.low_cutoff_order(),
                             Pass::new(),
                         ),
                     ),
@@ -104,12 +105,12 @@ fn complex_test () {
             ),
         ),
     );
-    let mut udp = Udp::new(Frame::SIZE, conf.hardware.sample_rate_hz, [
+    let mut udp = Udp::new(Frame::SIZE, conf.adc.sample_rate_hz, [
         // Статический резонанс на 5 кГц с амплитудой 100
         (Frequency::Static(5000.0), 100),
     ]);
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.samples_per_rev(), conf.angular.n_fft(), retain);
+    let mut low_range_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), retain);
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);
     let (high_send, high_recv) = channel::bounded(1);
