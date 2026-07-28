@@ -111,14 +111,18 @@ fn order_domain_phase_shift_test() {
             &mut samples,
             &low_range,
         );
-        log::debug!("Шаг {}: Пик сигнала сошёлся к амплитуде {}", step, amp_of_signal_peak);
         ctx = new_ctx;
         i_ctx = new_i_ctx;
-        log::debug!("Шаг {}: Проверка фазы сигнала. Получено: {}, ожидалось: {}", step, i_ctx.total_phase.to_radians(), angle_of_signal_peak);
+        let last_sample = i_ctx.order_samples.last().unwrap();
         assert!(
-            (i_ctx.total_phase.to_radians() - *angle_of_signal_peak).abs() < angle_of_signal_peak * 0.13,
+            (last_sample.re - *amp_of_signal_peak).abs() < *amp_of_signal_peak * 0.1,
+            "Шаг {}: Амплитуда не совпала с ожидаемой. Получено: {}, ожидалось: {}",
+            step, last_sample.re, amp_of_signal_peak
+        );
+        assert!(
+            (i_ctx.total_phase.0 - *angle_of_signal_peak as f64).abs() < *angle_of_signal_peak as f64 * 0.13,
             "Шаг {}: Фаза не совпала с ожидаемой. Получено: {}, ожидалось: {}",
-            step, i_ctx.total_phase.to_radians(), angle_of_signal_peak
-        )
+            step, i_ctx.total_phase.0, angle_of_signal_peak
+        );
     }
 }
