@@ -28,7 +28,7 @@ impl Frame {
     /// - `phases` - Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
     /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
     /// Размер: `Frame::SIZE`
-    pub fn new(ts: DateTime<Utc>, samples: [u16; Self::SIZE], phases: Phases<f32>) -> Arc<Self> {
+    pub fn new(ts: DateTime<Utc>, samples: &[u16; Self::SIZE], phases: Phases<f32>) -> Arc<Self> {
         Arc::new(Frame {
             ts,
             samples: samples.map(|v| v as f32 - 2048.0),

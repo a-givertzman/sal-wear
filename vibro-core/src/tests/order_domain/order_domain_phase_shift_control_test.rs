@@ -22,7 +22,7 @@ use debugging::session::debug_session::{
     LogLevel
 };
 use sal_core::dbg::Dbg;
-use std::sync::Arc;
+use std::{f64::consts::{PI, TAU}, sync::Arc};
 ///
 /// Симулирует сигнал, пока пик в order_samples не сойдётся
 /// к ожидаемой амплитуде рассматриваемой гармоники (с допуском).
@@ -49,7 +49,7 @@ fn full_signal_simulation(
         ctx.push_chunk(samples);
         let phases;
         (ctx, phases) = angular_grid.eval(ctx);
-        let frame = Frame::new(Utc::now(), samples.clone(), phases);
+        let frame = Frame::new(Utc::now(), &samples, phases);
         i_ctx.update(frame.clone());
         i_ctx.rpm = Rpm(rpm);
         i_ctx = low_range.eval(i_ctx);
@@ -78,12 +78,12 @@ fn order_domain_phase_shift_test() {
                 high-hz: 5000..10000
     "#)).unwrap();
     let test_data = [
-        (1, 1.0, 200.0, 1.57, 600.0,  [(Frequency::Rpm(1.0), 200)]), // в pi (90 градусов) тк кратность 1
-        (2, 2.0, 300.0, 0.7854, 1200.0, [(Frequency::Rpm(2.0), 300)]), // в pi/4 (45 градусов) тк кратность 2
-        (3, 3.0, 400.0, 0.5236, 1800.0, [(Frequency::Rpm(3.0), 400)]), // в pi/6 (30 градусов) тк кратность 3
+        (1, 1.0, 200.0, PI / 2.0, 600.0,  [(Frequency::Rpm(1.0), 200)]), // в pi (90 градусов) тк кратность 1
+        (2, 2.0, 300.0, PI / 4.0, 1200.0, [(Frequency::Rpm(2.0), 300)]), // в pi/4 (45 градусов) тк кратность 2
+        (3, 3.0, 400.0, PI / 6.0, 1800.0, [(Frequency::Rpm(3.0), 400)]), // в pi/6 (30 градусов) тк кратность 3
     ];
-    for (step, k, amp_of_signal_peak, angle_of_signal_peak, rpm, freqs) in test_data.iter() {
-        log::debug!("Шаг {}: Симуляция сигнала с амплитудой {}, фазой {} и частотой {} об/мин", step, amp_of_signal_peak, angle_of_signal_peak, rpm);
+    for (step, k, target_rms, target_angle_rad, rpm, freqs) in test_data.iter() {
+        log::debug!("Шаг {}: Симуляция сигнала с амплитудой {}, фазой {:.1} и частотой {} об/мин", step, target_rms, target_angle_rad.to_degrees(), rpm);
         let mut samples = [0u16; Frame::SIZE];
         let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
         let mut inputs = Arc::new(Inputs::new());
@@ -113,16 +113,26 @@ fn order_domain_phase_shift_test() {
         );
         ctx = new_ctx;
         i_ctx = new_i_ctx;
-        let last_sample = i_ctx.order_samples.last().unwrap();
+        // TODO: Вычислить математически какая в угловом домене должна быть фаза target_phase с учетом rpm
+        // Скорость вращения в радианах в секунду
+        let rad_per_sec = (rpm / 60.0) * TAU;
+        // Приращение фазы за один шаг дискретизации (в радианах)
+        let phase_step_rad = rad_per_sec * ctx.dt;
+        let last_index = chunks_needed * Frame::SIZE;
+        let target_phase = last_index as f64 * phase_step_rad;
         assert!(
-            (last_sample.re - *amp_of_signal_peak).abs() < *amp_of_signal_peak * 0.1,
-            "Шаг {}: Амплитуда не совпала с ожидаемой. Получено: {}, ожидалось: {}",
-            step, last_sample.re, amp_of_signal_peak
+            (i_ctx.total_phase.to_radians() - *target_angle_rad).abs() < 10e-6,
+            "Шаг {}: Фаза i_ctx.total_phase не совпала с ожидаемой. Получено: {}, ожидалось: {}",
+            step, i_ctx.total_phase.0, target_angle_rad
         );
+
+        let delta_theta = std::f64::consts::TAU / (conf.analysis.samples_per_rev() as f64);
+        let delta = ((i_ctx.total_phase.to_radians() - target_angle_rad) / delta_theta).round() as usize;
+        let sample = i_ctx.order_samples[i_ctx.order_samples.len() - 1 - delta];
         assert!(
-            (i_ctx.total_phase.0 - *angle_of_signal_peak as f64).abs() < *angle_of_signal_peak as f64 * 0.13,
-            "Шаг {}: Фаза не совпала с ожидаемой. Получено: {}, ожидалось: {}",
-            step, i_ctx.total_phase.0, angle_of_signal_peak
+            (sample.re - *target_rms).abs() < 10e-6,
+            "Шаг {}: Амплитуда сигнала в угловом домене не совпала с ожидаемой. Получено: {}, ожидалось: {}",
+            step, sample.re, target_rms
         );
     }
 }
