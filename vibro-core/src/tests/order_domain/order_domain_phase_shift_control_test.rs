@@ -36,7 +36,7 @@ fn full_signal_simulation(
     inputs: &mut Arc<Inputs>,
     samples: &mut [u16; Frame::SIZE],
     low_range: &OrderDomainSamples<Pass>,
-) -> (Context, ImbContext) {
+) -> (Context, ImbContext, usize) {
     let f_sample = udp.sample_freq;
     let chunk_size = Frame::SIZE as f64;
     let rpm_hz = rpm / 60.0;
@@ -54,7 +54,7 @@ fn full_signal_simulation(
         i_ctx.rpm = Rpm(rpm);
         i_ctx = low_range.eval(i_ctx);
     }
-    (ctx, i_ctx)
+    (ctx, i_ctx, chunks_needed)
 }
 ///
 /// Функциональное тестирование [OrderDomainSamples] на корректность фазового сдвига в угловой области.
@@ -100,7 +100,7 @@ fn order_domain_phase_shift_test() {
         let mut i_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), retain);
         ctx.current_theta = 0.0;
         let mut udp = Udp::new(Frame::SIZE, conf.adc.sample_rate_hz, freqs.clone());
-        let (new_ctx, new_i_ctx) = full_signal_simulation(
+        let (new_ctx, new_i_ctx, chunks_needed) = full_signal_simulation(
             &mut udp,
             ctx,
             i_ctx,
@@ -113,22 +113,24 @@ fn order_domain_phase_shift_test() {
         );
         ctx = new_ctx;
         i_ctx = new_i_ctx;
-        // TODO: Вычислить математически какая в угловом домене должна быть фаза target_phase с учетом rpm
-        // Скорость вращения в радианах в секунду
+        // Скорость вращения вала в радианах в секунду
         let rad_per_sec = (rpm / 60.0) * TAU;
-        // Приращение фазы за один шаг дискретизации (в радианах)
-        let phase_step_rad = rad_per_sec * ctx.dt;
-        let last_index = chunks_needed * Frame::SIZE;
-        let target_phase = last_index as f64 * phase_step_rad;
+        // Приращение фазы за ОДИН СЕМПЛ (один шаг дискретизации)
+        let phase_step_rad = rad_per_sec * ctx.dt; 
+        // Общее количество обработанных точек данных (семплов)
+        let total_samples_processed = chunks_needed * Frame::SIZE;
+        // Математически идеальная накопленная фаза ВАЛА за всю симуляцию
+        let calculated_total_phase = total_samples_processed as f64 * phase_step_rad;
         assert!(
-            (i_ctx.total_phase.to_radians() - *target_angle_rad).abs() < 10e-6,
-            "Шаг {}: Фаза i_ctx.total_phase не совпала с ожидаемой. Получено: {}, ожидалось: {}",
-            step, i_ctx.total_phase.0, target_angle_rad
+            (i_ctx.total_phase.to_radians() - calculated_total_phase).abs() < 10e-6,
+            "Шаг {}: Фаза отслеживания вала уплыла! Получено: {:.5} рад, ожидалось: {:.5} рад",
+            step, i_ctx.total_phase.to_radians(), calculated_total_phase
         );
-
+        // Идеальное расстояние между точками в угловой области
         let delta_theta = std::f64::consts::TAU / (conf.analysis.samples_per_rev() as f64);
-        let delta = ((i_ctx.total_phase.to_radians() - target_angle_rad) / delta_theta).round() as usize;
-        let sample = i_ctx.order_samples[i_ctx.order_samples.len() - 1 - delta];
+        // Индекс точки в угловой области, которая находится должна находится на исследуемом пике
+        let delta = ((i_ctx.total_phase.to_radians() - target_angle_rad) / delta_theta).round() as usize; 
+        let sample = i_ctx.order_samples[(i_ctx.order_samples.len() - 1) - delta];
         assert!(
             (sample.re - *target_rms).abs() < 10e-6,
             "Шаг {}: Амплитуда сигнала в угловом домене не совпала с ожидаемой. Получено: {}, ожидалось: {}",
