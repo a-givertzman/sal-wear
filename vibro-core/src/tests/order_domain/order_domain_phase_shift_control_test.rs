@@ -22,7 +22,7 @@ use debugging::session::debug_session::{
     LogLevel
 };
 use sal_core::dbg::Dbg;
-use std::{f64::consts::{PI, TAU}, sync::Arc};
+use std::{f64::consts::{PI, TAU}, sync::Arc, time::Instant};
 ///
 /// Симулирует сигнал, пока пик в order_samples не сойдётся
 /// к ожидаемой амплитуде рассматриваемой гармоники (с допуском).
@@ -48,11 +48,15 @@ fn full_signal_simulation(
         inputs.set_rpm(rpm);
         ctx.push_chunk(samples);
         let phases;
+        let t = Instant::now();
         (ctx, phases) = angular_grid.eval(ctx);
+        log::debug!("AngularGrid<Autocorrelation> elapsed {:?}", t.elapsed());
         let frame = Frame::new(Utc::now(), &samples, phases);
         i_ctx.update(frame.clone());
         i_ctx.rpm = Rpm(rpm);
+        let t = Instant::now();
         i_ctx = low_range.eval(i_ctx);
+        log::debug!("OrderDomainSamples elapsed {:?}", t.elapsed());
     }
     (ctx, i_ctx, chunks_needed)
 }
@@ -121,10 +125,15 @@ fn order_domain_phase_shift_test() {
         let total_samples_processed = chunks_needed * Frame::SIZE;
         // Математически идеальная накопленная фаза ВАЛА за всю симуляцию
         let calculated_total_phase = total_samples_processed as f64 * phase_step_rad;
+        log::debug!(
+            "Шаг {step}: Суммарная фаза вала. Получено: {} ({}), ожидалось: {} ({})",
+            i_ctx.total_phase.to_degrees(), i_ctx.total_phase.to_radians(),
+            calculated_total_phase.to_degrees(), calculated_total_phase
+        );
         assert!(
             (i_ctx.total_phase.to_radians() - calculated_total_phase).abs() < 10e-6,
-            "Шаг {}: Фаза отслеживания вала уплыла! Получено: {:.5} рад, ожидалось: {:.5} рад",
-            step, i_ctx.total_phase.to_radians(), calculated_total_phase
+            "Шаг {step}: Фаза отслеживания вала уплыла! Получено: {:.5} рад, ожидалось: {:.5} рад",
+            i_ctx.total_phase.to_radians(), calculated_total_phase
         );
         // Идеальное расстояние между точками в угловой области
         let delta_theta = std::f64::consts::TAU / (conf.analysis.samples_per_rev() as f64);
@@ -133,8 +142,8 @@ fn order_domain_phase_shift_test() {
         let sample = i_ctx.order_samples[(i_ctx.order_samples.len() - 1) - delta];
         assert!(
             (sample.re - *target_rms).abs() < 10e-6,
-            "Шаг {}: Амплитуда сигнала в угловом домене не совпала с ожидаемой. Получено: {}, ожидалось: {}",
-            step, sample.re, target_rms
+            "Шаг {step}: Амплитуда сигнала в угловом домене не совпала с ожидаемой. Получено: {}, ожидалось: {}",
+            sample.re, target_rms
         );
     }
 }
