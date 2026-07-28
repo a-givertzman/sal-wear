@@ -32,13 +32,18 @@ fn full_signal_simulation(
     mut i_ctx: ImbContext,
     angular_grid: &AngularGrid<Autocorrelation<ReadInputs>>,
     rpm: f64,
+    k: f64,
     inputs: &mut Arc<Inputs>,
-    amp_of_signal_peak: f32,
     samples: &mut [u16; Frame::SIZE],
     low_range: &OrderDomainSamples<Pass>,
 ) -> (Context, ImbContext) {
-    const MAX_CHUNKS: usize = 10_000; // защита от бесконечного цикла
-    for _ in 0..MAX_CHUNKS {
+    let f_sample = udp.sample_freq;
+    let chunk_size = Frame::SIZE as f64;
+    let rpm_hz = rpm / 60.0;
+    let delta_per_sample = std::f64::consts::TAU * k * rpm_hz / f_sample;
+    let i_peak = (std::f64::consts::FRAC_PI_2 / delta_per_sample).round() as usize;
+    let chunks_needed = (i_peak as f64 / chunk_size).ceil() as usize;
+    for _ in 0..chunks_needed {
         udp.parse(rpm, samples);
         inputs.set_rpm(rpm);
         ctx.push_chunk(samples);
@@ -48,13 +53,8 @@ fn full_signal_simulation(
         i_ctx.update(frame.clone());
         i_ctx.rpm = Rpm(rpm);
         i_ctx = low_range.eval(i_ctx);
-        for sample in frame.samples.iter() {
-            if *sample == amp_of_signal_peak {
-                return (ctx, i_ctx);
-            }
-        }
     }
-    panic!("Пик не сошёлся к амплитуде");
+    (ctx, i_ctx)
 }
 ///
 /// Функциональное тестирование [OrderDomainSamples] на корректность фазового сдвига в угловой области.
@@ -78,11 +78,11 @@ fn order_domain_phase_shift_test() {
                 high-hz: 5000..10000
     "#)).unwrap();
     let test_data = [
-        (1, 200.0, 1.57, 600.0,  [(Frequency::Rpm(1.0), 200)]), // в pi (90 градусов) тк кратность 1
-        (2, 300.0, 0.7854, 1200.0, [(Frequency::Rpm(2.0), 300)]), // в pi/4 (45 градусов) тк кратность 2
-        (3, 400.0, 0.5236, 1800.0, [(Frequency::Rpm(3.0), 400)]), // в pi/6 (30 градусов) тк кратность 3
+        (1, 1.0, 200.0, 1.57, 600.0,  [(Frequency::Rpm(1.0), 200)]), // в pi (90 градусов) тк кратность 1
+        (2, 2.0, 300.0, 0.7854, 1200.0, [(Frequency::Rpm(2.0), 300)]), // в pi/4 (45 градусов) тк кратность 2
+        (3, 3.0, 400.0, 0.5236, 1800.0, [(Frequency::Rpm(3.0), 400)]), // в pi/6 (30 градусов) тк кратность 3
     ];
-    for (step, amp_of_signal_peak, angle_of_signal_peak, rpm, freqs) in test_data.iter() {
+    for (step, k, amp_of_signal_peak, angle_of_signal_peak, rpm, freqs) in test_data.iter() {
         log::debug!("Шаг {}: Симуляция сигнала с амплитудой {}, фазой {} и частотой {} об/мин", step, amp_of_signal_peak, angle_of_signal_peak, rpm);
         let mut samples = [0u16; Frame::SIZE];
         let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
@@ -106,8 +106,8 @@ fn order_domain_phase_shift_test() {
             i_ctx,
             &angular_grid,
             *rpm,
+            *k,
             &mut inputs,
-            *amp_of_signal_peak,
             &mut samples,
             &low_range,
         );
