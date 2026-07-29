@@ -125,8 +125,14 @@ fn order_domain_phase_shift_test() {
         let total_samples_processed = chunks_needed * Frame::SIZE;
         // Математически идеальная накопленная фаза ВАЛА за всю симуляцию в частотном домене
         let calculated_total_phase = total_samples_processed as f64 * phase_step_rad;
-        // Математически идеальная накопленная фаза ВАЛА за всю симуляцию в угловом домене
-        let expected_total_phase = i_ctx.frame.phases[i_ctx.frame.phases.len() - 1] as f64;
+        // Идеальное расстояние между точками в угловой области
+        let delta_theta = std::f64::consts::TAU / (conf.analysis.samples_per_rev() as f64);
+        // Последняя фаза
+        let last_phase = i_ctx.frame.phases[i_ctx.frame.phases.len() - 1] as f64;
+        // Считаем индекс
+        let last_phase_idx = (last_phase / delta_theta).floor() as isize;
+        // Ожидаемая фаза в угловой области
+        let expected_total_phase = (last_phase_idx as f64) * delta_theta;
         log::debug!(
             "Шаг {step}: Суммарная фаза вала. Получено: {} ({}), ожидалось частотном: {} ({}) в угловом {} ({})",
             i_ctx.total_phase.to_degrees(), i_ctx.total_phase.to_radians(),
@@ -137,14 +143,8 @@ fn order_domain_phase_shift_test() {
             (i_ctx.total_phase.to_radians() - expected_total_phase).abs() < 10e-6,
             "Шаг {step}: Фаза отслеживания вала уплыла! Получено: {:.5} рад, ожидалось: {:.5} рад",
             i_ctx.total_phase.to_radians(), expected_total_phase
-        // assert!(
-        //     (i_ctx.total_phase.to_radians() - expected_total_phase).abs() < delta_theta,
-        //     "Шаг {}: Фаза отслеживания вала уплыла! Получено: {:.5} рад, ожидалось: {:.5} рад",
-        //     step, i_ctx.total_phase.to_radians(), expected_total_phase
         );
-        // Идеальное расстояние между точками в угловой области
         // Индекс точки в угловой области, которая должна находится на исследуемом пике
-        let delta_theta = std::f64::consts::TAU / (conf.analysis.samples_per_rev() as f64);
         let delta = ((i_ctx.total_phase.to_radians() - target_angle_rad) / delta_theta).round() as usize; 
         let sample = i_ctx.order_samples[(i_ctx.order_samples.len() - 1) - delta];
         assert!(
