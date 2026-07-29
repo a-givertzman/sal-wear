@@ -123,16 +123,14 @@ fn order_domain_phase_shift_test() {
         let phase_step_rad = rad_per_sec * ctx.dt; 
         // Общее количество обработанных точек данных (семплов)
         let total_samples_processed = chunks_needed * Frame::SIZE;
-        // Математически идеальная накопленная фаза ВАЛА за всю симуляцию в частотном домене
-        let calculated_total_phase = total_samples_processed as f64 * phase_step_rad;
+        // Математически идеальная накопленная фаза ВАЛА за всю симуляцию в частотном домене (временная область)
+        let calculated_total_phase = total_samples_processed as f64 * phase_step_rad;   
         // Идеальное расстояние между точками в угловой области
         let delta_theta = std::f64::consts::TAU / (conf.analysis.samples_per_rev() as f64);
-        // Последняя фаза
-        let last_phase = i_ctx.frame.phases[i_ctx.frame.phases.len() - 1] as f64;
-        // Считаем индекс
-        let last_phase_idx = (last_phase / delta_theta).floor() as isize;
-        // Ожидаемая фаза в угловой области
-        let expected_total_phase = (last_phase_idx as f64) * delta_theta;
+        // Погрешность в +2 точки из-за Catmull Roll
+        let catmull_guard_rad = (2.0 / f_sample as f64) * rad_per_sec;
+        let exact_last_spline_idx = ((calculated_total_phase - catmull_guard_rad) / delta_theta).floor() as isize;
+        let expected_total_phase = (exact_last_spline_idx as f64) * delta_theta;
         log::debug!(
             "Шаг {step}: Суммарная фаза вала. Получено: {} ({}), ожидалось частотном: {} ({}) в угловом {} ({})",
             i_ctx.total_phase.to_degrees(), i_ctx.total_phase.to_radians(),
