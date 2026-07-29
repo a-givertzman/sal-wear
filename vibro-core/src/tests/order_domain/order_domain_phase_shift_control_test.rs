@@ -53,6 +53,7 @@ fn full_signal_simulation(
         log::debug!("AngularGrid<Autocorrelation> elapsed {:?}", t.elapsed());
         let frame = Frame::new(Utc::now(), &samples, phases);
         i_ctx.update(frame.clone());
+        i_ctx.samples.clone_from_slice(&frame.samples);
         i_ctx.rpm = Rpm(rpm);
         let t = Instant::now();
         i_ctx = low_range.eval(i_ctx);
