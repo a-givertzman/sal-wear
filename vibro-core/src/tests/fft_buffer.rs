@@ -39,6 +39,7 @@ impl<T: Copy> FftBuffer<T> {
         target[..len].copy_from_slice(&src[..len]);
     }
     pub fn is_full(&self) -> bool {
+        log::trace!("FftBuffer.is_full | {}/{}",self.buf.len(), self.size);
         self.buf.len() >= self.size && self.new_samples >= self.step
     }
     pub fn reset(&mut self) {
