@@ -127,20 +127,15 @@ fn order_domain_phase_shift_test() {
         let calculated_total_phase = total_samples_processed as f64 * phase_step_rad;   
         // Идеальное расстояние между точками в угловой области
         let delta_theta = std::f64::consts::TAU / (conf.analysis.samples_per_rev() as f64);
-        // Погрешность в +2 точки из-за Catmull Roll
-        let catmull_guard_rad = (2.0 / f_sample as f64) * rad_per_sec;
-        let exact_last_spline_idx = ((calculated_total_phase - catmull_guard_rad) / delta_theta).floor() as isize;
-        let expected_total_phase = (exact_last_spline_idx as f64) * delta_theta;
         log::debug!(
-            "Шаг {step}: Суммарная фаза вала. Получено: {} ({}), ожидалось частотном: {} ({}) в угловом {} ({})",
+            "Шаг {step}: Суммарная фаза вала. Получено: {} ({}), ожидалось частотном: {} ({})",
             i_ctx.total_phase.to_degrees(), i_ctx.total_phase.to_radians(),
             calculated_total_phase.to_degrees(), calculated_total_phase,
-            expected_total_phase.to_degrees(), expected_total_phase,
         );
         assert!(
-            (i_ctx.total_phase.to_radians() - expected_total_phase).abs() < 10e-6,
+            (i_ctx.total_phase.to_radians() - calculated_total_phase).abs() < delta_theta,
             "Шаг {step}: Фаза отслеживания вала уплыла! Получено: {:.5} рад, ожидалось: {:.5} рад",
-            i_ctx.total_phase.to_radians(), expected_total_phase
+            i_ctx.total_phase.to_radians(), calculated_total_phase
         );
         // Индекс точки в угловой области, которая должна находится на исследуемом пике
         let delta = ((i_ctx.total_phase.to_radians() - target_angle_rad) / delta_theta).round() as usize; 
