@@ -50,7 +50,7 @@ fn complex_test () {
                 sql.push_str("INSERT INTO vibration_faults (timestamp, equipment_id, fault_kind, score, severity, rpm) VALUES ");
                 for (i, r) in results.enumerate() {
                     if i > 0 { sql.push_str(", "); }
-                    _ = write!(
+                    _ = write!(     // use std::fmt::Write - Required
                         sql,
                         "('{}', {}, '{}', {}, '{}', {})",
                         r.ts.to_rfc3339(),

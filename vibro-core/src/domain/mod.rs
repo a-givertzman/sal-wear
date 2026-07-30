@@ -25,7 +25,7 @@ pub use window_fn::*;
 mod types;
 pub use types::*;
 mod retain;
-pub(crate) use retain::*;
+pub use retain::*;
 mod sql_export;
 pub use sql_export::*;
 
