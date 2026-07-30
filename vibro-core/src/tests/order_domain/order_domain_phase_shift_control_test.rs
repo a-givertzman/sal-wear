@@ -1,18 +1,5 @@
 use crate::{
-    AngularGrid,
-    Autocorrelation,
-    Conf,
-    Context,
-    Eval,
-    Frame,
-    ImbContext,
-    MockEventValues,
-    OrderDomainSamples,
-    Pass,
-    ReadInputs,
-    Retain,
-    Rpm,
-    tests::{
+    AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, MockEventValues, OrderDomainSamples, Pass, Phases, ReadInputs, Retain, Rpm, tests::{
         Frequency, Udp
     }
 };
@@ -30,7 +17,7 @@ fn full_signal_simulation(
     udp: &mut Udp,
     mut ctx: Context,
     mut i_ctx: ImbContext,
-    angular_grid: &AngularGrid<Autocorrelation<ReadInputs>>,
+    angular_grid: &impl Eval<Context, (Context, Phases<f32>)>,
     rpm: f64,
     k: f64,
     inputs: &mut Arc<MockEventValues>,
