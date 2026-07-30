@@ -47,7 +47,9 @@ fn order_features_filter_stationary_test() {
         target_bin_idx, 
         num_bins
     );
-    // ДОБАВЛЕНИЕ ПОМЕХ ПЕРЕД ЦИКЛОМ
+    // =========================================================================
+    // НАСТРОЙКА И ДОБАВЛЕНИЕ ВСЕХ ПОМЕХ ПЕРЕД ЦИКЛОМ (Пункт 5.4)
+    // =========================================================================
     // 1. Длинная 8-часовая прямоугольная помеха на целевом бине
     // Включается на 100 млн фрейме, длится 18 млн фреймов, амплитуда 3 * A0
     let long_target_disturbance = SpectralDisturbance {
@@ -65,7 +67,7 @@ fn order_features_filter_stationary_test() {
         shape: ImpulseShape::Rectangular,
     };
     spectrum_model.add_target_disturbance(short_target_disturbance);
-    // 3. Постоянная помеха во внеполосный шум (на соседний бин частоты)
+    // 3. Постоянная помеха во внеполосный шум (на соседний бин частоты справа)
     // Длится всю симуляцию, амплитуда 0.5 * A0. Проверяет Критерий 5.5.3 (Изоляция гармоник)
     let constant_out_of_band = SpectralDisturbance {
         start_frame: 0,
@@ -74,6 +76,24 @@ fn order_features_filter_stationary_test() {
         shape: ImpulseShape::Rectangular,
     };
     spectrum_model.add_out_of_band_disturbance(target_bin_idx + 1, constant_out_of_band);
+    // 4. Длинная 8-часовая треугольная помеха на нецелевом бине (слева от целевого)
+    // Включается на 500 млн фрейме, длится 18 млн фреймов, амплитуда 4 * A0
+    let long_out_of_band = SpectralDisturbance {
+        start_frame: 500_000_000,
+        duration_frames: 18_000_000,
+        amplitude_factor: 4.0,
+        shape: ImpulseShape::Triangular, // Треугольный профиль удара
+    };
+    spectrum_model.add_out_of_band_disturbance(target_bin_idx - 1, long_out_of_band);
+    // 5. Короткая помеха на нецелевом бине (ИСПРАВЛЕНО: добавлен индекс целевого бина слева)
+    let short_out_of_band = SpectralDisturbance {
+        start_frame: 500_000_000,
+        duration_frames: 2, // длительность 2 фрейма
+        amplitude_factor: 5.0, // мощный всплеск в 5 раз
+        shape: ImpulseShape::Rectangular,
+    };
+    spectrum_model.add_out_of_band_disturbance(target_bin_idx - 1, short_out_of_band);
+    // =========================================================================
     let mut fft_window = Vec::<Complex<f64>>::with_capacity(num_bins);
     // Симуляция 30 дней работы
     for i in 0..1_620_000_000 {
