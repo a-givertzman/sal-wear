@@ -6,7 +6,7 @@ use crate::{
     Eval,
     Frame,
     ImbContext,
-    Inputs,
+    MockEventValues,
     OrderDomainSamples,
     Pass,
     ReadInputs,
@@ -33,7 +33,7 @@ fn full_signal_simulation(
     angular_grid: &AngularGrid<Autocorrelation<ReadInputs>>,
     rpm: f64,
     k: f64,
-    inputs: &mut Arc<Inputs>,
+    inputs: &mut Arc<MockEventValues>,
     samples: &mut [u16; Frame::SIZE],
     low_range: &OrderDomainSamples<Pass>,
 ) -> (Context, ImbContext, usize) {
@@ -91,7 +91,7 @@ fn order_domain_phase_shift_test() {
         log::debug!("Шаг {}: Симуляция сигнала с амплитудой {}, фазой {:.1} и частотой {} об/мин", step, target_rms, target_angle_rad.to_degrees(), rpm);
         let mut samples = [0u16; Frame::SIZE];
         let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
-        let mut inputs = Arc::new(Inputs::new());
+        let mut inputs = Arc::new(MockEventValues::new());
         let mut ctx = Context::new();
         let angular_grid = AngularGrid::new(
             &dbg,
