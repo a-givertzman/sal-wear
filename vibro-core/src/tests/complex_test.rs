@@ -42,7 +42,7 @@ fn complex_test () {
     let (api_link, api_recv) = crate::channel_unbounded();
     let equipment_id = 1212;
     let low_range = SqlExport::new(&dbg, api_link, move |ctx| {
-            if ctx.err.is_some() { return vec![]; }
+            if ctx.is_err() { return vec![]; }
             let mut sqls = Vec::with_capacity(2);
             let mut sql = String::with_capacity(ctx.results.len() * 120 + 150);
             let mut results = ctx.results.iter().filter(|r| r.severity != Severity::Green).peekable();

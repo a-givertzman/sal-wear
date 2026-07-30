@@ -45,7 +45,7 @@ where
     fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
         ctx.features.clear();
-        if ctx.err.is_some() {
+        if ctx.is_err() {
             return ctx.pass_err(&self.dbg, "eval");
         }
         let start_phase = self.start_phase(ctx.total_phase);
