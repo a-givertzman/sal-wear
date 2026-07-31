@@ -45,17 +45,17 @@ impl SpectrumModel {
     }
     /// Генерирует и заполняет вектор FFT-окна для фрейма `i` без аллокаций памяти
     #[inline]
-    pub fn generate_frame(&self, i: u64, bins: &mut Vec<Complex<f64>>) {
+    pub fn generate_frame(&self, i: u64, bins: &mut Vec<Complex<f32>>) {
         bins.clear();
         if bins.capacity() < self.num_bins {
             bins.reserve(self.num_bins);
         }
         // 1. Математически точный расчет амплитуды ЦЕЛЕВОГО бина
         // Базовый монотонный тренд (+1.5% на финише)
-        let mut target_amp = self.a0 * self.trend_multiplier.powf(i as f64);
+        let mut target_amp: f32 = (self.a0 * self.trend_multiplier.powf(i as f64)) as f32;
         // Накладываем суперпозицию всех зарегистрированных целевых возмущений
         for disturbance in &self.target_disturbances {
-            target_amp += disturbance.evaluate(i, self.a0);
+            target_amp += (disturbance.evaluate(i, self.a0)) as f32;
         }
         // 2. Формируем массив бинов спектра
         for current_idx in 0..self.num_bins {
@@ -65,11 +65,11 @@ impl SpectrumModel {
             } else {
                 // Расчет амплитуды НЕЦЕЛЕВОГО бина
                 // Базовый уровень — белый фоновый шум тракта
-                let mut noise_amp = self.floor_noise;
+                let mut noise_amp: f32 = (self.floor_noise) as f32;
                 // Проверяем, действуют ли на данный нецелевой бин аддитивные помехи на фрейме `i`
                 for (bad_bin, disturbance) in &self.out_of_band_disturbances {
                     if *bad_bin == current_idx {
-                        noise_amp += disturbance.evaluate(i, self.a0);
+                        noise_amp += (disturbance.evaluate(i, self.a0)) as f32;
                     }
                 }
                 bins.push(Complex { re: noise_amp, im: 0.0 });

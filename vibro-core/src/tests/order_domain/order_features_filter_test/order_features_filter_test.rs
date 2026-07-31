@@ -1,5 +1,5 @@
 use crate::{
-    AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, OrderDomainSamples, Pass, ReadInputs, Retain, tests::{FftBuffer, Frequency, Udp, order_domain::order_features_filter_test::entities::{ImpulseShape, SpectralDisturbance, SpectrumModel}}
+    AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, Inputs, KalmanFilter, OrderDomainSamples, OrderFeatureFilter, OrderZone, Pass, ReadInputs, Retain, Retained, Rpm, ShortSigma, tests::{FftBuffer, Frequency, Udp, order_domain::order_features_filter_test::entities::{ImpulseShape, SpectralDisturbance, SpectrumModel}}
 };
 use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
@@ -15,7 +15,6 @@ fn order_features_filter_stationary_test() {
     // Экспоненциальный множитель на одну итерацию:
     // Тк Общее количество фреймов за 30 дней = 1_620_000_000 
     // А к последней итерации конечная амплитуда = 15% + начальная амплитуда 
-    let multiplier = 1.015_f32.powf(1.0 / 1_620_000_000.0); 
     let f_sample = 320_000; // Частота семплирования АЦП (Гц)
     let conf: Conf = serde_yaml::from_str(&format!(
         r#"
@@ -94,9 +93,34 @@ fn order_features_filter_stationary_test() {
     };
     spectrum_model.add_out_of_band_disturbance(target_bin_idx - 1, short_out_of_band);
     // =========================================================================
-    let mut fft_window = Vec::<Complex<f64>>::with_capacity(num_bins);
+    let mut fft_window: Vec<Complex<f32>> = Vec::<Complex<f32>>::with_capacity(num_bins);
+    let order_features_filter = OrderFeatureFilter::new(
+        &dbg, 
+        conf.analysis.n_fft(), 
+        0.02454, 
+        Pass::new()
+    );
+    let retain = Arc::new(Retain::mock(&dbg, []));
+    let mut i_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), retain.clone());
+    i_ctx.rpm = Rpm(600.0); 
     // Симуляция 30 дней работы
     for i in 0..1_620_000_000 {
+        if i == 16378 {
+            println!("Asdas");
+        }
+        log::debug!("Iteration {}/{}", i, 1_620_000_000);
         spectrum_model.generate_frame(i, &mut fft_window);
+        i_ctx.fft_window = fft_window;
+        i_ctx = order_features_filter.eval(i_ctx);
+        fft_window = i_ctx.fft_window;
     }
+    let final_feature = i_ctx.features.iter()
+        .find(|f| (f.order.value() - target_order).abs() < 10e-6)
+        .expect("Целевой диагностический признак порядка 1.0X не обнаружен в ctx.features!");
+    let final_amplitude = final_feature.rms;
+    assert!(
+        (final_amplitude.0 - 203.0).abs() < 10e-6,
+        "Отфильтрованная амплитуда {}, не сошлась с ожидаемой {}",
+        final_amplitude.0, 203.0
+    )
 }
