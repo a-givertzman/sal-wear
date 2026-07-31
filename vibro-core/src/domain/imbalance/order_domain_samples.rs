@@ -50,14 +50,13 @@ where
     #[inline]
     fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
-        if ctx.err.is_some() {
+        if ctx.is_err() {
             return ctx.pass_err(&self.dbg, "eval");
         }
         let samples = &ctx.samples;
         let phases = &ctx.frame.phases;
         if samples.len() < 4 || phases.len() != samples.len() {
-            ctx.err = Some(Error::new(&self.dbg, "eval").err("Недостаточно данных для сплайна"));
-            return ctx;
+            return ctx.with_err(&self.dbg, "eval", "Недостаточно данных для сплайна");
         }
         // Запрашиваем идеальные углы, которые попадают в текущий физический кадр
         let ideal_angles = TargetAngles::new(phases[0], phases[phases.len() - 1], self.samples_per_rev);

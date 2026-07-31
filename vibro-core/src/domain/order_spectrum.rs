@@ -63,13 +63,14 @@ where
     #[inline]
     fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
-        if ctx.err.is_some() {
+        if ctx.is_err() {
             return ctx.pass_err(&self.dbg, "eval");
         }
         if ctx.order_samples.len() > ctx.fft_buff.capacity() {
-            ctx.err = Some(Error::new(&self.dbg, "eval")
-                .err(format!("Размер входящей выборки ({}) превышает емкость FFT буфера ({})", ctx.order_samples.len(), ctx.fft_buff.capacity())));
-            return ctx;
+            let length = ctx.order_samples.len();
+            let capacity = ctx.fft_buff.capacity();
+            return ctx.with_err(&self.dbg, "eval",
+                format!("Размер входящей выборки ({}) превышает емкость FFT буфера ({})", length, capacity));
         }
         ctx.fft_buff.push_chunk(&ctx.order_samples[..]);
         if ctx.fft_buff.is_full() {

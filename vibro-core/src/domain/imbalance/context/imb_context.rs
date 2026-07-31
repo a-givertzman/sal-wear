@@ -38,7 +38,7 @@ pub struct ImbContext {
 
     /// Текущая ошибка вычислений.
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
-    pub(crate) err: Option<Error>,
+    err: Option<Error>,
 }
 //
 impl ImbContext {
@@ -88,7 +88,25 @@ impl ImbContext {
         self.features = vec![];
         self.err = None;
     }
+    /// ### Устанавливает ошибку в контекст.
+    /// 
+    /// Это приведет к останову вычислений и экалации ошибки на верхний уровень.
+    /// 
+    /// - `me` - Имя текущего класса.
+    /// - `area` - Имя текущего метода.
+    /// - `err` - Ошибка.
+    /// - Возвращает [ImbContext] с установленно ошибкой `err`.
+    pub fn with_err(mut self, me: impl Into<String>, area: impl Into<String>, err: impl ToString) -> ImbContext {
+        self.err = Some(Error::new(me, area).err(err.to_string()));
+        self
+    }
+    /// Возвращает `true` если предыдущий шаг вернул ошибку
+    pub fn is_err(&self) -> bool {
+        self.err.is_some()
+    }
     /// Эскалирует ошибку
+    /// - `me` - Имя текущего класса
+    /// - `area` - Имя текущего метода
     pub fn pass_err(mut self, me: impl Into<String>, area: impl Into<String>) -> ImbContext {
         self.err = match self.err {
             Some(err) => Some(Error::new(me, area).pass(err)),

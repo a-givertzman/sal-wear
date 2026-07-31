@@ -3,7 +3,7 @@ use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::dbg::Dbg;
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadInputs, Retain, Severity, SqlExport, WindowFn, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, MockEventValues, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadInputs, Retain, Severity, SqlExport, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -28,7 +28,7 @@ fn complex_test () {
                 mid-hz: ..5000
                 high-hz: 5000..10000
     "#).unwrap();
-    let inputs = Arc::new(Inputs::new());
+    let inputs = Arc::new(MockEventValues::new());
     let mut samples = [0u16; Frame::SIZE];
     let mut ctx = Context::new();
     let angular_grid = AngularGrid::new(&dbg,
@@ -42,7 +42,7 @@ fn complex_test () {
     let (api_link, api_recv) = crate::channel_unbounded();
     let equipment_id = 1212;
     let low_range = SqlExport::new(&dbg, api_link, move |ctx| {
-            if ctx.err.is_some() { return vec![]; }
+            if ctx.is_err() { return vec![]; }
             let mut sqls = Vec::with_capacity(2);
             let mut sql = String::with_capacity(ctx.results.len() * 120 + 150);
             let mut results = ctx.results.iter().filter(|r| r.severity != Severity::Green).peekable();
@@ -50,7 +50,7 @@ fn complex_test () {
                 sql.push_str("INSERT INTO vibration_faults (timestamp, equipment_id, fault_kind, score, severity, rpm) VALUES ");
                 for (i, r) in results.enumerate() {
                     if i > 0 { sql.push_str(", "); }
-                    _ = write!(
+                    _ = write!(     // use std::fmt::Write - Required
                         sql,
                         "('{}', {}, '{}', {}, '{}', {})",
                         r.ts.to_rfc3339(),

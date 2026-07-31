@@ -43,7 +43,7 @@ where
     fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
         ctx.results.clear();
-        if ctx.err.is_some() {
+        if ctx.is_err() {
             return ctx.pass_err(&self.dbg, "eval");
         }
         let values: Vec<(Order, Rms<f64>)> = ctx.features.iter()
