@@ -30,7 +30,7 @@ impl Default for Retained {
     /// Создает `Retained` с текущей меткой времени
     fn default() -> Self {
         let ts = chrono::Utc::now().timestamp().max(0) as u64;
-        Self { x_hat: f64::EPSILON, p: f64::NAN, ts }
+        Self { x_hat: f64::NAN, p: f64::NAN, ts }
     }
 }
 
