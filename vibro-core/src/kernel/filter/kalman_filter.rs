@@ -134,16 +134,16 @@ impl KalmanFilter {
     #[inline]
     pub fn eval(&self, orders: &[Complex<f32>]) -> Option<Rms<f64>> {
         let x = self.value.integrate(orders).value();
+        // Текущая краткосрочная дисперсия возведенная в квадрат.
+        let sigma = self.sigma.eval(x);
         let old_x_hat = self.x_hat.load();
+        let pred_x_hat = if old_x_hat.is_finite() { old_x_hat } else { x };
         let old_p = self.p.load();
-        let old_p = if old_p.is_nan() { x } else { old_p };
+        let old_p = if old_p.is_finite() { old_p } else { sigma.powi(2) };
         // 1. ЭТАП ПРОГНОЗА (моделирование шага времени)
         // Предполагаем, что износ равен предыдущему, но неопределенность модели (p) 
         // возрастает на величину скорости старения q.
-        let pred_x_hat = old_x_hat;
         let pred_p = old_p + self.q;
-        // Текущая краткосрочная дисперсия возведенная в квадрат.
-        let sigma = self.sigma.eval(x);
         // 2. РАСЧЕТ КОЭФФИЦИЕНТА КАЛМАНА (Динамический вес доверия)
         // В знаменателе складываются неопределенность модели и текущий шум (дисперсия) из Контура 1.
         // При пуске sigma_short_sq стремится к бесконечности => gain стремится к 0.
@@ -157,7 +157,7 @@ impl KalmanFilter {
         // 4. ОПТИМИЗАЦИЯ ЗАПИСИ НА ДИСК (Дельта-фильтрация IO-операций)
         let last_saved = self.last_saved_x_hat.load();
         // Вычисляем модуль относительного изменения тренда
-        let relative_change = if last_saved != 0.0 {
+        let relative_change = if last_saved.abs() > f64::EPSILON {
             (new_x_hat - last_saved).abs() / last_saved
         } else {
             new_x_hat.abs()
