@@ -1,5 +1,5 @@
 use crate::{
-    AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, MockEventValues, OrderDomainSamples, Pass, ReadEventValuess, Retain, tests::{FftBuffer, Frequency, Udp}
+    AngularGrid, Autocorrelation, Conf, AngularCtx, Eval, Frame, ImbContext, MockEventValues, OrderDomainSamples, Pass, ReadEventValuess, Retain, tests::{FftBuffer, Frequency, Udp}
 };
 use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
@@ -34,7 +34,7 @@ fn order_domain_stationary_test() {
     let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
     let freqs = [(Frequency::Rpm(1.0), 200)];
     let inputs = Arc::new(MockEventValues::new());
-    let mut ctx = Context::new();
+    let mut ctx = AngularCtx::new();
     let angular_grid = AngularGrid::new(
         &dbg,
         Autocorrelation::new(

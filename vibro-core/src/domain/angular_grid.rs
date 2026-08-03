@@ -1,6 +1,6 @@
 use std::{f64::consts::TAU, ops::{Index, IndexMut}};
 use sal_core::dbg::Dbg;
-use crate::{Context, Eval, Frame, me};
+use crate::{AngularCtx, Eval, Frame, me};
 
 /// Угловая сетка (фазовый профиль) для заданного окна временных отсчетов.
 /// Представляет собой массив углов поворота вала, соответствующих каждому отсчету вибрации.
@@ -10,7 +10,7 @@ pub struct AngularGrid<Child> {
 }
 impl<Child> AngularGrid<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static {
     ///
     /// ### Returns `Autocorrelation` new instance
     /// Вычисляет угловую сетку для новой порции данных.
@@ -22,12 +22,12 @@ where
         }
     }
 }
-impl<Child> Eval<Context, (Context, Phases<f32>)> for AngularGrid<Child>
+impl<Child> Eval<AngularCtx, (AngularCtx, Phases<f32>)> for AngularGrid<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static {
     /// Возвращает `Context` и угловую сетку `Phases`.
     #[inline]
-    fn eval(&self, ctx: Context) -> (Context, Phases<f32>) {
+    fn eval(&self, ctx: AngularCtx) -> (AngularCtx, Phases<f32>) {
         let mut ctx = self.child.eval(ctx);
         if ctx.err.is_some() {
             return (ctx.pass_err(&self.dbg, "eval"), Phases::new(0));

@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use std::{cell::Cell, sync::Arc};
 use function_name::named;
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::{kernel::state::ExitNotify, services::EventValueAccess};
-use crate::{AngularGrid, Autocorrelation, Context, Eval, Frame, HighRangeCtx, ImbContext, ImbalanceDetector, LowPassSignal, MidRangeCtx, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadEventValuess, Retain, Severity, SqlExport, WindowFn, err_pass, me};
+use crate::{AngularGrid, Autocorrelation, AngularCtx, Eval, Frame, HighRangeCtx, ImbContext, ImbalanceDetector, LowPassSignal, MidRangeCtx, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadEventValuess, Retain, Severity, SqlExport, WindowFn, err_pass, me};
 
 type LowRange<SqlBuilder> = SqlExport<SqlBuilder, ImbContext, ImbalanceDetector<OrderFeatureFilter<OrderSpectrum<OrderDomainSamples<LowPassSignal<Pass>>>>>>;
 type MidRange = Pass;
@@ -44,11 +44,11 @@ pub struct VibroSensor<T, SqlBuilder> {
     /// Угловая сетка, текущая RPM и фаза поворота вала
     angular: AngularGrid<Autocorrelation<ReadEventValuess<T>>>,
     /// Контекст `AngularGrid`
-    angular_ctx: Context,
+    angular_ctx: Cell<AngularCtx>,
     /// Анализ низкочастотного диапазона
     low_range: LowRange<SqlBuilder>,
     /// Контекст анализа низкочастотного диапазона
-    low_range_ctx: ImbContext,
+    low_range_ctx: Cell<ImbContext>,
     /// Аналих среднечастотного диапазона
     mid_range: MidRange,
     /// Контекст анализа среднечастотного диапазона
@@ -79,8 +79,8 @@ where
         let window_size = conf.analysis.n_fft();
         let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65)
             .map_err(|err| err_pass!(dbg, err))?;
-        let angular_ctx = Context::new();
-        let low_range_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), retain.clone());
+        let angular_ctx = Cell::new(AngularCtx::new());
+        let low_range_ctx = Cell::new(ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), retain.clone()));
         Ok(Self {
             angular: AngularGrid::new(&dbg,
                 Autocorrelation::new(&dbg,
@@ -127,10 +127,13 @@ where
     #[inline]
     fn eval(&self, samples: &[u16]) -> Result<(), Error> {
         let dbg = &self.dbg;
-        self.angular_ctx.push_chunk(samples);
+        let ts = chrono::Utc::now();
+        let angular_ctx = self.angular_ctx.take();
+        angular_ctx.push_chunk(samples);
         let phases;
-        (self.angular_ctx, phases) = self.angular.eval(self.angular_ctx);
-        let frame = Frame::new(ts, &samples, phases);
+
+        (angular_ctx, phases) = self.angular.eval(angular_ctx);
+        let frame = Frame::new(ts, samples, phases);
         self.low_range_ctx.update(frame.clone());
         self.low_range_ctx = self.low_range.eval(self.low_range_ctx);
         if self.low_range_ctx.is_err() {
@@ -140,6 +143,7 @@ where
         // self.mid_range_ctx = self.mid_range.eval(self.mid_range_ctx);
         // self.high_range_ctx.update(frame.clone());
         // self.high_range_ctx = self.high_range.eval(self.high_range_ctx);
+        self.angular_ctx.set(angular_ctx);
         Ok(())
     }
     //

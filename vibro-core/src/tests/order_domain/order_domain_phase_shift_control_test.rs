@@ -1,5 +1,5 @@
 use crate::{
-    AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, MockEventValues, OrderDomainSamples, Pass, Phases, ReadEventValuess, Retain, Rpm, tests::{
+    AngularGrid, Autocorrelation, Conf, AngularCtx, Eval, Frame, ImbContext, MockEventValues, OrderDomainSamples, Pass, Phases, ReadEventValuess, Retain, Rpm, tests::{
         Frequency, Udp
     }
 };
@@ -15,15 +15,15 @@ use std::{f64::consts::{PI, TAU}, sync::Arc, time::Instant};
 /// к ожидаемой амплитуде рассматриваемой гармоники (с допуском).
 fn full_signal_simulation(
     udp: &mut Udp,
-    mut ctx: Context,
+    mut ctx: AngularCtx,
     mut i_ctx: ImbContext,
-    angular_grid: &impl Eval<Context, (Context, Phases<f32>)>,
+    angular_grid: &impl Eval<AngularCtx, (AngularCtx, Phases<f32>)>,
     rpm: f64,
     k: f64,
     inputs: &mut Arc<MockEventValues>,
     samples: &mut [u16; Frame::SIZE],
     low_range: &OrderDomainSamples<Pass>,
-) -> (Context, ImbContext, usize) {
+) -> (AngularCtx, ImbContext, usize) {
     let f_sample = udp.sample_freq;
     let chunk_size = Frame::SIZE as f64;
     let rpm_hz = rpm / 60.0;
@@ -79,7 +79,7 @@ fn order_domain_phase_shift_test() {
         let mut samples = [0u16; Frame::SIZE];
         let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
         let mut inputs = Arc::new(MockEventValues::new());
-        let mut ctx = Context::new();
+        let mut ctx = AngularCtx::new();
         let angular_grid = AngularGrid::new(
             &dbg,
             Autocorrelation::new(

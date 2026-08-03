@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::services::EventValueAccess;
-use crate::{Context, Eval};
+use crate::{AngularCtx, Eval};
 
 /// Пишет актуальные входные значения в контекст
 pub struct ReadEventValuess<T> {
@@ -21,8 +21,8 @@ impl<T> ReadEventValuess<T> {
         }
     }
 }
-impl<T: EventValueAccess<str, f64>> Eval<Context, Context> for ReadEventValuess<T> {
-    fn eval(&self, mut ctx: Context) -> Context {
+impl<T: EventValueAccess<str, f64>> Eval<AngularCtx, AngularCtx> for ReadEventValuess<T> {
+    fn eval(&self, mut ctx: AngularCtx) -> AngularCtx {
         match &self.values.get("rpm") {
             Some(rpm) => {
                 ctx.raw_rpm = *rpm;

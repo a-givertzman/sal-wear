@@ -3,7 +3,7 @@ use crate::{Frame, MirroredBuffer};
 
 ///
 /// Контейнер для передачи данных между вычислительными шагами
-pub struct Context {
+pub struct AngularCtx {
     /// Аккумулятор сырых сэмплов, окно Автокорреляции.
     /// Должен вмещать 2–3 полных оборота вала
     pub(crate) ac_samples: MirroredBuffer<u16>,
@@ -32,7 +32,7 @@ pub struct Context {
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
 }
-impl Context {
+impl AngularCtx {
     pub fn new() -> Self {
         // Формула вычисления размера выборки `capacity`
         // Чтобы автокорреляция надежно зацепилась за оборотную частоту,
@@ -61,16 +61,37 @@ impl Context {
         }
     }
     /// Добавляет новый массив сэмплов из АЦП в обработку
-    pub fn push_chunk(&mut self, samples: &[u16; Frame::SIZE]) {
-        self.ac_samples.push_chunk(samples);
+    pub fn push_chunk(&mut self, samples: &[u16]) {
+        if samples.len() > self.ac_samples.capacity() {
+            log::error!("{}.push_chunk | Размер выборки samples больше размера буфера аккумулятора сырых сэмплов", crate::me::<Self>());
+            self.ac_samples.push_chunk(&samples[..self.ac_samples.capacity()]);
+        } else {
+            self.ac_samples.push_chunk(samples);
+        }
         self.err = None;
     }
     /// Эскалирует ошибку
-    pub fn pass_err(mut self, me: impl Into<String>, area: impl Into<String>) -> Context {
+    pub fn pass_err(mut self, me: impl Into<String>, area: impl Into<String>) -> AngularCtx {
         self.err = match self.err {
             Some(err) => Some(Error::new(me, area).pass(err)),
             None => Some(Error::new(me, area)),
         };
         self
+    }
+}
+//
+impl Default for AngularCtx {
+    fn default() -> Self {
+        Self {
+            ac_samples: MirroredBuffer::new(0),
+            raw_rpm: Default::default(),
+            raw_period: Default::default(),
+            period: Default::default(),
+            omega: Default::default(),
+            dt: Default::default(),
+            current_theta: Default::default(),
+            phases_size: Default::default(),
+            err: None,
+        }
     }
 }

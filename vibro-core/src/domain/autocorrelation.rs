@@ -1,7 +1,7 @@
 use std::f64::consts::TAU;
 
 use sal_core::dbg::Dbg;
-use crate::{Context, Eval, me};
+use crate::{AngularCtx, Eval, me};
 
 /// Вычисляет точный период вращения (в отсчетах) через автокорреляцию.
 /// Ищет максимум функции в узком окне от показаний тахометра.
@@ -13,7 +13,7 @@ pub struct Autocorrelation<Child> {
 }
 impl<Child> Autocorrelation<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static {
     ///
     /// ### Returns `Autocorrelation` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
@@ -50,12 +50,12 @@ where
         best_lag as f64
     }
 }
-impl<Child> Eval<Context, Context> for Autocorrelation<Child>
+impl<Child> Eval<AngularCtx, AngularCtx> for Autocorrelation<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static {
     //
     #[inline]
-    fn eval(&self, ctx: Context) -> Context {
+    fn eval(&self, ctx: AngularCtx) -> AngularCtx {
         let mut ctx = self.child.eval(ctx);
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");

@@ -3,7 +3,7 @@ use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::dbg::Dbg;
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, MockEventValues, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadEventValuess, Retain, Severity, SqlExport, WindowFn, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, AngularCtx, Eval, Frame, ImbContext, ImbalanceDetector, MockEventValues, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadEventValuess, Retain, Severity, SqlExport, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -30,7 +30,7 @@ fn complex_test () {
     "#).unwrap();
     let inputs = Arc::new(MockEventValues::new());
     let mut samples = [0u16; Frame::SIZE];
-    let mut ctx = Context::new();
+    let mut ctx = AngularCtx::new();
     let angular_grid = AngularGrid::new(&dbg,
         Autocorrelation::new(&dbg,
             conf.adc.sample_rate_hz,
