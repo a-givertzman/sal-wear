@@ -1,5 +1,5 @@
 use crate::{
-    AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, MockEventValues, OrderDomainSamples, Pass, Phases, ReadInputs, Retain, Rpm, tests::{
+    AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, MockEventValues, OrderDomainSamples, Pass, Phases, ReadEventValuess, Retain, Rpm, tests::{
         Frequency, Udp
     }
 };
@@ -85,7 +85,7 @@ fn order_domain_phase_shift_test() {
             Autocorrelation::new(
                 &dbg,
                 conf.adc.sample_rate_hz,
-                ReadInputs::new(&dbg, inputs.clone()),
+                ReadEventValuess::new(&dbg, inputs.clone()),
             ),
         );
         let retain = Arc::new(Retain::mock(&dbg, []));

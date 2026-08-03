@@ -3,7 +3,7 @@ use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::dbg::Dbg;
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, MockEventValues, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadInputs, Retain, Severity, SqlExport, WindowFn, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, MockEventValues, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadEventValuess, Retain, Severity, SqlExport, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -34,16 +34,15 @@ fn complex_test () {
     let angular_grid = AngularGrid::new(&dbg,
         Autocorrelation::new(&dbg,
             conf.adc.sample_rate_hz,
-            ReadInputs::new(&dbg, inputs.clone())
+            ReadEventValuess::new(&dbg, inputs.clone())
         ),
     );
     let window_size = conf.analysis.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
     let (api_link, api_recv) = crate::channel_unbounded();
     let equipment_id = 1212;
-    let low_range = SqlExport::new(&dbg, api_link, move |ctx| {
-            if ctx.is_err() { return vec![]; }
-            let mut sqls = Vec::with_capacity(2);
+    let low_range = SqlExport::new(&dbg, move |ctx| {
+            if ctx.is_err() { return; }
             let mut sql = String::with_capacity(ctx.results.len() * 120 + 150);
             let mut results = ctx.results.iter().filter(|r| r.severity != Severity::Green).peekable();
             if results.peek().is_some() {
@@ -63,7 +62,7 @@ fn complex_test () {
                 }
                 sql.push_str(" ON CONFLICT (equipment_id, fault_kind) DO UPDATE SET ");
                 sql.push_str("timestamp = EXCLUDED.timestamp, score = EXCLUDED.score, severity = EXCLUDED.severity, rpm = EXCLUDED.rpm;");
-                sqls.push(sql);
+                _ = api_link.send(sql)
             }
             if !ctx.features.is_empty() {
                 let mut sql = String::with_capacity(ctx.features.len() * 120 + 150);
@@ -82,9 +81,8 @@ fn complex_test () {
                     );
                 }
                 sql.push_str(" ON CONFLICT (timestamp, equipment_id, order_id) DO NOTHING;");
-                sqls.push(sql);
+                _ = api_link.send(sql)
             }
-            sqls
         },
         ImbalanceDetector::new(&dbg,
             OrderFeatureFilter::new(&dbg,
@@ -176,5 +174,12 @@ fn complex_test () {
                 }
             }
         }
+    }
+    let expected_results = todo!();
+    let actual_results = api_recv.len();
+    assert!(actual_results == expected_results, "{dbg} | Total number of sql's is {}, expected {}", actual_results, expected_results);
+    let expected_sqls = vec![];
+    for (sql, expected_sql) in api_recv.zip(expected_sqls) {
+        assert!(sql == expected_sql, "{dbg} | \n Actual sql: {}, \n expected sql: {}", sql, expected_sql);
     }
 }

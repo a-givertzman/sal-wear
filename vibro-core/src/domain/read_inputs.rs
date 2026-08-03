@@ -4,12 +4,12 @@ use sal_sync::services::EventValueAccess;
 use crate::{Context, Eval};
 
 /// Пишет актуальные входные значения в контекст
-pub struct ReadInputs<T> {
+pub struct ReadEventValuess<T> {
     // dyn EventValueAccess<str, f64> + Send + Sync
     values: Arc<T>,
     dbg: Dbg,
 }
-impl<T> ReadInputs<T> {
+impl<T> ReadEventValuess<T> {
     ///
     /// ### Returns `ReadInputs` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
@@ -21,7 +21,7 @@ impl<T> ReadInputs<T> {
         }
     }
 }
-impl<T: EventValueAccess<str, f64>> Eval<Context, Context> for ReadInputs<T> {
+impl<T: EventValueAccess<str, f64>> Eval<Context, Context> for ReadEventValuess<T> {
     fn eval(&self, mut ctx: Context) -> Context {
         match &self.values.get("rpm") {
             Some(rpm) => {
