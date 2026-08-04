@@ -1,5 +1,5 @@
 use crate::{
-    AngularGrid, Autocorrelation, Conf, AngularCtx, Eval, Frame, ImbContext, MockEventValues, OrderDomainSamples, Pass, ReadEventValuess, Retain, tests::{FftBuffer, Frequency, Udp}
+    AngularGrid, Autocorrelation, Conf, AngularCtx, Eval, Frame, ImbContext, MockEventValues, OrderDomainSamples, Pass, ReadEventValues, Retain, tests::{FftBuffer, Frequency, Udp}
 };
 use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
@@ -41,7 +41,7 @@ fn order_domain_stationary_test() {
         Autocorrelation::new(
             &dbg,
             conf.adc.sample_rate_hz,
-            ReadEventValuess::new(&dbg, inputs.clone()),
+            ReadEventValues::new(&dbg, ["rpm"], inputs.clone()),
         ),
     );
     let mut udp = Udp::new(chunk_size, conf.adc.sample_rate_hz, freqs.clone());

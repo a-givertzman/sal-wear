@@ -2,7 +2,7 @@ use std::{cell::Cell, sync::Arc};
 use function_name::named;
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::{kernel::state::ExitNotify, services::EventValueAccess};
-use crate::{AngularGrid, Autocorrelation, AngularCtx, Eval, Frame, HighRangeCtx, ImbContext, ImbalanceDetector, LowPassSignal, MidRangeCtx, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadEventValuess, Retain, Severity, SqlExport, WindowFn, err_pass, me};
+use crate::{AngularGrid, Autocorrelation, AngularCtx, Eval, Frame, HighRangeCtx, ImbContext, ImbalanceDetector, LowPassSignal, MidRangeCtx, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadEventValues, Retain, Severity, SqlExport, WindowFn, err_pass, me};
 
 type LowRange<SqlBuilder> = SqlExport<SqlBuilder, ImbContext, ImbalanceDetector<OrderFeatureFilter<OrderSpectrum<OrderDomainSamples<LowPassSignal<Pass>>>>>>;
 type MidRange = Pass;
@@ -42,7 +42,7 @@ type HighRange = Pass;
 ///    * Формирует SQL-запросы с результатами анализа и экспортирует их в базу данных через API-клиент.
 pub struct VibroSensor<T, SqlBuilder> {
     /// Угловая сетка, текущая RPM и фаза поворота вала.
-    angular: AngularGrid<Autocorrelation<ReadEventValuess<T>>>,
+    angular: AngularGrid<Autocorrelation<ReadEventValues<T>>>,
     /// Контекст `AngularGrid`
     angular_ctx: Cell<AngularCtx>,
     /// Анализ низкочастотного диапазона.
@@ -76,7 +76,7 @@ where
     /// - `retain` - Хранение пар Key-Value на диске.
     /// - `api_link` - Провайдер отправки SQL запросов.
     #[named]
-    pub fn new(parent: &Dbg, conf: crate::Conf, event_values: Arc<T>, retain: Arc<Retain>, sql_builder: SqlBuilder, exit: Arc<ExitNotify>) -> Result<Self, Error> {
+    pub fn new(parent: &Dbg, conf: crate::Conf, rpm_key: impl AsRef<str>, event_values: Arc<T>, retain: Arc<Retain>, sql_builder: SqlBuilder, exit: Arc<ExitNotify>) -> Result<Self, Error> {
         let dbg = Dbg::new(parent, me::<Self>());
         let window_size = conf.analysis.n_fft();
         let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65)
@@ -87,7 +87,7 @@ where
             angular: AngularGrid::new(&dbg, conf.adc.chunk_size,
                 Autocorrelation::new(&dbg,
                     conf.adc.sample_rate_hz,
-                    ReadEventValuess::new(&dbg, event_values)
+                    ReadEventValues::new(&dbg, [rpm_key], event_values)
                 ),
             ),
             angular_ctx,
