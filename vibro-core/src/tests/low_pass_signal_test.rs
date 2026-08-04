@@ -25,7 +25,7 @@ fn low_pass_signal_test () {
                 mid-hz: ..5000
                 high-hz: 5000..10000
     "#)).unwrap();
-    let mut samples = [0u16; Frame::SIZE];
+    let mut samples = vec![0u16; conf.adc.chunk_size];
     let low_cutoff_order = conf.analysis.bands.low_cutoff_order();  // Возвращает верхнюю границу для ФНЧ в порядках (Orders), например 10X
     // Фильтр нижних частот (Баттерворт 2-го порядка) для подавления ВЧ-шумов.
     // Пропускает частоты до заданного порядка (например, 10x от текущих оборотов).
@@ -49,13 +49,13 @@ fn low_pass_signal_test () {
         (Frequency::Static(12000.0), 100),
     ];
     let mut udp = Udp::new(
-        Frame::SIZE,    // 512
+        conf.adc.chunk_size,    // 512
         conf.adc.sample_rate_hz, freqs.clone(),
     );
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
     let n_fft = 4096 * 4;
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), retain);
+    let mut ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), conf.adc.chunk_size, retain);
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(n_fft);
     let mut buffer = FftBuffer::new(n_fft, 1024);
@@ -65,11 +65,7 @@ fn low_pass_signal_test () {
         let ts = Utc::now();
         // Имитируем получение АЦП выборки из сети
         udp.parse(rpm.value(), &mut samples);
-        let frame = Arc::new(Frame {
-            ts,
-            samples: samples.map(|v| v as f32 - 2047.5),    // убираем DC
-            phases: Phases::new(Frame::SIZE),
-        });
+        let frame = Frame::new(ts, 2048f32, &samples, Phases::new(conf.adc.chunk_size));
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         ctx.update(frame);
         // log::debug!("{dbg} | Before filter: {:?}", low_range_ctx.frame.samples);

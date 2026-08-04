@@ -33,7 +33,9 @@ pub struct AngularCtx {
     pub(crate) err: Option<Error>,
 }
 impl AngularCtx {
-    pub fn new() -> Self {
+    /// - `f_sample` - Частота дискретизации АЦП.
+    /// - `chunk_size` - Размер выборки, пакета сэмплов, поступающего из АЦП за один раз.
+    pub fn new(f_sample: f64, chunk_size: usize) -> Self {
         // Формула вычисления размера выборки `capacity`
         // Чтобы автокорреляция надежно зацепилась за оборотную частоту,
         // в буфере должно лежать минимум 2–3 полных оборота вала.
@@ -47,7 +49,8 @@ impl AngularCtx {
         //      RPMmin — минимальная скорость вращения вала, при которой мы ведем анализ.
         // Для привода 1500: `3 * 320 000 * 60 / 300 => 192 000`
         // Для привода 1500: `3 * 320 000 * 60 / 600 => 96 000`
-        let capacity = 96_000;
+        let capacity = (3.0 * f_sample * 60.0 / 200.0).ceil() as usize;
+        log::info!("AngularCtx.new | Буфер автокореляции выбран {capacity} сэмплов. Из расчета на 3 оборота при минимальной частоте вращения 200 RPM и частоте дискретизации {f_sample}");
         Self {
             ac_samples: MirroredBuffer::new(capacity),
             raw_rpm: f64::NAN,
@@ -56,7 +59,7 @@ impl AngularCtx {
             omega: f64::NAN,
             dt: f64::NAN,
             current_theta: 0.0,
-            phases_size: Frame::SIZE,
+            phases_size: chunk_size,
             err: None,
         }
     }

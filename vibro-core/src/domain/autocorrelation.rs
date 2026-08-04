@@ -13,7 +13,7 @@ pub struct Autocorrelation<Child> {
 }
 impl<Child> Autocorrelation<Child>
 where
-    Child: Eval<AngularCtx, AngularCtx> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> {
     ///
     /// ### Returns `Autocorrelation` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
@@ -52,7 +52,7 @@ where
 }
 impl<Child> Eval<AngularCtx, AngularCtx> for Autocorrelation<Child>
 where
-    Child: Eval<AngularCtx, AngularCtx> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> {
     //
     #[inline]
     fn eval(&self, ctx: AngularCtx) -> AngularCtx {

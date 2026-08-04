@@ -29,9 +29,10 @@ fn complex_test () {
                 high-hz: 5000..10000
     "#).unwrap();
     let inputs = Arc::new(MockEventValues::new());
-    let mut samples = [0u16; Frame::SIZE];
-    let mut ctx = AngularCtx::new();
+    let mut samples = vec![0u16; conf.adc.chunk_size];
+    let mut ctx = AngularCtx::new(conf.adc.sample_rate_hz, conf.adc.chunk_size);
     let angular_grid = AngularGrid::new(&dbg,
+        conf.adc.chunk_size,
         Autocorrelation::new(&dbg,
             conf.adc.sample_rate_hz,
             ReadEventValuess::new(&dbg, inputs.clone())
@@ -103,12 +104,12 @@ fn complex_test () {
             ),
         ),
     );
-    let mut udp = Udp::new(Frame::SIZE, conf.adc.sample_rate_hz, [
+    let mut udp = Udp::new(conf.adc.chunk_size, conf.adc.sample_rate_hz, [
         // Статический резонанс на 5 кГц с амплитудой 100
         (Frequency::Static(5000.0), 100),
     ]);
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut low_range_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), retain);
+    let mut low_range_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), conf.adc.chunk_size, retain);
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);
     let (high_send, high_recv) = channel::bounded(1);
@@ -167,7 +168,7 @@ fn complex_test () {
             Some(err) => log::warn!("{}", err),
             None => {
                 if ctx.ac_samples.is_full() {
-                    let frame = Frame::new(ts, &samples, phases);
+                    let frame = Frame::new(ts, 2048f32, &samples, phases);
                     _ = low_send.send(frame.clone());
                     _ = mid_send.send(frame.clone());
                     _ = high_send.send(frame.clone());
@@ -175,10 +176,10 @@ fn complex_test () {
             }
         }
     }
-    let expected_results = todo!();
+    let expected_results: usize = todo!();
     let actual_results = api_recv.len();
     assert!(actual_results == expected_results, "{dbg} | Total number of sql's is {}, expected {}", actual_results, expected_results);
-    let expected_sqls = vec![];
+    let expected_sqls: Vec<&str> = vec![];
     for (sql, expected_sql) in api_recv.zip(expected_sqls) {
         assert!(sql == expected_sql, "{dbg} | \n Actual sql: {}, \n expected sql: {}", sql, expected_sql);
     }

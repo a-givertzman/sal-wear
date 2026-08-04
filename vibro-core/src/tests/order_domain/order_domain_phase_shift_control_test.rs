@@ -21,15 +21,15 @@ fn full_signal_simulation(
     rpm: f64,
     k: f64,
     inputs: &mut Arc<MockEventValues>,
-    samples: &mut [u16; Frame::SIZE],
+    samples: &mut [u16],
     low_range: &OrderDomainSamples<Pass>,
+    chunk_size: usize,
 ) -> (AngularCtx, ImbContext, usize) {
     let f_sample = udp.sample_freq;
-    let chunk_size = Frame::SIZE as f64;
     let rpm_hz = rpm / 60.0;
     let delta_per_sample = std::f64::consts::TAU * k * rpm_hz / f_sample;
     let i_peak = (std::f64::consts::FRAC_PI_2 / delta_per_sample).round() as usize;
-    let chunks_needed = (i_peak as f64 / chunk_size).ceil() as usize;
+    let chunks_needed = (i_peak as f64 / chunk_size as f64).ceil() as usize;
     for _ in 0..chunks_needed {
         udp.parse(rpm, samples);
         inputs.set_rpm(rpm);
@@ -38,7 +38,7 @@ fn full_signal_simulation(
         let t = Instant::now();
         (ctx, phases) = angular_grid.eval(ctx);
         log::debug!("AngularGrid<Autocorrelation> elapsed {:?}", t.elapsed());
-        let frame = Frame::new(Utc::now(), &samples, phases);
+        let frame = Frame::new(Utc::now(), 2048f32, &samples, phases);
         i_ctx.update(frame.clone());
         i_ctx.samples.clone_from_slice(&frame.samples);
         i_ctx.rpm = Rpm(rpm);
@@ -54,7 +54,8 @@ fn full_signal_simulation(
 fn order_domain_phase_shift_test() {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderDomainSamples-test");
-    let f_sample = 320_000; // Частота семплирования АЦП (Гц)
+    let f_sample = 320_000; // Частота семплирования АЦП (Гц).
+    let chunk_size = 512;   // Размер пакета данных, поступающего из АЦП.
     let conf: Conf = serde_yaml::from_str(&format!(r#"
         adc:
             sample-rate-hz: {f_sample}
@@ -76,12 +77,13 @@ fn order_domain_phase_shift_test() {
     ];
     for (step, k, target_rms, target_angle_rad, rpm, freqs) in test_data.iter() {
         log::debug!("Шаг {}: Симуляция сигнала с амплитудой {}, фазой {:.1} и частотой {} об/мин", step, target_rms, target_angle_rad.to_degrees(), rpm);
-        let mut samples = [0u16; Frame::SIZE];
+        let mut samples = vec![0u16; chunk_size];
         let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
         let mut inputs = Arc::new(MockEventValues::new());
-        let mut ctx = AngularCtx::new();
+        let mut ctx = AngularCtx::new(f_sample as f64, chunk_size);
         let angular_grid = AngularGrid::new(
             &dbg,
+            chunk_size,
             Autocorrelation::new(
                 &dbg,
                 conf.adc.sample_rate_hz,
@@ -89,9 +91,9 @@ fn order_domain_phase_shift_test() {
             ),
         );
         let retain = Arc::new(Retain::mock(&dbg, []));
-        let mut i_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), retain);
+        let mut i_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), chunk_size, retain);
         ctx.current_theta = 0.0;
-        let mut udp = Udp::new(Frame::SIZE, conf.adc.sample_rate_hz, freqs.clone());
+        let mut udp = Udp::new(chunk_size, conf.adc.sample_rate_hz, freqs.clone());
         let (new_ctx, new_i_ctx, chunks_needed) = full_signal_simulation(
             &mut udp,
             ctx,
@@ -102,6 +104,7 @@ fn order_domain_phase_shift_test() {
             &mut inputs,
             &mut samples,
             &low_range,
+            chunk_size,
         );
         ctx = new_ctx;
         i_ctx = new_i_ctx;
@@ -110,7 +113,7 @@ fn order_domain_phase_shift_test() {
         // Приращение фазы за ОДИН СЕМПЛ (один шаг дискретизации)
         let phase_step_rad = rad_per_sec * ctx.dt; 
         // Общее количество обработанных точек данных (семплов)
-        let total_samples_processed = chunks_needed * Frame::SIZE;
+        let total_samples_processed = chunks_needed * chunk_size;
         // Математически идеальная накопленная фаза ВАЛА за всю симуляцию в частотном домене (временная область)
         let calculated_total_phase = total_samples_processed as f64 * phase_step_rad;   
         // Идеальное расстояние между точками в угловой области

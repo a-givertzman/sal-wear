@@ -41,25 +41,27 @@ type HighRange = Pass;
 ///    * Реализует автоматическую идентификацию зарождающихся дефектов подшипников (BPFI, BPFO, FTF, BSF) детектором по высокочастотным порогам.
 ///    * Формирует SQL-запросы с результатами анализа и экспортирует их в базу данных через API-клиент.
 pub struct VibroSensor<T, SqlBuilder> {
-    /// Угловая сетка, текущая RPM и фаза поворота вала
+    /// Угловая сетка, текущая RPM и фаза поворота вала.
     angular: AngularGrid<Autocorrelation<ReadEventValuess<T>>>,
     /// Контекст `AngularGrid`
     angular_ctx: Cell<AngularCtx>,
-    /// Анализ низкочастотного диапазона
+    /// Анализ низкочастотного диапазона.
     low_range: LowRange<SqlBuilder>,
-    /// Контекст анализа низкочастотного диапазона
+    /// Контекст анализа низкочастотного диапазона.
     low_range_ctx: Cell<ImbContext>,
-    /// Аналих среднечастотного диапазона
+    /// Аналих среднечастотного диапазона.
     mid_range: MidRange,
-    /// Контекст анализа среднечастотного диапазона
+    /// Контекст анализа среднечастотного диапазона.
     mid_range_ctx: MidRangeCtx,
-    /// Аналих высокочастотного диапазона
+    /// Аналих высокочастотного диапазона.
     high_range: HighRange,
-    /// Контекст анализа высокочастотного диапазона
+    /// Контекст анализа высокочастотного диапазона.
     high_range_ctx: HighRangeCtx,
-    /// Exit signal
+    /// Настройки цифровой обработки вибросигнала.
+    conf: crate::Conf,
+    /// Exit signal.
     exit: Arc<ExitNotify>,
-    /// Для отладки
+    /// Для отладки.
     dbg: Dbg,
 }
 impl<T, SqlBuilder> VibroSensor<T, SqlBuilder>
@@ -69,20 +71,20 @@ where
     ///
     /// ### Returns `VibroSensor` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
-    /// - `conf` - Конфигурация конвейера обработки вибросигнала.
+    /// - `conf` - Конфигурация цифровой обработки вибросигнала.
     /// - `event_values` - Агрегатор входных эвентов.
     /// - `retain` - Хранение пар Key-Value на диске.
-    /// - `api_link` - Провайдер отправки SQL запросов
+    /// - `api_link` - Провайдер отправки SQL запросов.
     #[named]
     pub fn new(parent: &Dbg, conf: crate::Conf, event_values: Arc<T>, retain: Arc<Retain>, sql_builder: SqlBuilder, exit: Arc<ExitNotify>) -> Result<Self, Error> {
         let dbg = Dbg::new(parent, me::<Self>());
         let window_size = conf.analysis.n_fft();
         let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65)
             .map_err(|err| err_pass!(dbg, err))?;
-        let angular_ctx = Cell::new(AngularCtx::new());
-        let low_range_ctx = Cell::new(ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), retain.clone()));
+        let angular_ctx = Cell::new(AngularCtx::new(conf.adc.sample_rate_hz, conf.adc.chunk_size));
+        let low_range_ctx = Cell::new(ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), conf.adc.chunk_size, retain.clone()));
         Ok(Self {
-            angular: AngularGrid::new(&dbg,
+            angular: AngularGrid::new(&dbg, conf.adc.chunk_size,
                 Autocorrelation::new(&dbg,
                     conf.adc.sample_rate_hz,
                     ReadEventValuess::new(&dbg, event_values)
@@ -114,6 +116,7 @@ where
             mid_range_ctx: MidRangeCtx {  },
             high_range: Pass::new(),
             high_range_ctx: HighRangeCtx {  },
+            conf,
             exit,
             dbg,
         })
@@ -124,26 +127,29 @@ where
     T: EventValueAccess<str, f64>,
     SqlBuilder: Fn(&ImbContext) {
     //
+    #[named]
     #[inline]
     fn eval(&self, samples: &[u16]) -> Result<(), Error> {
-        let dbg = &self.dbg;
         let ts = chrono::Utc::now();
-        let angular_ctx = self.angular_ctx.take();
+        let mut angular_ctx = self.angular_ctx.take();
+        let mut low_range_ctx = self.low_range_ctx.take();
         angular_ctx.push_chunk(samples);
         let phases;
-
         (angular_ctx, phases) = self.angular.eval(angular_ctx);
-        let frame = Frame::new(ts, samples, phases);
-        self.low_range_ctx.update(frame.clone());
-        self.low_range_ctx = self.low_range.eval(self.low_range_ctx);
-        if self.low_range_ctx.is_err() {
-            return Err(self.low_range_ctx.pass_err(&self.dbg, "eval"))
+        let frame = Frame::new(ts, self.conf.adc.ds_offset as f32, samples, phases);
+        low_range_ctx.update(frame.clone());
+        low_range_ctx = self.low_range.eval(low_range_ctx);
+        if let Some(err) = low_range_ctx.err() {
+            self.angular_ctx.set(angular_ctx);
+            self.low_range_ctx.set(low_range_ctx);
+            return Err(err_pass!(self.dbg, err));
         }
         // self.mid_range_ctx.update(frame.clone());
         // self.mid_range_ctx = self.mid_range.eval(self.mid_range_ctx);
         // self.high_range_ctx.update(frame.clone());
         // self.high_range_ctx = self.high_range.eval(self.high_range_ctx);
         self.angular_ctx.set(angular_ctx);
+        self.low_range_ctx.set(low_range_ctx);
         Ok(())
     }
     //

@@ -13,6 +13,7 @@ fn order_domain_stationary_test() {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderDomainSamples-test");
     let f_sample = 320_000; // Частота семплирования АЦП (Гц)
+    let chunk_size = 512;   // Размер пакета данных, поступающего из АЦП.
     let conf: Conf = serde_yaml::from_str(&format!(
         r#"
         adc:
@@ -30,23 +31,23 @@ fn order_domain_stationary_test() {
     "#
     ))
     .unwrap();
-    let mut samples = [0u16; Frame::SIZE];
+    let mut samples = vec![0u16; chunk_size];
     let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
     let freqs = [(Frequency::Rpm(1.0), 200)];
     let inputs = Arc::new(MockEventValues::new());
-    let mut ctx = AngularCtx::new();
+    let mut ctx = AngularCtx::new(f_sample as f64, chunk_size);
     let angular_grid = AngularGrid::new(
-        &dbg,
+        &dbg, chunk_size,
         Autocorrelation::new(
             &dbg,
             conf.adc.sample_rate_hz,
             ReadEventValuess::new(&dbg, inputs.clone()),
         ),
     );
-    let mut udp = Udp::new(Frame::SIZE, conf.adc.sample_rate_hz, freqs.clone());
+    let mut udp = Udp::new(chunk_size, conf.adc.sample_rate_hz, freqs.clone());
     let mut results: Vec<Vec<f64>> = freqs.iter().map(|_| vec![]).collect();
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut i_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), retain);
+    let mut i_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), chunk_size, retain);
     let fft_size = 4096;
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(fft_size);
@@ -65,7 +66,7 @@ fn order_domain_stationary_test() {
         ctx.push_chunk(&samples);
         let phases;
         (ctx, phases) = angular_grid.eval(ctx);
-        let frame = Frame::new(Utc::now(), &samples, phases);
+        let frame = Frame::new(Utc::now(), 2048f32, &samples, phases);
         i_ctx.update(frame.clone());
         i_ctx.rpm = crate::Rpm(rpm);
         i_ctx = low_range.eval(i_ctx);

@@ -53,6 +53,12 @@ impl<T: Float> Rms<T> {
         Self((sum_squares / n).sqrt())
     }
 }
+impl<T: Float + Default> Default for Rms<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
 ///
 /// ### Phase | Значение фазы.
 #[repr(transparent)]
@@ -90,6 +96,12 @@ impl<T: Float> Phase<T> {
         Self(r)
     }
 }
+impl<T: Float + Default> Default for Phase<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
 ///
 /// ### RPM | Значение частоты вращения об/мин.
 #[repr(transparent)]
@@ -120,7 +132,11 @@ impl<T: Float> Rpm<T> {
         self.0 * T::from(std::f64::consts::PI / 30.0).unwrap()
     }
 }
-
+impl<T: Float + Default> Default for Rpm<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
 
 super::impl_math!(Rms);
 super::impl_math!(Phase);

@@ -34,7 +34,7 @@ fn order_spectrum_test () {
                 mid-hz: ..5000
                 high-hz: 5000..10000
     "#)).unwrap();
-    let mut samples = [0u16; Frame::SIZE];
+    let mut samples = vec![0u16; conf.adc.chunk_size];
     let window_size = conf.analysis.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
     // Выполняет Спектральный анализ сигнала в угловом домене (Order Tracking).
@@ -60,14 +60,14 @@ fn order_spectrum_test () {
         (Frequency::Rpm(12000.0), 100),
     ];
     let mut udp = Udp::new(
-        Frame::SIZE,    // 512
+        conf.adc.chunk_size,    // 512
         conf.adc.sample_rate_hz,
         freqs.clone(),
     );
     let mut results: Vec<Vec<_>> = freqs.iter().map(|_| vec![]).collect();
     let n_fft = 4096 * 4;
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), retain);
+    let mut ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.fft_turns(), conf.adc.chunk_size, retain);
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(n_fft);
     let mut buffer = FftBuffer::new(n_fft, 1024);
@@ -76,7 +76,9 @@ fn order_spectrum_test () {
         let rpm =  crate::Rpm(3000.0);
         // Имитируем получение АЦП выборки из сети
         udp.parse(rpm.value(), &mut samples);
-        *ctx.samples = samples.map(|v| v as f32 - 2047.5);    // Пишем сырую выбору в контекст и убираем DC
+        ctx.samples.iter_mut()
+            .zip(&samples)
+            .for_each(|(dst, src)| *dst = *src as f32 - 2048.0);    // Пишем сырую выбору в контекст и убираем DC
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         // log::debug!("{dbg} | Before filter: {:?}", low_range_ctx.frame.samples);
         ctx = low_range.eval(ctx);
