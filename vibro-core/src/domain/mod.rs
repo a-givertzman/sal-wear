@@ -56,16 +56,23 @@ impl MockEventValues {
 }
 impl EventValueAccess<str, f64> for MockEventValues {    
     //
-    fn subscribe(&self, key: &str) {
+    fn register(&self, key: &str) {
         if key != "rpm" {
-            panic!("MockEventValues.subscribe | Unknown key '{key}'")
+            panic!("MockEventValues.register | Unknown key '{key}'")
         }
     }
     //
     fn get(&self, key: &str) -> Option<f64> {
         if key != "rpm" {
-            panic!("MockEventValues.subscribe | Unknown key '{key}'")
+            panic!("MockEventValues.get | Unknown key '{key}'")
         }
         self.rpm()
+    }
+    //
+    fn insert(&self, key: &str, val: f64) {
+        if key != "rpm" {
+            panic!("MockEventValues.insert | Unknown key '{key}'")
+        }
+        self.rpm.store(val.to_bits(), Ordering::Relaxed);
     }
 }
