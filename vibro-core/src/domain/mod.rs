@@ -56,7 +56,7 @@ impl MockEventValues {
 }
 impl EventValueAccess<str, f64> for MockEventValues {    
     //
-    fn register(&self, key: &str) {
+    fn register(&mut self, key: &str) {
         if key != "rpm" {
             panic!("MockEventValues.register | Unknown key '{key}'")
         }
