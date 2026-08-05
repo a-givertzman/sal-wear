@@ -76,7 +76,15 @@ where
     /// - `retain` - Хранение пар Key-Value на диске.
     /// - `api_link` - Провайдер отправки SQL запросов.
     #[named]
-    pub fn new(parent: &Dbg, conf: crate::Conf, rpm_key: impl AsRef<str>, event_values: &Arc<T>, retain: &Arc<Retain>, sql_builder: SqlBuilder, exit: &Arc<ExitNotify>) -> Result<Self, Error> {
+    pub fn new(
+        parent: &Dbg,
+        conf: &crate::Conf,
+        rpm_key: impl AsRef<str>,
+        event_values: &Arc<T>,
+        retain: &Arc<Retain>,
+        sql_builder: SqlBuilder,
+        exit: &Arc<ExitNotify>,
+    ) -> Result<Self, Error> {
         let dbg = Dbg::new(parent, me::<Self>());
         let window_size = conf.analysis.n_fft();
         let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65)
@@ -116,7 +124,7 @@ where
             mid_range_ctx: MidRangeCtx {  },
             high_range: Pass::new(),
             high_range_ctx: HighRangeCtx {  },
-            conf,
+            conf: conf.clone(),
             exit: exit.clone(),
             dbg,
         })
