@@ -68,7 +68,7 @@ impl RetainConf {
     ///
     /// Returns `RetainConf` new instance
     #[named]
-    pub fn new(parent: impl Into<String>, conf: ConfTree) -> Result<RetainConf, Error> {
+    pub fn new(parent: impl Into<String>, conf: &ConfTree) -> Result<RetainConf, Error> {
         let parent = parent.into();
         let name = Name::new(&parent, crate::me::<Self>());
         let dbg = Dbg::new(parent, "RetainConf");
@@ -96,7 +96,7 @@ impl RetainConf {
         let (key, value) = value.as_mapping().unwrap().into_iter().next()
             .ok_or_else(|| err!(Self, "Wrong or empty conf: {:#?}", value))?;
         let key = key.as_str().ok_or_else(|| err!(Self, "Wrong conf: {:#?}", value))?;
-        Self::new(parent, ConfTree::new(key, value.clone()))
+        Self::new(parent, &ConfTree::new(key, value.clone()))
     }
     ///
     /// Reads config from path
