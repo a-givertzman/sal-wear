@@ -42,7 +42,7 @@ impl Retain {
     /// Returns `Retain` new instance
     /// - `parent` - Родительский сервис `Task`.
     #[named]
-    pub fn new(parent: impl Into<String>, conf: RetainConf, services: &Arc<Services>, scheduler: Scheduler) -> Result<Self, Error> {
+    pub fn new(parent: impl Into<String>, conf: RetainConf, services: &Arc<Services>, scheduler: &Scheduler) -> Result<Self, Error> {
         let parent = parent.into();
         let name = Name::new(&parent, crate::me::<Self>());
         let dbg = Dbg::new(&parent, crate::me::<Self>());
@@ -61,7 +61,7 @@ impl Retain {
             path,
             send,
             recv: Owner::new(recv),
-            scheduler: Some(scheduler),
+            scheduler: Some(scheduler.clone()),
             handles: Handles::new(&parent),
             exit: Arc::new(ExitNotify::new(parent, None, None)),
             dbg,
@@ -70,7 +70,7 @@ impl Retain {
     /// Returns `Retain` new instance in the `Release` mode and default configuration
     /// - `parent` - Родительский сервис `Task`.
     #[named]
-    pub fn release(parent: impl Into<String>, services: &Arc<Services>, scheduler: Scheduler) -> Result<Self, Error> {
+    pub fn release(parent: impl Into<String>, services: &Arc<Services>, scheduler: &Scheduler) -> Result<Self, Error> {
         let parent = parent.into();
         let name = Name::new(&parent, crate::me::<Self>());
         let dbg = Dbg::new(&parent, crate::me::<Self>());
@@ -99,7 +99,7 @@ impl Retain {
             path,
             send,
             recv: Owner::new(recv),
-            scheduler: Some(scheduler),
+            scheduler: Some(scheduler.clone()),
             handles: Handles::new(&parent),
             exit: Arc::new(ExitNotify::new(parent, None, None)),
             dbg,
