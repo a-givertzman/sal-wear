@@ -41,16 +41,16 @@ impl Retain {
     ///
     /// Returns `Retain` new instance
     /// - `parent` - Родительский сервис `Task`.
-    /// - `txid` - Идентификатор сервиса отправителя (в данном случае родительского `Task`).
     #[named]
-    pub fn new(parent: &Name, conf: RetainConf, services: &Arc<Services>, scheduler: Scheduler) -> Result<Self, Error> {
-        let name = Name::new(parent, crate::me::<Self>());
-        let dbg = Dbg::new(parent, crate::me::<Self>());
+    pub fn new(parent: impl Into<String>, conf: RetainConf, services: &Arc<Services>, scheduler: Scheduler) -> Result<Self, Error> {
+        let parent = parent.into();
+        let name = Name::new(&parent, crate::me::<Self>());
+        let dbg = Dbg::new(&parent, crate::me::<Self>());
         let Some(retain_path) = services.retain().path else {
             return Err(err!(dbg, "Retain: path - missed in Application config"));
         };
         let cw_dir = std::env::current_dir().map_err(|err| err_pass!(dbg, err))?;
-        let dir = cw_dir.join(retain_path).join(parent.join().trim_start_matches('/'));
+        let dir = cw_dir.join(retain_path).join(parent.trim_start_matches('/'));
         std::fs::create_dir_all(&dir).map_err(|err| err_pass!(dbg, err, "Error creating dir: '{}'", dir.display()))?;
         let path = dir.join("retain").with_extension("json");
         let (send, recv) = crate::channel_bounded(Self::BUFFER_SIZE);
@@ -62,7 +62,45 @@ impl Retain {
             send,
             recv: Owner::new(recv),
             scheduler: Some(scheduler),
-            handles: Handles::new(parent),
+            handles: Handles::new(&parent),
+            exit: Arc::new(ExitNotify::new(parent, None, None)),
+            dbg,
+        })
+    }
+    /// Returns `Retain` new instance in the `Release` mode and default configuration
+    /// - `parent` - Родительский сервис `Task`.
+    #[named]
+    pub fn release(parent: impl Into<String>, services: &Arc<Services>, scheduler: Scheduler) -> Result<Self, Error> {
+        let parent = parent.into();
+        let name = Name::new(&parent, crate::me::<Self>());
+        let dbg = Dbg::new(&parent, crate::me::<Self>());
+        let Some(retain_path) = services.retain().path else {
+            return Err(err!(dbg, "Retain: path - missed in Application config"));
+        };
+        let cw_dir = std::env::current_dir().map_err(|err| err_pass!(dbg, err))?;
+        let dir = cw_dir.join(retain_path).join(parent.trim_start_matches('/'));
+        std::fs::create_dir_all(&dir).map_err(|err| err_pass!(dbg, err, "Error creating dir: '{}'", dir.display()))?;
+        let path = dir.join("retain").with_extension("json");
+        let (send, recv) = crate::channel_bounded(Self::BUFFER_SIZE);
+        Ok(Self {
+            name: name.clone(),
+            cache: Arc::new(FxSccHashMap::default()),
+            conf: RetainConf {
+                name,
+                journal: super::JournalConf {
+                    flush: super::FlushConf {
+                        bytes_limit: 16 * 1024,
+                        interval: Duration::from_secs(16),
+                    },
+                    compaction_limit_mb: 32,
+                },
+                mode: super::RetainMode::Release,
+            },
+            path,
+            send,
+            recv: Owner::new(recv),
+            scheduler: Some(scheduler),
+            handles: Handles::new(&parent),
             exit: Arc::new(ExitNotify::new(parent, None, None)),
             dbg,
         })
