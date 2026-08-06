@@ -153,7 +153,7 @@ impl Service for Retain {
             LoadJournal::new(&dbg,
                 MarkOldJournal::new(&dbg, conf.mode),
             ),
-        ).eval(self.cache.clone())?;
+        ).eval(self.cache.clone()).map_err(|err| err_pass!(dbg, err))?;
         match self.scheduler.as_ref() {
             Some(scheduler) => {
                 let handle = scheduler.spawn({
