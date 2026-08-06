@@ -23,7 +23,6 @@ use super::{RetainValue, AppendJournal, CompactateJournal, FlushJournal, Initial
 /// Получает Key-Point в канале, сохраняет в единый для `Retain` файл добавлением в конец.
 /// Периодически актуализирует весь журнал.
 pub struct Retain {
-    txid: usize,
     name: Name,
     cache: Arc<FxSccHashMap<String, Vec<u8>>>,
     conf: RetainConf,
@@ -56,7 +55,6 @@ impl Retain {
         let path = dir.join("retain").with_extension("json");
         let (send, recv) = crate::channel_bounded(Self::BUFFER_SIZE);
         Ok(Self {
-            txid,
             name,
             cache: Arc::new(FxSccHashMap::default()),
             conf,
@@ -77,7 +75,6 @@ impl Retain {
         let dbg = Dbg::new(name.parent(), crate::me::<Self>());
         let (send, recv) = crate::channel_bounded(Self::BUFFER_SIZE);
         Self {
-            txid: 0,
             name,
             cache: Arc::new(cache.into_iter().collect()),
             conf: RetainConf::default(),
@@ -152,7 +149,7 @@ impl Service for Retain {
         let exit = self.exit.clone();
         let conf = self.conf.clone();
         let rx_recv = self.recv.take().ok_or_else(|| err!(dbg, "Can't take recv"))?;
-        let ctx = InitialCtx::new(&dbg, self.txid, &conf, &self.path,
+        let ctx = InitialCtx::new(&dbg, &conf, &self.path,
             LoadJournal::new(&dbg,
                 MarkOldJournal::new(&dbg, conf.mode),
             ),
@@ -162,7 +159,7 @@ impl Service for Retain {
                 let handle = scheduler.spawn({
                     let dbg = dbg.clone();
                     let retain = OpenJournal::new(&dbg, &conf.journal.flush, ctx,
-                        AppendJournal::new(&dbg, self.txid, conf.mode,
+                        AppendJournal::new(&dbg, conf.mode,
                             FlushJournal::new(&dbg,
                                 CompactateJournal::new(&dbg, &conf),
                             ),

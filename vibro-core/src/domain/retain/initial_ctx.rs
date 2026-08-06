@@ -7,7 +7,6 @@ use super::{RetainCtx, RetainMode, RetainConf, EvalResult};
 ///
 /// Создает стартовый `RetainCtx` и передает его дальше по конвейеру
 pub struct InitialCtx<Child> {
-    txid: usize,
     conf: RetainConf,
     path: PathBuf,
     child: Child,
@@ -15,10 +14,9 @@ pub struct InitialCtx<Child> {
 }
 //
 impl<Child> InitialCtx<Child> {
-    pub fn new(parent: impl Into<String>, txid: usize, conf: &RetainConf, path: impl AsRef<Path>, child: Child) -> Self {
+    pub fn new(parent: impl Into<String>, conf: &RetainConf, path: impl AsRef<Path>, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
-            txid,
             conf: conf.clone(),
             path: path.as_ref().to_path_buf(),
             child,
@@ -33,7 +31,6 @@ where
     #[named]
     fn eval(&self, cache: Arc<FxSccHashMap<String, Vec<u8>>>) -> EvalResult {
         let ctx = RetainCtx {
-            txid: self.txid,
             path: match self.conf.mode {
                 RetainMode::Debug => self.path.with_extension("json"),
                 RetainMode::Release => self.path.with_extension("dat"),

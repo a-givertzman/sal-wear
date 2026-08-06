@@ -32,7 +32,6 @@ pub(self) type EvalResult = Result<RetainCtx, sal_core::error::Error>;
 ///
 /// Context provides tranfer data in the `TaskRetain` evaluation
 pub(super) struct RetainCtx {
-    pub txid: usize,
     pub cache: std::sync::Arc<crate::FxSccHashMap<String, Vec<u8>>>,
     pub path: std::path::PathBuf,
     pub writer: Option<std::io::BufWriter<std::fs::File>>,
