@@ -95,10 +95,10 @@ use sal_sync::services::conf::ConfDistance;
 ///                             # учёта в K_T.
 /// ```
 ///
-/// Главная конфигурация расчёта остаточного ресурса
+/// Конфигурация расчёта остаточного ресурса подшипника
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct WearCoreConf {
+pub struct BearingWearConf {
     /// Конфиг текущего устойчивого режима
     pub steady_state: SteadyStateConf,
     /// Конфиг подшипника
