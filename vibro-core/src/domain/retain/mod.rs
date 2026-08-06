@@ -16,7 +16,7 @@ pub(super) use open_journal::*;
 mod retain_state;
 pub use retain_state::*;
 mod retain_conf;
-pub(crate) use retain_conf::*;
+pub use retain_conf::*;
 mod retain;
 pub use retain::*;
 
