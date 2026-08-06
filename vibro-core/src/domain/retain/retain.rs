@@ -43,7 +43,7 @@ impl Retain {
     /// - `parent` - Родительский сервис `Task`.
     /// - `txid` - Идентификатор сервиса отправителя (в данном случае родительского `Task`).
     #[named]
-    pub fn new(parent: &Name, txid: usize, conf: RetainConf, services: &Arc<Services>, scheduler: Scheduler) -> Result<Self, Error> {
+    pub fn new(parent: &Name, conf: RetainConf, services: &Arc<Services>, scheduler: Scheduler) -> Result<Self, Error> {
         let name = Name::new(parent, crate::me::<Self>());
         let dbg = Dbg::new(parent, crate::me::<Self>());
         let Some(retain_path) = services.retain().path else {
