@@ -11,7 +11,6 @@ use std::sync::Arc;
 
 ///
 /// Функциональное тестирование [OrderFeaturesFilter]
-/// Функциональное тестирование [OrderFeaturesFilter]
 #[test]
 fn order_features_filter_stationary_test() {
     DebugSession::new().filter(LogLevel::Debug).init();
