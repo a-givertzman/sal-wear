@@ -8,7 +8,9 @@ use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
 use std::sync::Arc;
+
 ///
+/// Функциональное тестирование [OrderFeaturesFilter]
 /// Функциональное тестирование [OrderFeaturesFilter]
 #[test]
 fn order_features_filter_stationary_test() {
@@ -27,6 +29,7 @@ fn order_features_filter_stationary_test() {
             order-tracking:
                 max-order: 100
                 order-resolution: 0.01
+                # samples-per-rev:
                 # samples-per-rev:
             bands:
                 low-order: 0.5..5.0
