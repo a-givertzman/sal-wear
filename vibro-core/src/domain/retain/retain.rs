@@ -23,7 +23,6 @@ use super::{RetainValue, AppendJournal, CompactateJournal, FlushJournal, Initial
 /// Получает Key-Point в канале, сохраняет в единый для `Retain` файл добавлением в конец.
 /// Периодически актуализирует весь журнал.
 pub struct Retain {
-    txid: usize,
     name: Name,
     cache: Arc<FxSccHashMap<String, Vec<u8>>>,
     conf: RetainConf,
@@ -42,29 +41,66 @@ impl Retain {
     ///
     /// Returns `Retain` new instance
     /// - `parent` - Родительский сервис `Task`.
-    /// - `txid` - Идентификатор сервиса отправителя (в данном случае родительского `Task`).
     #[named]
-    pub fn new(parent: &Name, txid: usize, conf: RetainConf, services: &Arc<Services>, scheduler: Scheduler) -> Result<Self, Error> {
-        let name = Name::new(parent, crate::me::<Self>());
-        let dbg = Dbg::new(parent, crate::me::<Self>());
+    pub fn new(parent: impl Into<String>, conf: RetainConf, services: &Arc<Services>, scheduler: &Scheduler) -> Result<Self, Error> {
+        let parent = parent.into();
+        let name = Name::new(&parent, crate::me::<Self>());
+        let dbg = Dbg::new(&parent, crate::me::<Self>());
         let Some(retain_path) = services.retain().path else {
             return Err(err!(dbg, "Retain: path - missed in Application config"));
         };
         let cw_dir = std::env::current_dir().map_err(|err| err_pass!(dbg, err))?;
-        let dir = cw_dir.join(retain_path).join(parent.join().trim_start_matches('/'));
+        let dir = cw_dir.join(retain_path).join(parent.trim_start_matches('/'));
         std::fs::create_dir_all(&dir).map_err(|err| err_pass!(dbg, err, "Error creating dir: '{}'", dir.display()))?;
         let path = dir.join("retain").with_extension("json");
         let (send, recv) = crate::channel_bounded(Self::BUFFER_SIZE);
         Ok(Self {
-            txid,
             name,
             cache: Arc::new(FxSccHashMap::default()),
             conf,
             path,
             send,
             recv: Owner::new(recv),
-            scheduler: Some(scheduler),
-            handles: Handles::new(parent),
+            scheduler: Some(scheduler.clone()),
+            handles: Handles::new(&parent),
+            exit: Arc::new(ExitNotify::new(parent, None, None)),
+            dbg,
+        })
+    }
+    /// Returns `Retain` new instance in the `Release` mode and default configuration
+    /// - `parent` - Родительский сервис `Task`.
+    #[named]
+    pub fn release(parent: impl Into<String>, services: &Arc<Services>, scheduler: &Scheduler) -> Result<Self, Error> {
+        let parent = parent.into();
+        let name = Name::new(&parent, crate::me::<Self>());
+        let dbg = Dbg::new(&parent, crate::me::<Self>());
+        let Some(retain_path) = services.retain().path else {
+            return Err(err!(dbg, "Retain: path - missed in Application config"));
+        };
+        let cw_dir = std::env::current_dir().map_err(|err| err_pass!(dbg, err))?;
+        let dir = cw_dir.join(retain_path).join(parent.trim_start_matches('/'));
+        std::fs::create_dir_all(&dir).map_err(|err| err_pass!(dbg, err, "Error creating dir: '{}'", dir.display()))?;
+        let path = dir.join("retain").with_extension("json");
+        let (send, recv) = crate::channel_bounded(Self::BUFFER_SIZE);
+        Ok(Self {
+            name: name.clone(),
+            cache: Arc::new(FxSccHashMap::default()),
+            conf: RetainConf {
+                name,
+                journal: super::JournalConf {
+                    flush: super::FlushConf {
+                        bytes_limit: 16 * 1024,
+                        interval: Duration::from_secs(16),
+                    },
+                    compaction_limit_mb: 32,
+                },
+                mode: super::RetainMode::Release,
+            },
+            path,
+            send,
+            recv: Owner::new(recv),
+            scheduler: Some(scheduler.clone()),
+            handles: Handles::new(&parent),
             exit: Arc::new(ExitNotify::new(parent, None, None)),
             dbg,
         })
@@ -77,7 +113,6 @@ impl Retain {
         let dbg = Dbg::new(name.parent(), crate::me::<Self>());
         let (send, recv) = crate::channel_bounded(Self::BUFFER_SIZE);
         Self {
-            txid: 0,
             name,
             cache: Arc::new(cache.into_iter().collect()),
             conf: RetainConf::default(),
@@ -152,17 +187,17 @@ impl Service for Retain {
         let exit = self.exit.clone();
         let conf = self.conf.clone();
         let rx_recv = self.recv.take().ok_or_else(|| err!(dbg, "Can't take recv"))?;
-        let ctx = InitialCtx::new(&dbg, self.txid, &conf, &self.path,
+        let ctx = InitialCtx::new(&dbg, &conf, &self.path,
             LoadJournal::new(&dbg,
                 MarkOldJournal::new(&dbg, conf.mode),
             ),
-        ).eval(self.cache.clone())?;
+        ).eval(self.cache.clone()).map_err(|err| err_pass!(dbg, err))?;
         match self.scheduler.as_ref() {
             Some(scheduler) => {
                 let handle = scheduler.spawn({
                     let dbg = dbg.clone();
                     let retain = OpenJournal::new(&dbg, &conf.journal.flush, ctx,
-                        AppendJournal::new(&dbg, self.txid, conf.mode,
+                        AppendJournal::new(&dbg, conf.mode,
                             FlushJournal::new(&dbg,
                                 CompactateJournal::new(&dbg, &conf),
                             ),

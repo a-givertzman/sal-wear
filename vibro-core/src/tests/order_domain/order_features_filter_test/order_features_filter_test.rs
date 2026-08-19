@@ -37,6 +37,12 @@ fn order_features_filter_stationary_test() {
     "#
     ))
     .unwrap();
+    // нужный ордер
+    // рмр равно значению которое посчитал сумма трех 
+    // дельта на которое выросло рмс на 1.5 процента
+    // нужное время фильтр срабатывал
+    // результаты фильтра пусто -2 +2 не влияют 
+    // таблица с зависимости от роста амплитуд
     let a0 = 200.0;
     let target_order = 1.0;
     let target_bin_idx = (target_order * conf.analysis.fft_turns() as f64).round() as usize;
@@ -44,8 +50,8 @@ fn order_features_filter_stationary_test() {
     let mut spectrum_model = SpectrumModel::new(a0, total_frames, target_bin_idx, num_bins);
     // 1. Длинная 8-часовая прямоугольная помеха на целевом бине
     let long_target_disturbance = SpectralDisturbance {
-        start_frame: (100 / SCALE).max(1),
-        duration_frames: (18_000 / SCALE).max(1),
+        start_frame: 100,
+        duration_frames: 800,
         amplitude_factor: 3.0,
         shape: ImpulseShape::Rectangular,
     };
@@ -90,7 +96,8 @@ fn order_features_filter_stationary_test() {
     let mut i_ctx = ImbContext::new(
         &dbg,
         conf.analysis.samples_per_rev(),
-        conf.analysis.fft_turns(),
+        conf.analysis.n_fft(),
+        conf.adc.chunk_size,
         retain.clone(),
     );
     // =========================================================================
@@ -99,8 +106,14 @@ fn order_features_filter_stationary_test() {
     for i in 0..total_frames {
         log::debug!("Frame: {}/{}", i, total_frames);
         spectrum_model.generate_frame(i, &mut fft_window);
+        if fft_window[target_bin_idx].re > 800.0 {
+            println!("{:?}", fft_window[target_bin_idx]);
+        }
         i_ctx.fft_window = fft_window;
         i_ctx = order_features_filter.eval(i_ctx);
         fft_window = i_ctx.fft_window;
+    }
+    for feature in i_ctx.features.iter() {
+        println!("{:?}", feature.rms);
     }
 }

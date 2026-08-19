@@ -54,7 +54,6 @@ enum BufState {
 ///
 /// ### Пишет один пакет с кадрированием длины в конец файла
 pub struct AppendJournal<Child> {
-    txid: usize,
     mode: RetainMode,
     buffer: Cell<VecDeque<RetainValue>>,
     child: Child,
@@ -67,7 +66,7 @@ impl<Child> AppendJournal<Child> {
     /// Максимально допустимый размер буффера для аммортизации перед записью в файл
     const MAX_BUFFER_SIZE: usize = 16_000;
     /// Returns `AppendJournal` new instance
-    pub fn new(parent: impl Into<String>, txid: usize, mode: RetainMode, child: Child) -> Self {
+    pub fn new(parent: impl Into<String>, mode: RetainMode, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         let notify = ChangeNotify::builder(&dbg, State::Ok)
             .on(State::Ok, |msg| log::info!("{:?}", msg))
@@ -78,7 +77,6 @@ impl<Child> AppendJournal<Child> {
             .on(BufState::Err, |msg| log::warn!("{:?}", msg))
             .build();
         Self {
-            txid,
             mode,
             buffer: Cell::new(VecDeque::new()),
             child,
@@ -231,7 +229,6 @@ mod tests {
     }
     fn mock_ctx(writer: Option<BufWriter<File>>) -> RetainCtx {
         RetainCtx {
-            txid: 1,
             cache: Arc::new(crate::FxSccHashMap::default()),
             path: PathBuf::from("dummy.log"),
             writer,
@@ -248,7 +245,7 @@ mod tests {
         let file_path = temp_dir.join("test_journal_success.log");
         let file = File::create(&file_path).unwrap();
         let ctx = mock_ctx(Some(BufWriter::new(file)));
-        let journal = AppendJournal::new("test", 1, RetainMode::Release, MockChild);
+        let journal = AppendJournal::new("test", RetainMode::Release, MockChild);
         let point = MockPoint { name: "test_point".into(), ts: chrono::Utc::now() };
         let event = RetainValue::encode_json("test_point", &point).unwrap();
         journal.eval((Some(event), ctx));
@@ -259,7 +256,7 @@ mod tests {
     #[test]
     fn test_append_journal_accumulates_without_writer() {
         let ctx = mock_ctx(None);
-        let journal = AppendJournal::new("test", 1, RetainMode::Release, MockChild);
+        let journal = AppendJournal::new("test", RetainMode::Release, MockChild);
         let point = MockPoint { name: "test_point".into(), ts: chrono::Utc::now() };
         let event = RetainValue::encode_json("test_point", &point).unwrap();
         journal.eval((Some(event), ctx));

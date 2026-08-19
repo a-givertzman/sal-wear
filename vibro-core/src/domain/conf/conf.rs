@@ -93,9 +93,11 @@ impl AnalysisConf {
 #[serde(rename_all = "kebab-case")]
 pub struct HardwareConf {
     /// Возвращает базовую частоту дискретизации в Гц.
-    pub sample_rate_hz: f32,
-    /// Возвращает размер пакета данных, поступающего из сети.
+    pub sample_rate_hz: f64,
+    /// Возвращает размер пакета данных, поступающего из АЦП.
     pub chunk_size: usize,
+    /// Постоянная составляющая сигнала.
+    pub ds_offset: f64,
 }
 
 /// ### Настройки углового домена (Order Tracking).

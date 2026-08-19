@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crate::{DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rms, Rpm, ShortSigma, num_complex::Complex};
+use crate::{DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
 use sal_core::error::Error;
 use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 
@@ -9,11 +9,12 @@ pub struct ImbContext {
     /// Уточненная частота вращения вала, об/мин.
     pub rpm: Rpm<f64>,
     /// Сырые выборки из АЦП и угловая сетка. Приходят из AngularGrid
-    pub frame: Arc<Frame>,
+    pub frame: Arc<Frame<u16, f32>>,
     /// LowPassSinal Context.
     pub low_pass_signal: LowPassSignalCtx,
     /// Отфилтрованная выборка сырого АЦП сигнала.
-    pub samples: Box<[f32; Frame::SIZE]>,
+    /// Имеет размер `conf.adc.chunk_size`
+    pub samples: Vec<f32>,
 
     /// Сигнал развернутый в равномерную сетку угловой области.
     /// Значения вибрации соответствуют каждому углу поворота вала механизма.
@@ -44,8 +45,9 @@ pub struct ImbContext {
 impl ImbContext {
     /// - `samples_per_rev` - Плотность угловой сетки (точек на оборот) (из конфига).
     /// - `n_fft` - Размер буфера FFT (из конфига).
+    /// - `chunk_size` - размер пакета данных, поступающего из АЦП за один раз.
     /// - `retain` - Инструмент хранения пар Key-Value на диске.
-    pub fn new(parent: impl Into<String>, samples_per_rev: usize, n_fft: usize, retain: Arc<Retain>) -> Self {
+    pub fn new(parent: impl Into<String>, samples_per_rev: usize, n_fft: usize, chunk_size: usize, retain: Arc<Retain>) -> Self {
         let parent = parent.into();
         // TODO: Исправить размер, он должен быть равен предполагаемому количеству углов исходя из размера входной выборки и максимальных оборотов
         let capacity = n_fft;
@@ -69,7 +71,7 @@ impl ImbContext {
             rpm: Rpm(f64::EPSILON),
             frame: Arc::new(Frame::default()),
             low_pass_signal: LowPassSignalCtx::new(),
-            samples: Box::new([0.0; Frame::SIZE]),
+            samples: vec![0.0; chunk_size],
             order_samples: Vec::with_capacity(capacity),
             total_phase: Phase(0.0),
             fft_buff: MirroredBuffer::new(n_fft),
@@ -83,7 +85,7 @@ impl ImbContext {
     /// Добавляет новый массив сэмплов из АЦП в обработку
     /// - Сбрасывает массив результатов.
     /// - Сбрасывает ошибки.
-    pub fn update(&mut self, frame: Arc<Frame>) {
+    pub fn update(&mut self, frame: Arc<Frame<u16, f32>>) {
         self.frame = frame;
         self.features = vec![];
         self.err = None;
@@ -113,5 +115,28 @@ impl ImbContext {
             None => Some(Error::new(me, area)),
         };
         self
+    }
+    /// Возвращает ошибку вычислений, если есть
+    pub fn err(&self) -> Option<Error> {
+        self.err.as_ref().map(|e| e.clone())
+    }
+}
+//
+impl Default for ImbContext {
+    fn default() -> Self {
+        Self {
+            rpm: Rpm(0.0),
+            frame: Default::default(),
+            low_pass_signal: Default::default(),
+            samples: Default::default(),
+            order_samples: Default::default(),
+            total_phase: Default::default(),
+            fft_buff: MirroredBuffer::new(0),
+            fft_window: Default::default(),
+            filters: Default::default(),
+            features: Default::default(),
+            results: Default::default(),
+            err: Default::default(),
+        }
     }
 }

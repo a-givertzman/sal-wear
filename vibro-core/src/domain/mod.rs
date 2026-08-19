@@ -28,7 +28,12 @@ mod retain;
 pub use retain::*;
 mod sql_export;
 pub use sql_export::*;
-
+mod vibro_sensor;
+pub use vibro_sensor::*;
+mod mid_range;
+pub use mid_range::*;
+mod high_range;
+pub use high_range::*;
 
 pub struct MockEventValues {
     rpm: AtomicU64,
@@ -51,16 +56,23 @@ impl MockEventValues {
 }
 impl EventValueAccess<str, f64> for MockEventValues {    
     //
-    fn subscribe(&self, key: &str) {
+    fn register(&mut self, key: &str) {
         if key != "rpm" {
-            panic!("MockEventValues.subscribe | Unknown key '{key}'")
+            panic!("MockEventValues.register | Unknown key '{key}'")
         }
     }
     //
     fn get(&self, key: &str) -> Option<f64> {
         if key != "rpm" {
-            panic!("MockEventValues.subscribe | Unknown key '{key}'")
+            panic!("MockEventValues.get | Unknown key '{key}'")
         }
         self.rpm()
+    }
+    //
+    fn insert(&self, key: &str, val: f64) {
+        if key != "rpm" {
+            panic!("MockEventValues.insert | Unknown key '{key}'")
+        }
+        self.rpm.store(val.to_bits(), Ordering::Relaxed);
     }
 }

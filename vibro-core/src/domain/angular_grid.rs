@@ -1,33 +1,36 @@
 use std::{f64::consts::TAU, ops::{Index, IndexMut}};
 use sal_core::dbg::Dbg;
-use crate::{Context, Eval, Frame, me};
+use crate::{AngularCtx, Eval, me};
 
 /// Угловая сетка (фазовый профиль) для заданного окна временных отсчетов.
 /// Представляет собой массив углов поворота вала, соответствующих каждому отсчету вибрации.
 pub struct AngularGrid<Child> {
     child: Child,
+    chunk_size: usize,
     dbg: Dbg,
 }
 impl<Child> AngularGrid<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> {
     ///
     /// ### Returns `Autocorrelation` new instance
     /// Вычисляет угловую сетку для новой порции данных.
-    pub fn new(parent: impl Into<String>, child: Child) -> Self {
+    /// - `chunk_size` - Размер пакета данных, поступающего из АЦП.
+    pub fn new(parent: impl Into<String>, chunk_size: usize, child: Child) -> Self {
         let dbg = Dbg::new(parent, me::<Self>());
         Self {
             child,
+            chunk_size,
             dbg,
         }
     }
 }
-impl<Child> Eval<Context, (Context, Phases<f32>)> for AngularGrid<Child>
+impl<Child> Eval<AngularCtx, (AngularCtx, Phases<f32>)> for AngularGrid<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> {
     /// Возвращает `Context` и угловую сетку `Phases`.
     #[inline]
-    fn eval(&self, ctx: Context) -> (Context, Phases<f32>) {
+    fn eval(&self, ctx: AngularCtx) -> (AngularCtx, Phases<f32>) {
         let mut ctx = self.child.eval(ctx);
         if ctx.err.is_some() {
             return (ctx.pass_err(&self.dbg, "eval"), Phases::new(0));
@@ -37,7 +40,7 @@ where
             let full_turns = (ctx.current_theta / TAU).floor();
             ctx.current_theta -= full_turns * TAU;
         }
-        let mut phases = Phases::new(Frame::SIZE);
+        let mut phases = Phases::new(self.chunk_size);
         for i in 0..ctx.phases_size {
             ctx.current_theta += ctx.omega * ctx.dt;
             phases[i] = ctx.current_theta as f32;
