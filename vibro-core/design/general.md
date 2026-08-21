@@ -1,7 +1,21 @@
 - Наименование либы: `VibroCore`
-- Давай подробно разложим вычислительные шаги, пока без деталей имплементации, но оценим связи и движение данных.
-- Сырой сигнал с АЦП уже есть можно брать готовый массив в обработку.
-- Сырой сигнал с тахометра тоже есть, получаем с канала, добавлю туда структуру `Inputs`, она читает канал, все значения пишет в поле, в любой момент мы можем получить актуальное значение частоты
+- Имеем входной сигнал с датчика вибрации (Fsample = 320 кГц) по 512 сэмплов за раз
+- Имеем сырой не очень точный сигнал с тахометра RPM-raw
+- Выполняем следующий расчетные шаги
+    - Автокореляция (вычисляет RPM из входного сигнала, ищет максимум в узком диапазоне RPM-raw)
+    - Угловая сетка (фазовый профиль) для заданного окна временных отсчетов.
+    - отдельно считаем три диапазона
+        - 0.5х .. 3.0х (дисбалансы и т.д..)
+        - Средний, биение на BPFI, BPFO, FTF, BSF
+        - Высокий, резонансы BPFI, BPFO, FTF, BSF
+
+Сейчас рассматриваем 0.5х .. 3.0х, его шаги такие:
+- Фильтр нижних частот (Баттерворт 2-го порядка) для подавления ВЧ-шумов. Пропускает частоты до заданного порядка (например, 10x от текущих оборотов).
+- Выполняет ресемплинг (Order Tracking) отфильтрованного сигнала во временной области в равномерную сетку угловой области.
+- Спектральный анализ сигнала в угловом домене (Order Tracking)
+- Выявление макро-механических дефектов на низких кратностях частоты вращения (0.5x..3x RPM).
+
+- `Inputs` - читает канал, все значения пишет в поле, в любой момент мы можем получить актуальное значение частоты
 
 - `TimeDomainSamples(Сырые данные)` - высокоэффективный lock-free circular buffer с прямым доступом к элементам
 
@@ -18,9 +32,11 @@
         - `LowPassSignal` - Фильтр низких частот (0.5X..10X)
             - `OrderDomainSamples` - Order Tracking, Resample
             - `OrderSpectrum` - FFT, Копит буфер заданного размера, считает по готовности
-            - `ImbalanceDetector` - Детектор изменения энергии в зоне 1x, 2x, 3x
+            - `OrderFeatureFilter` - Фильтрует целевые кратности частот вращения (0.5x..3x RPM).
                 - `Threshold` для 1x - Дисбаланс, 2/3x - расцентровка, ослабление опор.
                 - Наличие изменений отправятся в БД
+            - `ImbalanceDetector` - Выявление и классификация макро-механических дефектов на низких кратностях частоты вращения (0.5x..3x RPM)
+            - `SqlExport` - Формирование запросов в БД
     - `TimeDomainSamples`
         - `BandpassSignal` - Полосовой Фильтр ВЧ-резонанса (5..10 кГц)
             - `SignalEnvelope` - Детектор огибающей (Full-Wave Rectification + Low Pass Filter)
@@ -29,6 +45,7 @@
             - `DefectDetector` - Детектор дефектов BPFI, BPFO, FTF, BSF подшипника
                 - `Threshold` для BPFI, BPFO, FTF, BSF на ранней стадии
                 - Наличие изменений отправятся в БД
+
     - `TimeDomainSamples`
         - `BandpassSignal` - Полосовой Фильтр Среднего диапазона (10X..5 кГц)
             - `OrderDomainSamples` - Order Tracking, Resample
@@ -52,16 +69,21 @@ let angular_grid = Arc::new(AngularGrid::New(
     conf.angular_step,
     Autocorrelation::new(inputs)
 ));
-let imbalance = SqlExport::new(             // Wraps results into sql and export
+let imbalance = SqlExport::new(                 // Wraps results into sql and export
     api_client_link.clone(),
-    ImbalanceDetector::new(
-        conf.imbalance.threshold,           // for BPFI, BPFO, FTF, BSF
-        OrderSpectrum::new(
-            conf.imbalance.fft_size,
-            OrderDomainSamples::new(
-                angular_grid.clone(),
-                LowPassSignal::new(         // Баттерворт 2-го порядка
-                    conf.imbalance.edge,    // 10x
+    |ctx: &ImbContext| ctx.results.map(|r| {
+        format!("insert into table () values ()")
+    },
+    OrderFeatureFilter::new(                    // Детекция изменений гармоник 0.5x..3x RPM
+        ImbalanceDetector::new(
+            conf.low_range.threshold,           // for 0.5x..3x RPM
+            OrderSpectrum::new(
+                conf.imbalance.fft_size,
+                OrderDomainSamples::new(
+                    angular_grid.clone(),
+                    LowPassSignal::new(         // Баттерворт 2-го порядка
+                        conf.imbalance.edge,    // 10x
+                    )
                 )
             )
         )
