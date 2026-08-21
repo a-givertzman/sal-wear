@@ -14,6 +14,7 @@ use crate::{
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
+use sal_sync::services::Service;
 use std::sync::Arc;
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -109,6 +110,7 @@ fn order_features_filter_stationary_test() {
     let mut fft_window: Vec<Complex<f32>> = Vec::with_capacity(num_bins);
     let order_features_filter = OrderFeatureFilter::new(&dbg, conf.analysis.n_fft(), 0.02454, Pass::new());
     let retain = Arc::new(Retain::mock(&dbg, []));
+    // retain.run().unwrap();   // Раскоментировать если в retain уходит много изменений (>16384)
     let mut i_ctx = ImbContext::new(
         &dbg,
         conf.analysis.samples_per_rev(),
