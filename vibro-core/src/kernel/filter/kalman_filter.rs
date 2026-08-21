@@ -160,7 +160,7 @@ impl KalmanFilter {
         let relative_change = if last_saved.is_finite() && last_saved.abs() > f64::EPSILON {
             (new_x_hat - last_saved).abs() / last_saved
         } else {
-            new_x_hat.abs()
+            self.saving_threshold + 1.0 // new_x_hat.abs()     By Lobanov A 21.08.26
         };
         // Если тренд сдвинулся сильнее порога (например, более чем на 1%),
         // отправляем стейт в канал для фоновой записи на диск
