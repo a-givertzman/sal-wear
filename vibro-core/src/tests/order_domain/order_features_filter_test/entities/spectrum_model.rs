@@ -22,16 +22,23 @@ pub struct SpectrumModel {
 }
 //
 impl SpectrumModel {
-    pub fn new(a0: f64, total_frames: u64, target_bin_idx: usize, num_bins: usize) -> Self {
+    pub fn new(
+        a0: f64, 
+        total_frames: u64, 
+        target_bin_idx: usize, 
+        num_bins: usize,
+        trend_multiplier: f64,
+        floor_noise: f64,
+    ) -> Self {
         Self {
             a0,
             total_frames,
             target_bin_idx,
             num_bins,
-            trend_multiplier: 1.015_f64.powf(1.0 / total_frames as f64),
+            trend_multiplier,
             target_disturbances: Vec::new(),
             out_of_band_disturbances: Vec::new(),
-            floor_noise: 0.001 * a0, // 0.1% фонового шума по умолчанию
+            floor_noise
         }
     }
     /// Регистрация помехи на целевом бине гармоники
