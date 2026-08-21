@@ -107,7 +107,7 @@ impl KalmanFilter {
             saving_threshold,
             x_hat: AtomicF64::new(retained.x_hat),
             p: AtomicF64::new(retained.p),  // на старте должно быть NAN, тогда начальным значением будет первая RMS
-            last_saved_x_hat: AtomicF64::new(retained.x_hat),
+            last_saved_x_hat: AtomicF64::new(if retained.x_hat.is_finite() { retained.x_hat } else { 0.0 }),
             retain,
             value,
             sigma,
@@ -157,14 +157,14 @@ impl KalmanFilter {
         // 4. ОПТИМИЗАЦИЯ ЗАПИСИ НА ДИСК (Дельта-фильтрация IO-операций)
         let last_saved = self.last_saved_x_hat.load();
         // Вычисляем модуль относительного изменения тренда
-        let relative_change = if last_saved.is_finite() {
+        let relative_change = if last_saved.abs() > f64::EPSILON {
             (new_x_hat - last_saved).abs() / last_saved
         } else {
-            self.saving_threshold + 1.0 // new_x_hat.abs()     By Lobanov A 21.08.26
+            new_x_hat.abs()
         };
         // Если тренд сдвинулся сильнее порога (например, более чем на 1%),
         // отправляем стейт в канал для фоновой записи на диск
-        if relative_change >= self.saving_threshold  && new_x_hat.abs() > f64::EPSILON {    // By Lobanov A 21.08.26
+        if relative_change >= self.saving_threshold {
             self.last_saved_x_hat.store(new_x_hat);
             // Текущее системное время в секундах
             // Отправляем в канал без блокировки текущего потока обработки спектра.
