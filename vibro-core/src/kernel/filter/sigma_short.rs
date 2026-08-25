@@ -46,6 +46,15 @@ impl ShortSigma {
         let beta = self.beta;
         let old_mu = self.mu.load();
         let old_var = self.variance.load();
+
+
+        if !old_mu.is_finite() { // Vorzhev Z.A 25.08.2026
+            self.mu.store(x);
+            self.variance.store(0.0);
+            return 0.0;
+        }
+
+        
         // Рекуррентное обновление среднего по Велфорду с экспоненциальным окном
         let new_mu = (1.0 - beta) * old_mu + beta * x;
         // Рекуррентное обновление дисперсии

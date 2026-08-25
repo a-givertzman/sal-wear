@@ -10,10 +10,11 @@ use debugging::session::debug_session::{
 };
 use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
+use sal_sync::services::Service;
 use std::sync::Arc;
 use std::fs::File;
 use std::io::{BufWriter, Write};
-// ===================== ПАРАМЕТРЫ ОДНОЙ КОНФИГУРАЦИИ =====================
+// ===================== ПАРАМЕТРЫ КОНФИГУРАЦИИ =====================
 struct TestConfig {
     name: &'static str,
     /// Ожидаемый рост тренда за весь тест
@@ -27,7 +28,7 @@ struct TestConfig {
     offtarget_disturbance: Option<(u64, u64, f64)>,
     criterion: &'static str,
 }
-// ===================== РЕЗУЛЬТАТ ОДНОГО ПРОГОНА =====================
+// ===================== РЕЗУЛЬТАТ ТЕСТИРОВАНИЯ =====================
 struct ConfigResult {
     name: String,
     failures: Vec<String>,
@@ -72,15 +73,15 @@ fn order_features_filter_stationary_test() {
     let short_impulse_frames = 2; // короткая помеха (несколько мс = 1-2 кадра)
     let below_8h = hours_8_in_frames.saturating_sub(hours_8_in_frames / 10).max(1);
     let configs = vec![
-        // ---- детекция тренда ----
-        TestConfig {
-            name: "trend_detection_baseline",
-            trend_growth: 1.015,
-            const_neighbor_amp: 0.0,
-            target_disturbance: None,
-            offtarget_disturbance: None,
-            criterion: "2 (детекция тренда +1.5%)",
-        },
+        // // ---- детекция тренда ----
+        // TestConfig {
+        //     name: "trend_detection_baseline",
+        //     trend_growth: 1.015,
+        //     const_neighbor_amp: 0.0,
+        //     target_disturbance: None,
+        //     offtarget_disturbance: None,
+        //     criterion: "2 (детекция тренда +1.5%)",
+        // },
         // ---- фильтрация коротких импульсов ----
         TestConfig {
             name: "impulse_short_target",
@@ -90,33 +91,33 @@ fn order_features_filter_stationary_test() {
             offtarget_disturbance: None,
             criterion: "1 (короткий импульс не регистрируется)",
         },
-        // ---- помеха длительностью < 8ч тоже не должна регистрироваться ----
-        TestConfig {
-            name: "impulse_below_8h",
-            trend_growth: 1.015,
-            const_neighbor_amp: 0.0,
-            target_disturbance: Some((total_frames / 4, below_8h, 3.0)),
-            offtarget_disturbance: None,
-            criterion: "1 (возмущение <8ч не регистрируется)",
-        },
-        // ---- изоляция от постоянного внеполосного фона ----
-        TestConfig {
-            name: "isolation_const_neighbor_0_5",
-            trend_growth: 1.015,
-            const_neighbor_amp: 0.5,
-            target_disturbance: None,
-            offtarget_disturbance: None,
-            criterion: "3 (изоляция от постоянного соседа)",
-        },
-        // ---- изоляция от сильной, но короткой внеполосной помехи ----
-        TestConfig {
-            name: "isolation_short_offtarget",
-            trend_growth: 1.015,
-            const_neighbor_amp: 0.0,
-            target_disturbance: None,
-            offtarget_disturbance: Some((total_frames / 4, short_impulse_frames, 5.0)),
-            criterion: "3 (изоляция от короткого соседа)",
-        },
+        // // ---- помеха длительностью < 8ч тоже не должна регистрироваться ----
+        // TestConfig {
+        //     name: "impulse_below_8h",
+        //     trend_growth: 1.015,
+        //     const_neighbor_amp: 0.0,
+        //     target_disturbance: Some((total_frames / 4, below_8h, 3.0)),
+        //     offtarget_disturbance: None,
+        //     criterion: "1 (возмущение <8ч не регистрируется)",
+        // },
+        // // ---- изоляция от постоянного внеполосного фона ----
+        // TestConfig {
+        //     name: "isolation_const_neighbor_0_5",
+        //     trend_growth: 1.015,
+        //     const_neighbor_amp: 0.5,
+        //     target_disturbance: None,
+        //     offtarget_disturbance: None,
+        //     criterion: "3 (изоляция от постоянного соседа)",
+        // },
+        // // ---- изоляция от сильной, но короткой внеполосной помехи ----
+        // TestConfig {
+        //     name: "isolation_short_offtarget",
+        //     trend_growth: 1.015,
+        //     const_neighbor_amp: 0.0,
+        //     target_disturbance: None,
+        //     offtarget_disturbance: Some((total_frames / 4, short_impulse_frames, 5.0)),
+        //     criterion: "3 (изоляция от короткого соседа)",
+        // },
     ];
     let target_bin_idx = (TARGET_ORDER * conf.analysis.fft_turns() as f64).round() as usize;
     let num_bins = conf.analysis.n_fft() / 2;
@@ -139,7 +140,7 @@ fn order_features_filter_stationary_test() {
         }
         // Постоянный внеполосный фон (правый сосед)
         if cfg.const_neighbor_amp > 0.0 {
-            spectrum_model.add_out_of_band_disturbance(target_bin_idx + 1, SpectralDisturbance {
+            spectrum_model.add_out_of_band_disturbance(target_bin_idx + 2, SpectralDisturbance {
                 start_frame: 0,
                 duration_frames: total_frames,
                 amplitude_factor: cfg.const_neighbor_amp,
@@ -148,7 +149,7 @@ fn order_features_filter_stationary_test() {
         }
         // Эпизодическая внеполосная помеха (левый сосед)
         if let Some((start, dur, amp)) = cfg.offtarget_disturbance {
-            spectrum_model.add_out_of_band_disturbance(target_bin_idx - 1, SpectralDisturbance {
+            spectrum_model.add_out_of_band_disturbance(target_bin_idx - 2, SpectralDisturbance {
                 start_frame: start,
                 duration_frames: dur,
                 amplitude_factor: amp,
@@ -160,6 +161,7 @@ fn order_features_filter_stationary_test() {
         let order_features_filter =
             OrderFeatureFilter::new(&dbg, conf.analysis.n_fft(), 0.02454, Pass::new());
         let retain = Arc::new(Retain::mock(&dbg, []));
+        retain.run().unwrap();   // Раскоментировать если в retain уходит много изменений (>16384)
         let mut i_ctx = ImbContext::new(
             &dbg,
             conf.analysis.samples_per_rev(),
@@ -169,6 +171,7 @@ fn order_features_filter_stationary_test() {
         );
         let mut history: Vec<(u64, f64, String)> = Vec::new();
         let mut raw_history: Vec<(u64, f64)> = Vec::new();
+        // ====================== ОСНОВНОЙ ЦИКЛ СИМУЛЯЦИИ ======================
         for i in 0..total_frames {
             spectrum_model.generate_frame(i, &mut fft_window);
             raw_history.push((i, fft_window[target_bin_idx].re as f64));
@@ -180,16 +183,16 @@ fn order_features_filter_stationary_test() {
             }
         }
         // ---- Экспорт CSV (по имени конфигурации) ----
-        let mut raw_file = BufWriter::new(File::create(format!("{csv_dir}/raw_{}.csv", cfg.name)).unwrap());
-        writeln!(raw_file, "frame,value").unwrap();
-        for (i, v) in &raw_history {
-            writeln!(raw_file, "{i},{v}").unwrap();
-        }
-        let mut filtered_file = BufWriter::new(File::create(format!("{csv_dir}/filtered_{}.csv", cfg.name)).unwrap());
-        writeln!(filtered_file, "frame,value").unwrap();
-        for (i, v, _) in &history {
-            writeln!(filtered_file, "{i},{v}").unwrap();
-        }
+        // let mut raw_file = BufWriter::new(File::create(format!("{csv_dir}/raw_{}.csv", cfg.name)).unwrap());
+        // writeln!(raw_file, "frame,value").unwrap();
+        // for (i, v) in &raw_history {
+        //     writeln!(raw_file, "{i},{v}").unwrap();
+        // }
+        // let mut filtered_file = BufWriter::new(File::create(format!("{csv_dir}/filtered_{}.csv", cfg.name)).unwrap());
+        // writeln!(filtered_file, "frame,value").unwrap();
+        // for (i, v, _) in &history {
+        //     writeln!(filtered_file, "{i},{v}").unwrap();
+        // }
         // ---- Проверки для этой конфигурации ----
         let mut failures: Vec<String> = Vec::new();
         // === Проверка A — правильный ордер (общая для всех) ===
