@@ -12,8 +12,8 @@ use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
 use sal_sync::services::Service;
 use std::sync::Arc;
-use std::fs::File;
-use std::io::{BufWriter, Write};
+// use std::fs::File;
+// use std::io::{BufWriter, Write};
 // ===================== ПАРАМЕТРЫ КОНФИГУРАЦИИ =====================
 struct TestConfig {
     name: &'static str,
@@ -74,14 +74,14 @@ fn order_features_filter_stationary_test() {
     let below_8h = hours_8_in_frames.saturating_sub(hours_8_in_frames / 10).max(1);
     let configs = vec![
         // // ---- детекция тренда ----
-        // TestConfig {
-        //     name: "trend_detection_baseline",
-        //     trend_growth: 1.015,
-        //     const_neighbor_amp: 0.0,
-        //     target_disturbance: None,
-        //     offtarget_disturbance: None,
-        //     criterion: "2 (детекция тренда +1.5%)",
-        // },
+        TestConfig {
+            name: "trend_detection_baseline",
+            trend_growth: 1.015,
+            const_neighbor_amp: 0.0,
+            target_disturbance: None,
+            offtarget_disturbance: None,
+            criterion: "2 (детекция тренда +1.5%)",
+        },
         // ---- фильтрация коротких импульсов ----
         TestConfig {
             name: "impulse_short_target",
@@ -91,38 +91,38 @@ fn order_features_filter_stationary_test() {
             offtarget_disturbance: None,
             criterion: "1 (короткий импульс не регистрируется)",
         },
-        // // ---- помеха длительностью < 8ч тоже не должна регистрироваться ----
-        // TestConfig {
-        //     name: "impulse_below_8h",
-        //     trend_growth: 1.015,
-        //     const_neighbor_amp: 0.0,
-        //     target_disturbance: Some((total_frames / 4, below_8h, 3.0)),
-        //     offtarget_disturbance: None,
-        //     criterion: "1 (возмущение <8ч не регистрируется)",
-        // },
-        // // ---- изоляция от постоянного внеполосного фона ----
-        // TestConfig {
-        //     name: "isolation_const_neighbor_0_5",
-        //     trend_growth: 1.015,
-        //     const_neighbor_amp: 0.5,
-        //     target_disturbance: None,
-        //     offtarget_disturbance: None,
-        //     criterion: "3 (изоляция от постоянного соседа)",
-        // },
-        // // ---- изоляция от сильной, но короткой внеполосной помехи ----
-        // TestConfig {
-        //     name: "isolation_short_offtarget",
-        //     trend_growth: 1.015,
-        //     const_neighbor_amp: 0.0,
-        //     target_disturbance: None,
-        //     offtarget_disturbance: Some((total_frames / 4, short_impulse_frames, 5.0)),
-        //     criterion: "3 (изоляция от короткого соседа)",
-        // },
+        // ---- помеха длительностью < 8ч тоже не должна регистрироваться ----
+        TestConfig {
+            name: "impulse_below_8h",
+            trend_growth: 1.015,
+            const_neighbor_amp: 0.0,
+            target_disturbance: Some((total_frames / 4, below_8h, 3.0)),
+            offtarget_disturbance: None,
+            criterion: "1 (возмущение <8ч не регистрируется)",
+        },
+        // ---- изоляция от постоянного внеполосного фона ----
+        TestConfig {
+            name: "isolation_const_neighbor_0_5",
+            trend_growth: 1.015,
+            const_neighbor_amp: 0.5,
+            target_disturbance: None,
+            offtarget_disturbance: None,
+            criterion: "3 (изоляция от постоянного соседа)",
+        },
+        // ---- изоляция от сильной, но короткой внеполосной помехи ----
+        TestConfig {
+            name: "isolation_short_offtarget",
+            trend_growth: 1.015,
+            const_neighbor_amp: 0.0,
+            target_disturbance: None,
+            offtarget_disturbance: Some((total_frames / 4, short_impulse_frames, 5.0)),
+            criterion: "3 (изоляция от короткого соседа)",
+        },
     ];
     let target_bin_idx = (TARGET_ORDER * conf.analysis.fft_turns() as f64).round() as usize;
     let num_bins = conf.analysis.n_fft() / 2;
     let amplitude_factor = 2f64.sqrt() / conf.analysis.n_fft() as f64;
-    let csv_dir = "/home/debian/Documents/python_test";
+    // let csv_dir = "/home/debian/Documents/python_test";
     let mut results: Vec<ConfigResult> = Vec::new();
     for cfg in &configs {
         log::debug!("===== Конфигурация: {} (критерий {}) =====", cfg.name, cfg.criterion);
