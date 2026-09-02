@@ -52,7 +52,7 @@ impl AngularCtx {
         let capacity = (3.0 * f_sample * 60.0 / 200.0).ceil() as usize;
         log::info!("AngularCtx.new | Буфер автокореляции выбран {capacity} сэмплов. Из расчета на 3 оборота при минимальной частоте вращения 200 RPM и частоте дискретизации {f_sample}");
         Self {
-            ac_samples: MirroredBuffer::new(capacity),
+            ac_samples: MirroredBuffer::new(capacity).with_hop_size(capacity / 4),
             raw_rpm: f64::NAN,
             raw_period: f64::NAN,
             period: f64::NAN,

@@ -51,6 +51,7 @@ impl ImbContext {
         let parent = parent.into();
         // TODO: Исправить размер, он должен быть равен предполагаемому количеству углов исходя из размера входной выборки и максимальных оборотов
         let capacity = n_fft;
+        log::debug!("{}.new | n_fft: {n_fft}", crate::me::<Self>());
         let filters = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0].map(|order| {
             // Идентификатор зоны для хранения в retain
             let order_id = format!("{order}x");

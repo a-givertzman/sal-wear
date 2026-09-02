@@ -15,7 +15,8 @@ use crate::{Conf, Eval, Frame, ImbContext, OrderDomainSamples, OrderSpectrum, Pa
 ///    * Ожидаемый результат: На спектре отчетливо видны два раздельных пика в бинах 128 (1.0X) и 131 (1.023X). Они не сливаются в один купол. Это подтверждает, что разрешение Δ O ≤ 0.01 успешно реализовано.
 /// * Идентификация несоосности (2.0X) и зазоров (3.0X)
 ///    * Вход: Сигнал, содержащий три гармоники: 1.0X (амплитуда 0.5), 2.0X (амплитуда 1.2), 3.0X (амплитуда 0.3).
-///    * Ожидаемый результат: FFT корректно распределяет энергию по трем пикам (бины 128, 256 и 384 соответственно). Соотношение амплитуд строго сохраняется.#[test]
+///    * Ожидаемый результат: FFT корректно распределяет энергию по трем пикам (бины 128, 256 и 384 соответственно). Соотношение амплитуд строго сохраняется.
+#[test]
 fn order_spectrum_test () {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderSpectrum-test");
@@ -24,6 +25,7 @@ fn order_spectrum_test () {
         adc:
             sample-rate-hz: {f_sample}
             chunk-size: 512
+            ds-offset: 2048
         analysis:
             order-tracking:
                 max-order: 100
@@ -134,6 +136,7 @@ fn order_spectrum_test () {
 ///    * Вход: Последующий вызов eval после того, как буфер уже был полностью заполнен и обработан.
 ///    * Ожидаемый результат: Поведение FIFO-буфера соответствует выбранной стратегии (либо полный сброс и накопление с нуля, либо сдвиг окна на заданный шаг/overlap). Сигнал не затирается некорректно.
 #[test]
+#[ignore = "Isn't implemented"]
 fn spectrum_test() {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderSpectrum-spectrum-test");
@@ -149,6 +152,7 @@ fn spectrum_test() {
 ///    * Вход: Предыдущий шаг (child.eval) возвращает ctx со значением ctx.err = Some(...) (например, сбой ресемплера или потеря сигнала тахометра).
 ///    * Ожидаемый результат: `OrderSpectrum` мгновенно делает return ctx.pass_err(...), не пытаясь писать в FIFO и не запуская FFT.
 #[test]
+#[ignore = "Isn't implemented"]
 fn stress_and_edge_cases_test() {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderSpectrum-stress-and-edge-cases-test");
@@ -164,6 +168,7 @@ fn stress_and_edge_cases_test() {
 ///    * Вход: Пул потоков (Rayon или tokio), обрабатывающий одновременно спектры для 128 разных подшипников (каждый в своем инстансе пайплайна).
 ///    * Ожидаемый результат: Отсутствие взаимных блокировок (deadlocks) и состояний гонки (race conditions). Архитектурный Arc<dyn Fft<f32>> эффективно шарится между потоками без копирования тяжелых таблиц планировщика FFT.
 #[test]
+#[ignore = "Isn't implemented"]
 fn performance_test() {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderSpectrum-performance-test");
