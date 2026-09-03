@@ -54,7 +54,7 @@ impl<T: Copy + Zero> MirroredBuffer<T> {
     ///
     /// - `capacity` - Требуемая длина окна анализа.
     /// 
-    /// **Примечание**: По умолчанию размер скользящего укна `hop_size` равен `capacity`, без наложения.
+    /// **Примечание**: По умолчанию размер скользящего окна `hop_size` равен `capacity`, без наложения.
     pub fn new(capacity: usize) -> Self {
         Self {
             buffer: vec![T::zero(); capacity * 2],
@@ -77,7 +77,7 @@ impl<T: Copy + Zero> MirroredBuffer<T> {
         if hop_size < 1 || hop_size > self.capacity {
             panic!("{}.with_hop | Некорректный hop_size {}, должен быть от 1 до capacity ({})", crate::me::<Self>(), hop_size, self.capacity);
         }
-        self.hop_size = hop_size;
+        self.hop_size = hop_size.max(1);
         self
     }
     /// ### Возвращает логический размер буфера `capacity`. Длину скользящего окна.

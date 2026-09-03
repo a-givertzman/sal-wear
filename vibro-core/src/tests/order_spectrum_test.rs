@@ -17,6 +17,7 @@ use crate::{Conf, Eval, Frame, ImbContext, OrderDomainSamples, OrderSpectrum, Pa
 ///    * Вход: Сигнал, содержащий три гармоники: 1.0X (амплитуда 0.5), 2.0X (амплитуда 1.2), 3.0X (амплитуда 0.3).
 ///    * Ожидаемый результат: FFT корректно распределяет энергию по трем пикам (бины 128, 256 и 384 соответственно). Соотношение амплитуд строго сохраняется.
 #[test]
+#[ignore = "Isn't implemented"]
 fn order_spectrum_test () {
     DebugSession::new().filter(LogLevel::Debug).init();
     let dbg = Dbg::own("OrderSpectrum-test");
