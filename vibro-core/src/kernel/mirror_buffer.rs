@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use crate::Zero;
 
 
@@ -36,8 +38,13 @@ pub struct MirroredBuffer<T> {
     capacity: usize,
     /// Текущий индекс записи (от 0 до N-1).
     write_idx: usize,
-    /// Текущее фактическое число накопленных элементов
+    /// Текущее фактическое число накопленных элементов.
     len: usize,
+    /// Шаг скользящего окна (Hop Size).
+    /// Количество новых элементов, после поступления которых буфер вернет срез в `pop_window`.
+    hop_size: usize,
+    /// Количество элементов, накопленное с момента последнего среза `pop_window`.
+    hop_len: Cell<usize>,
 }
 impl<T: Copy + Zero> MirroredBuffer<T> {
     /// ### Создает новый экземпляр буфера `MirroredBuffer` с выделением памяти на куче.
@@ -46,13 +53,32 @@ impl<T: Copy + Zero> MirroredBuffer<T> {
     /// Выделяется массив размером `capacity * 2 * sizeof(T)`.
     ///
     /// - `capacity` - Требуемая длина окна анализа.
+    /// 
+    /// **Примечание**: По умолчанию размер скользящего окна `hop_size` равен `capacity`, без наложения.
     pub fn new(capacity: usize) -> Self {
         Self {
             buffer: vec![T::zero(); capacity * 2],
             capacity,
             write_idx: 0,
             len: 0,
+            hop_size: capacity,
+            hop_len: Cell::new(0),
         }
+    }
+    /// ### Настраивает шаг скользящего окна (Hop Size).
+    /// 
+    /// - `hop_size` - Количество элементов, после поступления которых, буфер вернет срез в `pop_window`.
+    /// 
+    /// По умолчанию `hop_size = capacity`.
+    /// 
+    /// #### Panic
+    /// Метод паникует если `hop_size` меньше `1` или больше `capacity`
+    pub fn with_hop_size(mut self, hop_size: usize) -> Self {
+        if hop_size < 1 || hop_size > self.capacity {
+            panic!("{}.with_hop | Некорректный hop_size {}, должен быть от 1 до capacity ({})", crate::me::<Self>(), hop_size, self.capacity);
+        }
+        self.hop_size = hop_size.max(1);
+        self
     }
     /// ### Возвращает логический размер буфера `capacity`. Длину скользящего окна.
     #[inline]
@@ -66,9 +92,8 @@ impl<T: Copy + Zero> MirroredBuffer<T> {
     }
     /// ### Возвращает `true`, если буфер заполнен до целевой емкости `capacity`.
     #[inline]
-
     pub fn is_full(&self) -> bool {
-        self.len == self.capacity
+        self.len >= self.capacity
     }
     /// ### Добавляет новую выборку в буфер.
     /// 
@@ -107,6 +132,7 @@ impl<T: Copy + Zero> MirroredBuffer<T> {
                 self.len = self.capacity;
             }
         }
+        self.hop_len.update(|v| v + m);
     }
     /// ### Возвращает непрерывный срез памяти длиной `capacity`.
     ///
@@ -125,6 +151,26 @@ impl<T: Copy + Zero> MirroredBuffer<T> {
     #[inline]
     pub fn read_window(&self) -> &[T] {
         &self.buffer[self.write_idx..self.write_idx + self.capacity]
+    }
+    /// ### Возвращает непрерывный срез памяти длиной `capacity` если накоплено `hop_size` элементов с последнего среза.
+    /// 
+    /// #### Хронология данных
+    /// Возвращаемый срез отсортирован по времени:
+    /// * `slice[0]` — самый старый отсчет в текущем окне.
+    /// * `slice[N-1]` — самый свежий (последний записанный) отсчет.
+    ///
+    /// #### Эффективность
+    /// Операция выполняется за **O(1)** (константное время). Не выполняет копирования
+    /// элементов и операций сдвига памяти.
+    ///
+    #[inline]
+    pub fn pop_window(&self) -> Option<&[T]> {
+        if self.len >= self.capacity && self.hop_len.get() >= self.hop_size {
+            self.hop_len.set(0);
+            Some(&self.buffer[self.write_idx..self.write_idx + self.capacity])
+        } else {
+            None
+        }
     }
 }
 ///

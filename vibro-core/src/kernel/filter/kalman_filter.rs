@@ -156,11 +156,20 @@ impl KalmanFilter {
         self.p.store(new_p);
         // 4. ОПТИМИЗАЦИЯ ЗАПИСИ НА ДИСК (Дельта-фильтрация IO-операций)
         let last_saved = self.last_saved_x_hat.load();
-        // Вычисляем модуль относительного изменения тренда
-        let relative_change = if last_saved.is_finite() && last_saved.abs() > f64::EPSILON {
-            (new_x_hat - last_saved).abs() / last_saved
+        let last_saved = if !last_saved.is_finite() {
+            self.last_saved_x_hat.store(new_x_hat);
+            let _ = self.retain.store(&self.order_id, Retained::new(new_x_hat, new_p));
+            new_x_hat
         } else {
-            self.saving_threshold + 1.0 // new_x_hat.abs()     By Lobanov A 21.08.26
+            last_saved
+        };
+        // Находим абсолютное значение для масштабирования
+        let abs_val = new_x_hat.abs().max(last_saved.abs());
+        // Вычисляем модуль относительного изменения тренда
+        let relative_change = if abs_val == 0.0 {
+            0.0
+        } else {
+            (new_x_hat - last_saved).abs() / abs_val
         };
         // Если тренд сдвинулся сильнее порога (например, более чем на 1%),
         // отправляем стейт в канал для фоновой записи на диск
@@ -170,6 +179,7 @@ impl KalmanFilter {
             // Отправляем в канал без блокировки текущего потока обработки спектра.
             // Если принимающая сторона диска занята, данные встанут в очередь.
             let _ = self.retain.store(&self.order_id, Retained::new(new_x_hat, new_p));
+            log::debug!("{}.eval | Order {}, {new_x_hat}", self.dbg, self.order_id);
             // Возвращаем новое значение, так как тренд совершил значимое изменение
             Some(Rms(new_x_hat))
         } else {
