@@ -60,7 +60,7 @@ impl ImbContext {
             let retained: Retained = retain.get(&order_id).unwrap_or(Retained::default());
             // Полуширина захвата в долях порядка (Для плавающих режимов ±0.05..±0.1 порядка).
             let half_width = 0.05;
-            KalmanFilter::new(&parent, order_id, q, 0.01, retained, retain.clone(),
+            KalmanFilter::new(&parent, order_id.to_owned(), q, 0.01, retained, retain.clone(), // VORZHEV Z.A 07.09.2026 added `to_owned` cause of error "Expected `String` found `str`"
                 OrderZone::new(Order(order), half_width, 3, n_fft, samples_per_rev),
                 ShortSigma::new(
                     10, 
@@ -95,7 +95,7 @@ impl ImbContext {
             let retained: Retained = retain.get(&order_id).unwrap_or(Retained::default());
             // Полуширина захвата в долях порядка (Для плавающих режимов ±0.05..±0.1 порядка).
             let half_width = 0.05;
-            KalmanFilter::new(&parent, order_id, q, 0.01, retained, retain.clone(),
+            KalmanFilter::new(&parent, order_id.to_owned(), q, 0.01, retained, retain.clone(), // VORZHEV Z.A 07.09.2026 added `to_owned` cause of error "Expected `String` found `str`"
                 OrderZone::new(Order(order), half_width, 3, n_fft, samples_per_rev),
                 ShortSigma::new(
                     window, 
