@@ -37,6 +37,8 @@ pub struct Context {
     pub(crate) temp_coeff: f64,
     /// Накопленное повреждение подшипника c учётом температуры
     pub(crate) bearing_temp_accumulated_wear: f64,
+    /// Частота вращения зубчатой передачи
+    pub(crate) rotational_frequency: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -60,6 +62,7 @@ impl Context {
             bearing_accumulated_wear: 0.0,
             temp_coeff: 0.0,
             bearing_temp_accumulated_wear: 0.0,
+            rotational_frequency: 0.0,
             err: None,
         }
     }

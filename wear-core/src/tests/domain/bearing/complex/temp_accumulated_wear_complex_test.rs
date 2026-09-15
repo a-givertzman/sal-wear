@@ -59,6 +59,7 @@ mod tests {
                     bearing_accumulated_wear: 0.0,
                     temp_coeff: 0.0,
                     bearing_temp_accumulated_wear: 0.0,
+                    rotational_frequency: 0.0,
                     err: None,
                 },
                 MockInputs {
@@ -93,6 +94,7 @@ mod tests {
                     temp_coeff: 0.0,
                     bearing_temp_accumulated_wear: 0.0,
                     err: None,
+                    rotational_frequency: 0.0,
                 },
                 MockInputs {
                     rpm: Some(3000.0),
@@ -126,6 +128,7 @@ mod tests {
                     temp_coeff: 0.0,
                     bearing_temp_accumulated_wear: 0.0,
                     err: None,
+                    rotational_frequency: 0.0,
                 },
                 MockInputs {
                     rpm: Some(3000.0),
@@ -159,6 +162,7 @@ mod tests {
                     temp_coeff: 0.0,
                     bearing_temp_accumulated_wear: 0.0,
                     err: None,
+                    rotational_frequency: 0.0,
                 },
                 MockInputs {
                     rpm: None,
@@ -192,6 +196,7 @@ mod tests {
                     temp_coeff: 0.0,
                     bearing_temp_accumulated_wear: 0.0,
                     err: None,
+                    rotational_frequency: 0.0,
                 },
                 MockInputs {
                     rpm: Some(0.01),
@@ -225,6 +230,7 @@ mod tests {
                     temp_coeff: 0.0,
                     bearing_temp_accumulated_wear: 0.0,
                     err: None,
+                    rotational_frequency: 0.0,
                 },
                 MockInputs {
                     rpm: Some(3000000000.0),
@@ -258,6 +264,7 @@ mod tests {
                     temp_coeff: 0.0,
                     bearing_temp_accumulated_wear: 0.0,
                     err: None,
+                    rotational_frequency: 0.0,
                 },
                 MockInputs {
                     rpm: Some(3000000000.0),
