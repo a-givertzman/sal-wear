@@ -50,6 +50,7 @@ mod tests {
                 1,
                 MockInputs {
                     rpm: Some(50.0),
+                    z_p: Some(0),
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
                 },
@@ -60,6 +61,7 @@ mod tests {
                 MockInputs {
                     rpm: Some(25.0),
                     motor_p: Some(50.0),
+                    z_p: Some(0),
                     t_bearing: Some(0.0),
                 },
                 Some(19100.0), // 9550 * 50 / 25 = 19100
@@ -67,6 +69,7 @@ mod tests {
             (
                 3,
                 MockInputs {
+                    z_p: Some(0),
                     rpm: Some(1450.0),
                     motor_p: Some(11.5),
                     t_bearing: Some(0.0),
@@ -77,6 +80,7 @@ mod tests {
                 4,
                 MockInputs {
                     rpm: Some(1000.0),
+                    z_p: Some(0),
                     motor_p: Some(0.0),
                     t_bearing: Some(0.0),
                 },
@@ -85,6 +89,7 @@ mod tests {
             (
                 5,
                 MockInputs {
+                    z_p: Some(0),
                     rpm: None,
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
@@ -96,6 +101,7 @@ mod tests {
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: None,
+                    z_p: Some(0),
                     t_bearing: None,
                 },
                 None, // Ожидаем ошибку

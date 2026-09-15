@@ -6,6 +6,8 @@ pub struct Inputs {
     motor_p: Option<f64>,
     /// Текущая температура подшипникового узла [°C]
     t_bearing: Option<f64>,
+    // Число зубьев ведущей шестерни [кол-во]
+    z_p: Option<u64>,
 }
 //
 //
@@ -19,6 +21,9 @@ impl Inputs {
     pub fn t_bearing(&self) -> Option<f64> {
         self.t_bearing
     }
+    pub fn z_p(&self) -> Option<u64> {
+        self.z_p
+    }
 }
 /// Заглушка хранилище всех входящих событий  
 pub struct MockInputs {
@@ -27,7 +32,9 @@ pub struct MockInputs {
     /// Текущая мощность двигателя [кВ]
     pub motor_p: Option<f64>,
     /// Текущая температура подшипникового узла [°C]
-    pub t_bearing: Option<f64>,
+    pub t_bearing: Option<f64>,    
+    // Число зубьев ведущей шестерни [кол-во]
+    pub z_p: Option<u64>,
 }
 //
 //
@@ -40,5 +47,8 @@ impl MockInputs {
     }
     pub fn t_bearing(&self) -> Option<f64> {
         self.t_bearing
+    }
+    pub fn z_p(&self) -> Option<u64> {
+        self.z_p
     }
 }

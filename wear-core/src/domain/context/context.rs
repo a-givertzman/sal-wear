@@ -12,6 +12,8 @@ pub struct Context {
     pub(crate) motor_p: Option<f64>,
     /// Текущая температура подшипникового узла [°C]
     pub(crate) t_bearing: Option<f64>,
+    // Число зубьев ведущей шестерни [кол-во]
+    pub(crate) z_p: Option<u64>,
     ///
     /// Расчетные значения
     /// 
@@ -39,6 +41,8 @@ pub struct Context {
     pub(crate) bearing_temp_accumulated_wear: f64,
     /// Частота вращения зубчатой передачи
     pub(crate) rotational_frequency: f64,
+    /// Частота зацепления
+    pub(crate) gear_mesh_frequency: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -51,6 +55,7 @@ impl Context {
             motor_rpm: None,
             motor_p: None,
             t_bearing: None,
+            z_p: None,
             duration: 0.0,
             motor_torque: 0.0,
             radial_load: 0.0,
@@ -63,6 +68,7 @@ impl Context {
             temp_coeff: 0.0,
             bearing_temp_accumulated_wear: 0.0,
             rotational_frequency: 0.0,
+            gear_mesh_frequency: 0.0,
             err: None,
         }
     }
