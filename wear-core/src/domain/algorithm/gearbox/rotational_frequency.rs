@@ -13,29 +13,29 @@ use crate::{
 /// f_rot = rpm / 60 [Гц]
 /// Где:
 /// * `rpm` — скорость вращения вала в оборотах в минуту (об/мин) (обязательно больше нуля)
-pub struct GearMeshFrequency<Child> {
+pub struct RotationalFrequency<Child> {
     child: Child,
     dbg: Dbg,
 }
 //
 //
-impl<Child> GearMeshFrequency<Child>
+impl<Child> RotationalFrequency<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
     ///
-    /// Новый экземпляр [GearMeshFrequency]
+    /// Новый экземпляр [RotationalFrequency]
     pub fn new(
         parent: &Dbg, 
         child: Child
     ) -> Self {
-        let dbg = Dbg::new(parent, "GearMeshFrequency");
+        let dbg = Dbg::new(parent, "RotationalFrequency");
         Self {
             child,
             dbg,
         }
     }
 }
-impl<Child> Eval<Context, Context> for GearMeshFrequency<Child>
+impl<Child> Eval<Context, Context> for RotationalFrequency<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
     fn eval(&self, ctx: Context) -> Context {
@@ -51,7 +51,7 @@ where
             ctx.err = Some(Error::new(&self.dbg, "eval").err("Motor RPM load is about zero"));
             return ctx;
         }
-        ctx.gear_mesh_frequency = motor_rpm / 60.0;
+        ctx.rotational_frequency = motor_rpm / 60.0;
         ctx
     }
     //
