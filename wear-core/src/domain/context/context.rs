@@ -14,6 +14,8 @@ pub struct Context {
     pub(crate) t_bearing: Option<f64>,
     // Число зубьев ведущей шестерни [кол-во]
     pub(crate) z_p: Option<u64>,
+    // Число зубьев ведущей шестерни [м]
+    pub(crate) d_p: Option<f64>,
     ///
     /// Расчетные значения
     /// 
@@ -58,6 +60,7 @@ impl Context {
             motor_p: None,
             t_bearing: None,
             z_p: None,
+            d_p: None,
             duration: 0.0,
             motor_torque: 0.0,
             radial_load: 0.0,

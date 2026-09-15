@@ -8,6 +8,8 @@ pub struct Inputs {
     t_bearing: Option<f64>,
     // Число зубьев ведущей шестерни [кол-во]
     z_p: Option<u64>,
+    // Делительный диаметр шестерни [м]
+    d_p: Option<f64>,
 }
 //
 //
@@ -24,6 +26,9 @@ impl Inputs {
     pub fn z_p(&self) -> Option<u64> {
         self.z_p
     }
+    pub fn d_p(&self) -> Option<f64> {
+        self.d_p
+    }
 }
 /// Заглушка хранилище всех входящих событий  
 pub struct MockInputs {
@@ -35,6 +40,8 @@ pub struct MockInputs {
     pub t_bearing: Option<f64>,    
     // Число зубьев ведущей шестерни [кол-во]
     pub z_p: Option<u64>,
+    // Делительный диаметр шестерни [м]
+    pub d_p: Option<f64>,
 }
 //
 //
@@ -44,7 +51,8 @@ impl MockInputs {
             rpm: Some(0.1), 
             motor_p: Some(0.1), 
             t_bearing: Some(0.1), 
-            z_p: Some(1) 
+            z_p: Some(1) ,
+            d_p: Some(0.1)
         }
     }
     pub fn rpm(&self) -> Option<f64> {
@@ -58,5 +66,8 @@ impl MockInputs {
     }
     pub fn z_p(&self) -> Option<u64> {
         self.z_p
+    }
+    pub fn d_p(&self) -> Option<f64> {
+        self.d_p
     }
 }

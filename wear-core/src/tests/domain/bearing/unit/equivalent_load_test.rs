@@ -47,6 +47,7 @@ mod tests {
                 Context {
                     motor_rpm: None,
                     motor_p: None,
+                    d_p: None,
                     t_bearing: None,
                     z_p: Some(0),
                     duration: 0.0,
@@ -72,6 +73,7 @@ mod tests {
                     z_p: Some(0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
+                    d_p: Some(0.1),
                 },
                 Some(0.5 * 50.0 + 0.5 * 50.0),
             ),
@@ -80,6 +82,7 @@ mod tests {
                 Context {
                     motor_rpm: None,
                     motor_p: None,
+                    d_p: None,
                     t_bearing: None,
                     duration: 0.0,
                     z_p: Some(0),
@@ -105,6 +108,7 @@ mod tests {
                     rpm: Some(1500.0),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
+                    d_p: Some(0.1),
                 },
                 Some(0.5 * 20.0 + 0.5 * 10.0),
             ),
@@ -113,6 +117,7 @@ mod tests {
                 Context {
                     motor_rpm: None,
                     motor_p: None,
+                    d_p: None,
                     t_bearing: None,
                     duration: 0.0,
                     motor_torque: 2.5,
@@ -138,6 +143,7 @@ mod tests {
                     z_p: Some(0),
                     motor_p: Some(30.0),
                     t_bearing: Some(0.0),
+                    d_p: Some(0.1),
                 },
                 Some(0.5 * 0.5 + 0.5 * 0.0),
             ),

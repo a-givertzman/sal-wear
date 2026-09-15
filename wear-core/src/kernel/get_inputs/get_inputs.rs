@@ -5,6 +5,7 @@ pub trait GetInputs: Send + Sync {
     fn motor_p(&self) -> Option<f64>;
     fn t_bearing(&self) -> Option<f64>;
     fn z_p(&self) -> Option<u64>;
+    fn d_p(&self) -> Option<f64>;
 }
 
 impl GetInputs for Inputs {
@@ -12,6 +13,7 @@ impl GetInputs for Inputs {
     fn motor_p(&self) -> Option<f64> { self.motor_p() }
     fn t_bearing(&self) -> Option<f64> { self.t_bearing() }
     fn z_p(&self) -> Option<u64> { self.z_p() }
+    fn d_p(&self) -> Option<f64> { self.d_p() }
 }
 
 // Реализуем трейт для вашего MockInputs
@@ -20,4 +22,5 @@ impl GetInputs for MockInputs {
     fn motor_p(&self) -> Option<f64> { self.motor_p }
     fn t_bearing(&self) -> Option<f64> { self.t_bearing }
     fn z_p(&self) -> Option<u64> { self.z_p }
+    fn d_p(&self) -> Option<f64> { self.d_p }
 }
