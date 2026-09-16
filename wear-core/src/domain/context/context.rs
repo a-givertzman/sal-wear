@@ -24,6 +24,10 @@ pub struct Context {
     pub(crate) b: Option<f64>,
     // Модуль зубчатого колеса [м] 
     pub(crate) m: Option<f64>,
+    // Коэффициент нагрузки изгиба
+    pub(crate) kh: Option<f64>,
+    // Коэффициент геометрии контакта
+    pub(crate) zh: Option<f64>,
     ///
     /// Расчетные значения
     /// 
@@ -59,6 +63,8 @@ pub struct Context {
     pub(crate) tangential_force: f64,
     /// Напряжение изгиба
     pub(crate) bending_stresses: f64,
+    /// Напряжение контакта
+    pub(crate) contact_stresses: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -77,6 +83,8 @@ impl Context {
             m: None,
             z_p: None,
             d_p: None,
+            kh: None,
+            zh: None,
             duration: 0.0,
             motor_torque: 0.0,
             radial_load: 0.0,
@@ -93,6 +101,7 @@ impl Context {
             number_mesh_cycles: 0.0,
             tangential_force: 0.0,
             bending_stresses: 0.0,
+            contact_stresses: 0.0,
             err: None,
         }
     }

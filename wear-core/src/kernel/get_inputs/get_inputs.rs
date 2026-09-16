@@ -10,6 +10,9 @@ pub trait GetInputs: Send + Sync {
     fn yf(&self) -> Option<f64>;
     fn b(&self) -> Option<f64>;
     fn m(&self) -> Option<f64>;
+    fn kh(&self) -> Option<f64>;
+    fn zh(&self) -> Option<f64>;
+
 }
 
 impl GetInputs for Inputs {
@@ -22,6 +25,8 @@ impl GetInputs for Inputs {
     fn yf(&self) -> Option<f64> { self.yf() }
     fn b(&self) -> Option<f64> { self.b() }
     fn m(&self) -> Option<f64> { self.m() }
+    fn kh(&self) -> Option<f64> { self.kh() }
+    fn zh(&self) -> Option<f64> { self.zh() }
 }
 
 // Реализуем трейт для вашего MockInputs
@@ -35,4 +40,6 @@ impl GetInputs for MockInputs {
     fn yf(&self) -> Option<f64> { self.yf }
     fn b(&self) -> Option<f64> { self.b }
     fn m(&self) -> Option<f64> { self.m }
+    fn kh(&self) -> Option<f64> { self.kh }
+    fn zh(&self) -> Option<f64> { self.zh }
 }

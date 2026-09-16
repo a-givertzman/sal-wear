@@ -1,3 +1,4 @@
 mod bending_stresses_test;
+mod contact_stresses_test;
 mod number_mesh_cycles_test;
 mod tangential_force_test;

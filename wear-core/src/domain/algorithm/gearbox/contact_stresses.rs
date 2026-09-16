@@ -14,11 +14,11 @@ use crate::{
 /// Формула: 
 /// σH_i = KH * ZH * sqrt(Ft_i / (b * d_p))
 /// Где:
-/// * `KH` — коэффициент нагрузки
+/// * `KH` — коэффициент нагрузки изгиба
+/// * `ZH` — коэффициент геометрии контакта
 /// * `Ft` — окружная сила
 /// * `b` — ширина зубчатого венца [м]
-/// * `m` — модуль зубчатого колеса [м]
-/// * `Zgh` — коэффициент нагрузки
+/// * `d_p` — делительный диаметр шестерни [м]
 pub struct ContactStresses<Child> {
     child: Child,
     dbg: Dbg,
@@ -57,31 +57,31 @@ where
             ctx.err = Some(Error::new(&self.dbg, "eval").err("Face width (of the gear) is about zero"));
             return ctx;
         }
-        let Some(m) = &ctx.m else {
+        let Some(d_p) = &ctx.d_p else {
             ctx.err = Some(Error::new(&self.dbg, "eval").err(" Module (normal or transverse module) isn't initialized"));
             return ctx;
         };
-        if *m < 0.1 {
+        if *d_p < 0.1 {
             ctx.err = Some(Error::new(&self.dbg, "eval").err(" Module (normal or transverse module) load is about zero"));
             return ctx;
         }
-        let Some(kf) = &ctx.kf else {
+        let Some(kh) = &ctx.kh else {
             ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending load factor isn't initialized"));
             return ctx;
         };
-        if *kf < 0.1 {
+        if *kh < 0.1 {
             ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending load factor load is about zero"));
             return ctx;
         }
-        let Some(yf) = &ctx.yf else {
+        let Some(zh) = &ctx.zh else {
             ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending stress shape factor isn't initialized"));
             return ctx;
         };
-        if *yf < 0.1 {
+        if *zh < 0.1 {
             ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending stress shape factor load is about zero"));
             return ctx;
         }
-        ctx.bending_stresses = *kf * (ctx.tangential_force / (b * m)) * yf;
+        ctx.contact_stresses = *kh * *zh * (ctx.tangential_force / (b * d_p)).powf(0.5);
         ctx
     }
     //
