@@ -49,23 +49,39 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }        
-        let Some(z_p) = &ctx.z_p else {
-            ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending load facto isn't initialized"));
+        let Some(b) = &ctx.b else {
+            ctx.err = Some(Error::new(&self.dbg, "eval").err("Face width (of the gear) isn't initialized"));
             return ctx;
         };
-        if *z_p < 1 {
-            ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending load facto load is about zero"));
+        if *b < 0.1 {
+            ctx.err = Some(Error::new(&self.dbg, "eval").err("Face width (of the gear) is about zero"));
+            return ctx;
+        }
+        let Some(m) = &ctx.m else {
+            ctx.err = Some(Error::new(&self.dbg, "eval").err(" Module (normal or transverse module) isn't initialized"));
+            return ctx;
+        };
+        if *m < 0.1 {
+            ctx.err = Some(Error::new(&self.dbg, "eval").err(" Module (normal or transverse module) load is about zero"));
             return ctx;
         }
         let Some(kf) = &ctx.kf else {
-            ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending load facto isn't initialized"));
+            ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending load factor isn't initialized"));
             return ctx;
         };
         if *kf < 0.1 {
-            ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending load facto load is about zero"));
+            ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending load factor load is about zero"));
             return ctx;
         }
-        ctx.gear_mesh_frequency = todo!();
+        let Some(yf) = &ctx.yf else {
+            ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending stress shape factor isn't initialized"));
+            return ctx;
+        };
+        if *yf < 0.1 {
+            ctx.err = Some(Error::new(&self.dbg, "eval").err("Bending stress shape factor load is about zero"));
+            return ctx;
+        }
+        ctx.bending_stresses = *kf * (ctx.tangential_force / (b * m)) * yf;
         ctx
     }
     //

@@ -14,6 +14,10 @@ pub struct Inputs {
     kf: Option<f64>,
     // Коэффициент геометрии формы зуба 
     yf: Option<f64>,
+    // Ширина зубчатого венца [м] 
+    b: Option<f64>,
+    // Модуль зубчатого колеса [м] 
+    m: Option<f64>,
 }
 //
 //
@@ -39,6 +43,12 @@ impl Inputs {
     pub fn yf(&self) -> Option<f64> {
         self.yf
     }
+    pub fn b(&self) -> Option<f64> {
+        self.b
+    }
+    pub fn m(&self) -> Option<f64> {
+        self.m
+    }
 }
 /// Заглушка хранилище всех входящих событий  
 pub struct MockInputs {
@@ -56,6 +66,10 @@ pub struct MockInputs {
     pub kf: Option<f64>,
     // Коэффициент геометрии формы зуба 
     pub yf: Option<f64>,
+    // Ширина зубчатого венца [м] 
+    pub b: Option<f64>,
+    // Модуль зубчатого колеса [м] 
+    pub m: Option<f64>,
 }
 //
 //
@@ -69,6 +83,8 @@ impl MockInputs {
             d_p: Some(0.1),
             kf: Some(0.1),
             yf: Some(0.1),
+            b: Some(0.1),
+            m: Some(0.1),
         }
     }
     pub fn rpm(&self) -> Option<f64> {
@@ -91,5 +107,11 @@ impl MockInputs {
     }
     pub fn yf(&self) -> Option<f64> {
         self.yf
+    }
+    pub fn b(&self) -> Option<f64> {
+        self.b
+    }
+    pub fn m(&self) -> Option<f64> {
+        self.m
     }
 }

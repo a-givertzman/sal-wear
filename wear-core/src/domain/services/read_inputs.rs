@@ -72,6 +72,38 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
                 ctx.d_p = None;
             }
         }
+        match &self.inputs.kf() {
+            Some(kf) => {
+                ctx.kf = Some(*kf);
+            }
+            None => {
+                ctx.kf = None;
+            }
+        }
+        match &self.inputs.yf() {
+            Some(yf) => {
+                ctx.yf = Some(*yf);
+            }
+            None => {
+                ctx.yf = None;
+            }
+        }
+        match &self.inputs.b() {
+            Some(b) => {
+                ctx.b = Some(*b);
+            }
+            None => {
+                ctx.b = None;
+            }
+        }
+        match &self.inputs.m() {
+            Some(m) => {
+                ctx.m = Some(*m);
+            }
+            None => {
+                ctx.m = None;
+            }
+        }
         ctx
     }
     //

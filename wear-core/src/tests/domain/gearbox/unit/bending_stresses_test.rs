@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        Context, Eval, GearMeshFrequency, MockInputs, MotorTorque, NumberOfMeshCycles, ReadInputs, RotationalFrequency, TangentialForce,
+        BendingStresses, Context, Eval, GearMeshFrequency, MockInputs, NumberOfMeshCycles, ReadInputs, RotationalFrequency,
     };
     ///
     ///
@@ -30,15 +30,18 @@ mod tests {
     ///  - ...
     fn init_each() -> () {}
     ///
-    /// Расчёт окружной силы
-    /// См. [раздел 8.3, шаг 4](../../Operion_Diag_Вибродиагностика_и_остаточный_ресурс.pdf)
+    /// Расчёт напряжения изгиба
+    /// См. [раздел 8.3, шаг 5](../../Operion_Diag_Вибродиагностика_и_остаточный_ресурс.pdf)
     /// Формула: 
-    /// Ft = 2 * M * d_p [Н]
+    /// σF_i = KF * (Ft / (b * m)) * YF
     /// Где:
-    /// * `M` — крутящий момент на валу редуктора [Н·м]
-    /// * `d_p` — делительный диаметр шестерни [м]
+    /// * `KF` — коэффициент нагрузки
+    /// * `Ft` — окружная сила
+    /// * `b` — ширина зубчатого венца [м]
+    /// * `m` — модуль зубчатого колеса [м]
+    /// * `YF` — коэффициент нагрузки
     #[test]
-    fn tangential_force() {
+    fn bending_stresses() {
         DebugSession::new().filter(LogLevel::Debug).init();
         init_once();
         init_each();
@@ -49,42 +52,45 @@ mod tests {
         let test_data = [
             (
                 1,
+                1.0,
+                2.0,
+                3.0,
                 0.1,
-                1650.0,
-                200.0,
-                23151.51515151515,
+                0.1,
+                0.66667,
             ),
             (
                 2,
                 4.0,
-                2000.0,
-                300.0,
-                716.25,
+                5.0,
+                6.0,
+                2.0,
+                0.1,
+                0.166667,
             ),
         ];
-        for (step, d_p, rpm, motor_p, target) in test_data {
+        for (step, kf, tangetial_force, b, m, yf, target) in test_data {
             let mut inputs = MockInputs::new();  
-            inputs.d_p = Some(d_p);
-            inputs.rpm = Some(rpm);
-            inputs.motor_p = Some(motor_p);
+            inputs.kf = Some(kf);
+            inputs.yf = Some(yf);
+            inputs.b = Some(b);
+            inputs.m = Some(m);
             let child = ReadInputs::new(
                 &parent_dbg, 
                 Arc::new(inputs)
             );
-            let ctx = Context::new_test(100.0);
-            let result = TangentialForce::new(
+            let mut ctx = Context::new_test(0.0);
+            ctx.tangential_force = tangetial_force;
+            let result = BendingStresses::new(
                 &parent_dbg,
-                MotorTorque::new(
-                    &parent_dbg, 
-                    child
-                    )
+                child
             ).eval(ctx);
             assert!(
                 result.err.is_none(), 
                 "Шаг [{}]: Ожидался успешный расчет, но получена ошибка: {:?}", 
                 step, result.err
             );
-            let actual = result.tangential_force;
+            let actual = result.bending_stresses;
             let epsilon = 1e-5;
             let diff = (actual - target).abs();
             assert!(
