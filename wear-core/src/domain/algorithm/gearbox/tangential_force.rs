@@ -52,7 +52,7 @@ where
             ctx.err = Some(Error::new(&self.dbg, "eval").err("Pitch diameter of gear is about zero"));
             return ctx;
         }
-        ctx.number_mesh_cycles = 2.0 *ctx.motor_torque / d_p;
+        ctx.tangential_force = 2.0 *ctx.motor_torque / d_p;
         ctx
     }
     //

@@ -84,7 +84,7 @@ mod tests {
                 "Шаг [{}]: Ожидался успешный расчет, но получена ошибка: {:?}", 
                 step, result.err
             );
-            let actual = result.number_mesh_cycles;
+            let actual = result.tangential_force;
             let epsilon = 1e-5;
             let diff = (actual - target).abs();
             assert!(

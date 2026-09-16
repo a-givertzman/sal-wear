@@ -65,6 +65,7 @@ mod tests {
                     rotational_frequency: 0.0,
                     err: None,
                     gear_mesh_frequency: 0.0,
+                    tangential_force: 0.0,
                 },
                 MockInputs {
                     rpm: Some(1500.0),
@@ -105,6 +106,7 @@ mod tests {
                     z_p: Some(0),
                     rotational_frequency: 0.0,
                     gear_mesh_frequency: 0.0,
+                    tangential_force: 0.0,
                 },
                 MockInputs {
                     rpm: Some(3000.0),
@@ -145,6 +147,7 @@ mod tests {
                     z_p: Some(0),
                     rotational_frequency: 0.0,
                     gear_mesh_frequency: 0.0,
+                    tangential_force: 0.0,
                 },
                 MockInputs {
                     rpm: Some(3000.0),
@@ -185,6 +188,7 @@ mod tests {
                     err: None,
                     rotational_frequency: 0.0,
                     gear_mesh_frequency: 0.0,
+                    tangential_force: 0.0,
                 },
                 MockInputs {
                     rpm: None,
@@ -225,6 +229,7 @@ mod tests {
                     err: None,
                     rotational_frequency: 0.0,
                     gear_mesh_frequency: 0.0,
+                    tangential_force: 0.0,
                 },
                 MockInputs {
                     rpm: Some(0.01),
@@ -265,6 +270,7 @@ mod tests {
                     err: None,
                     rotational_frequency: 0.0,
                     gear_mesh_frequency: 0.0,
+                    tangential_force: 0.0,
                 },
                 MockInputs {
                     rpm: Some(3000000000.0),
@@ -305,6 +311,7 @@ mod tests {
                     err: None,
                     rotational_frequency: 0.0,
                     gear_mesh_frequency: 0.0,
+                    tangential_force: 0.0,
                 },
                 MockInputs {
                     rpm: Some(3000000000.0),

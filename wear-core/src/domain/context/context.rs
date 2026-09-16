@@ -47,6 +47,8 @@ pub struct Context {
     pub(crate) gear_mesh_frequency: f64,
     /// Число циклов зацепления
     pub(crate) number_mesh_cycles: f64,
+    /// Окружная сила
+    pub(crate) tangential_force: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -75,6 +77,7 @@ impl Context {
             rotational_frequency: 0.0,
             gear_mesh_frequency: 0.0,
             number_mesh_cycles: 0.0,
+            tangential_force: 0.0,
             err: None,
         }
     }
