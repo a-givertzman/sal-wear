@@ -35,7 +35,7 @@ pub struct LoadJournal<Child> {
 impl<Child> LoadJournal<Child> {
     ///
     /// Returns `LoadJournal` new instance
-    pub fn new(parent: impl Into<String>, child: Child) -> Self {
+    pub fn new(parent: impl AsRef<str>, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
             child,
@@ -66,10 +66,10 @@ impl<Child> LoadJournal<Child> {
     }
     ///
     /// ### Чтение с диска и парсинг `RetainState`
-    /// 
+    ///
     /// - Максимальный размер ключа - 1 KB
     /// - Максимальный размер `RetainState` - 10 MB
-    /// 
+    ///
     /// Устойчив к повреждению хвоста файла. При обнаружении бинарного мусора
     /// или неожиданного конца файла чтение останавливается, а корректно загруженные данные сохраняются.
     fn load(&self, path: &Path, cache: &Arc<FxSccHashMap<String, Vec<u8>>>) -> Result<(), Error> {
@@ -176,7 +176,7 @@ mod tests {
         let mut file = NamedTempFile::new().unwrap();
         let key = "Motor_1_Start";
         let point = MockPoint { name: "test_point".into(), ts: chrono::Utc::now() };
-        let state = RetainValue::encode_bytes(key, &point).unwrap();
+        // let state = RetainValue::encode_bytes(key, &point).unwrap();
         let key_len = (key.len() as u32).to_le_bytes();
         file.write_all(&key_len).unwrap();
         file.write_all(key.as_bytes()).unwrap();

@@ -2,7 +2,6 @@ use std::{cell::Cell, collections::VecDeque, fs::File, io::{BufWriter, Write}};
 use function_name::named;
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::kernel::state::ChangeNotify;
-use serde::Serialize;
 use crate::{Eval, err_pass};
 use super::{RetainValue, RetainMode, RetainCtx};
 
@@ -66,7 +65,7 @@ impl<Child> AppendJournal<Child> {
     /// Максимально допустимый размер буффера для аммортизации перед записью в файл
     const MAX_BUFFER_SIZE: usize = 16_000;
     /// Returns `AppendJournal` new instance
-    pub fn new(parent: impl Into<String>, mode: RetainMode, child: Child) -> Self {
+    pub fn new(parent: impl AsRef<str>, mode: RetainMode, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         let notify = ChangeNotify::builder(&dbg, State::Ok)
             .on(State::Ok, |msg| log::info!("{:?}", msg))
@@ -153,7 +152,7 @@ where
 #[named]
 pub(super) fn append(
     dbg: &Dbg,
-    writer: &mut BufWriter<File>, 
+    writer: &mut BufWriter<File>,
     mode: &RetainMode,
     key: &str,
     bytes: &[u8],
@@ -219,6 +218,7 @@ impl<W: Write> Write for CountingWriter<W> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::Serialize;
     use std::{fs::File, io::BufWriter, sync::Arc, path::PathBuf};
     #[derive(Debug, Serialize)]
     struct MockPoint { name: String, ts: chrono::DateTime<chrono::Utc> }

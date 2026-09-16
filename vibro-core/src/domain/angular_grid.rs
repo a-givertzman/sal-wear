@@ -16,7 +16,7 @@ where
     /// ### Returns `Autocorrelation` new instance
     /// Вычисляет угловую сетку для новой порции данных.
     /// - `chunk_size` - Размер пакета данных, поступающего из АЦП.
-    pub fn new(parent: impl Into<String>, chunk_size: usize, child: Child) -> Self {
+    pub fn new(parent: impl AsRef<str>, chunk_size: usize, child: Child) -> Self {
         let dbg = Dbg::new(parent, me::<Self>());
         Self {
             child,
@@ -52,7 +52,7 @@ where
         self.child.exit();
     }
 }
-/// 
+///
 /// Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
 /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
 pub struct Phases<T> {

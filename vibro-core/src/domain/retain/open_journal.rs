@@ -6,7 +6,7 @@ use super::{FlushConf, RetainValue, RetainCtx};
 
 ///
 /// ### Открывает новый файл
-/// 
+///
 /// Возвращает в контекст
 /// - BufWriter
 /// - Размер файла в байтах
@@ -18,7 +18,7 @@ pub struct OpenJournal<Child> {
 }
 //
 impl<Child> OpenJournal<Child> {
-    pub fn new(parent: impl Into<String>, conf: &FlushConf, ctx: RetainCtx, child: Child) -> Self {
+    pub fn new(parent: impl AsRef<str>, conf: &FlushConf, ctx: RetainCtx, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
             conf: conf.clone(),

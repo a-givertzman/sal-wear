@@ -1,6 +1,6 @@
 // Тут прикладные типы и классы алгоритмов
 mod conf;
-use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 pub use conf::*;
 mod context;
@@ -54,7 +54,7 @@ impl MockEventValues {
         }
     }
 }
-impl EventValueAccess<str, f64> for MockEventValues {    
+impl EventValueAccess<str, f64> for MockEventValues {
     //
     fn register(&mut self, key: &str) {
         if key != "rpm" {

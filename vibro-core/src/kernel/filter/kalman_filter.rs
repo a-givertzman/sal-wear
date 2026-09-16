@@ -91,7 +91,7 @@ impl KalmanFilter {
     /// - `value` — Входное значение (чистое или интегрированное по некоторой ширине полосы)
     /// - `sigma` — Текущая краткосрочная дисперсия
     pub fn new(
-        parent: impl Into<String>,
+        parent: impl AsRef<str>,
         id: String,
         q: f64,
         saving_threshold: f64,

@@ -1,4 +1,4 @@
-use sal_core::{dbg::Dbg, error::Error};
+use sal_core::dbg::Dbg;
 use crate::{BiquadCoeffs, Eval, domain::imbalance::context::ImbContext, me};
 
 /// Фильтр нижних частот (Баттерворт 2-го порядка) для подавления ВЧ-шумов.
@@ -83,7 +83,7 @@ where
             state.y1 = y0;
             // Кастим обратно с защитой от выхода за границы типа
             // Если ctx.samples имеет тип f32/f64, clamp и cast не нужны
-            *target = y0 as f32; 
+            *target = y0 as f32;
         }
         ctx.low_pass_signal.state = state;
         ctx

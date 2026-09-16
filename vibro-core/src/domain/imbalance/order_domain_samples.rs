@@ -1,8 +1,8 @@
 use crate::{Phase, num_complex::Complex};
-use sal_core::{dbg::Dbg, error::Error};
+use sal_core::dbg::Dbg;
 use crate::{Eval, domain::imbalance::context::ImbContext, me};
 
-/// Выполняет ресемплинг (Order Tracking) отфильтрованного сигнала во временной области 
+/// Выполняет ресемплинг (Order Tracking) отфильтрованного сигнала во временной области
 /// в равномерную сетку угловой области.
 /// Использует локальную кубическую интерполяцию Catmull-Rom для предотвращения алиасинга.
 pub struct OrderDomainSamples<Child> {
@@ -69,7 +69,7 @@ where
             }
             // Пропускаем точки, если для них не хватает истории по краям чанка
             if (target_theta as f32) < phases[idx] || idx >= phases.len() - 2 {
-                continue; 
+                continue;
             }
             let phase_start = phases[idx];
             let phase_end = phases[idx + 1];
@@ -134,7 +134,7 @@ impl Iterator for TargetAngles {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64::consts::{PI, TAU};
+    use std::f64::consts::PI;
     /// Вспомогательная функция для безопасного сравнения векторов с плавающей точкой
     fn assert_angles_eq(actual: Vec<f64>, expected: &[f64]) {
         assert_eq!(
@@ -165,28 +165,28 @@ mod tests {
     #[test]
     fn test_target_angles_phase_wrap() {
         // Перехлест оборота в новой концепции (непрерывная ось углов):
-        // Чанк начался в конце первого оборота (5.0 рад) 
+        // Чанк начался в конце первого оборота (5.0 рад)
         // и закончился в начале следующего оборота.
         // Вместо "1.0 рад" мы пишем "TAU + 1.0 рад", показывая движение вперед.
         let theta1 = 5.0;
         let theta2 = std::f64::consts::TAU + 1.0; // ~7.283... рад
-        
+
         // Сетка 4 точки на оборот: 0, PI/2 (~1.57), PI (~3.14), 3*PI/2 (~4.71), TAU (~6.28), TAU + PI/2 (~7.85)
         let angles: Vec<f64> = TargetAngles::new(theta1, theta2, 4).collect();
-        
+
         // В этот диапазон (от 5.0 до 7.283) идеально попадает только точка начала нового оборота (TAU, то есть 2*PI)
         // Предыдущая точка (3*PI/2 = 4.71) осталась позади, а следующая (TAU + PI/2 = 7.85) еще впереди.
         let expected_angle = std::f64::consts::TAU;
-        
+
         assert_eq!(angles.len(), 1);
         assert!((angles[0] - expected_angle).abs() < 1e-9, "Expected {}, got {}", expected_angle, angles[0]);
     }
-    
-    #[test]
+
+    // #[test]
     // fn test_target_angles_phase_wrap() {
-    //     // Перехлест оборота: чанк начался на 5.0 рад (конец старого оборота), 
+    //     // Перехлест оборота: чанк начался на 5.0 рад (конец старого оборота),
     //     // а закончился на 1.0 рад (начало нового оборота).
-    //     // Должны попасть: 3*PI/2 (4.71 - мимо, так как меньше 5.0), 
+    //     // Должны попасть: 3*PI/2 (4.71 - мимо, так как меньше 5.0),
     //     // 0.0 (перехлест) и мы не доходим до PI/2 (1.57)
     //     let angles: Vec<f64> = TargetAngles::new(5.0, 1.0, 4).collect();
     //     assert_angles_eq(angles, &[0.0]);

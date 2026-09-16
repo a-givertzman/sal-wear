@@ -5,7 +5,7 @@ use crate::{Eval, ImbContext, Phase};
 /// ### Фильтрует целевые кратности частот вращения (0.5x..3x RPM).
 ///
 /// Выявление усточивого изменения гармоник углового домена
-/// 
+///
 /// [Подробнее о выявлении дефектов](../../../design/order-feature-filter.md)
 pub struct OrderFeatureFilter<Child> {
     /// Сдвиг угла между началом и концом выборок FFT в радианах.
@@ -23,7 +23,7 @@ where
     /// - `n_fft` - Размер FFT выборки спектрального анализа в угловой области.
     /// - `angular_step_rad` - Шаг угловой сетки в радианах.
     /// - `child` - Дочерний (предыдущий) расчетный шаг
-    pub fn new(parent: impl Into<String>, n_fft: usize, angular_step_rad: f64, child: Child) -> Self {
+    pub fn new(parent: impl AsRef<str>, n_fft: usize, angular_step_rad: f64, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
             phase_offset: (n_fft as f64 - 1.0) * angular_step_rad,
