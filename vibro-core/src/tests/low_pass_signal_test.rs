@@ -16,6 +16,7 @@ fn low_pass_signal_test () {
         adc:
             sample-rate-hz: {f_sample}
             chunk-size: 512
+            ds-offset: 2048
         analysis:
             order-tracking:
                 max-order: 100

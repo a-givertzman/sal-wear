@@ -60,6 +60,7 @@ fn order_domain_phase_shift_test() {
         adc:
             sample-rate-hz: {f_sample}
             chunk-size: 512
+            ds-offset: 2048
         analysis:
             order-tracking:
                 max-order: 100

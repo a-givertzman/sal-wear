@@ -73,8 +73,8 @@ where
                 format!("Размер входящей выборки ({}) превышает емкость FFT буфера ({})", length, capacity));
         }
         ctx.fft_buff.push_chunk(&ctx.order_samples[..]);
-        if ctx.fft_buff.is_full() {
-            ctx.fft_window.copy_from_slice(ctx.fft_buff.read_window());
+        if let Some(window) = ctx.fft_buff.pop_window() {
+            ctx.fft_window.copy_from_slice(window);
             if let Some(window_fn) = &self.window_fn {
                 if let Err(err) = window_fn.eval(&mut ctx.fft_window) {
                     log::warn!("{}.eval | {}", self.dbg, err);

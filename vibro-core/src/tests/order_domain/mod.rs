@@ -1,2 +1,3 @@
+mod order_features_filter_test;
 mod order_domain_phase_shift_control_test;
 mod order_domain_stationary_test;

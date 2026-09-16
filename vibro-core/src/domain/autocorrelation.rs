@@ -61,7 +61,12 @@ where
             return ctx.pass_err(&self.dbg, "eval");
         }
         ctx.raw_period = self.sample_rate * 60.0 / ctx.raw_rpm;
-        ctx.period = Self::find_exact_period(ctx.ac_samples.read_window(), ctx.raw_period);
+        if let Some(window) = ctx.ac_samples.pop_window() {
+            ctx.period = Self::find_exact_period(window, ctx.raw_period);
+        } else {
+            // До накопления окна работаем от грубой оценки тахометра
+            ctx.period = ctx.raw_period;
+        }
         ctx.omega = TAU * self.sample_rate / ctx.period;
         ctx.dt = 1.0 / self.sample_rate;
         ctx

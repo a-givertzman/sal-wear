@@ -51,6 +51,7 @@ impl ImbContext {
         let parent = parent.into();
         // TODO: Исправить размер, он должен быть равен предполагаемому количеству углов исходя из размера входной выборки и максимальных оборотов
         let capacity = n_fft;
+        log::debug!("{}.new | n_fft: {n_fft}", crate::me::<Self>());
         let filters = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0].map(|order| {
             // Идентификатор зоны для хранения в retain
             let order_id = format!("{order}x");
@@ -59,10 +60,45 @@ impl ImbContext {
             let retained: Retained = retain.get(&order_id).unwrap_or(Retained::default());
             // Полуширина захвата в долях порядка (Для плавающих режимов ±0.05..±0.1 порядка).
             let half_width = 0.05;
-            KalmanFilter::new(&parent, order_id, q, 0.01, retained, retain.clone(),
+            KalmanFilter::new(&parent, order_id.to_owned(), q, 0.01, retained, retain.clone(), // VORZHEV Z.A 07.09.2026 added `to_owned` cause of error "Expected `String` found `str`"
                 OrderZone::new(Order(order), half_width, 3, n_fft, samples_per_rev),
                 ShortSigma::new(
                     10, 
+                    retained.x_hat,
+                ),
+            )
+        }).into();
+        Self {
+            rpm: Rpm(f64::EPSILON),
+            frame: Arc::new(Frame::default()),
+            low_pass_signal: LowPassSignalCtx::new(),
+            samples: vec![0.0; chunk_size],
+            order_samples: Vec::with_capacity(capacity),
+            total_phase: Phase(0.0),
+            fft_buff: MirroredBuffer::new(n_fft),
+            fft_window: Vec::with_capacity(n_fft),
+            filters,
+            features: vec![],
+            results: vec![],
+            err: None,
+        }
+    }
+    /// VORZHEV Z.A. 1.09.2026 NEW CONSTRUCTOR FOR TESTING `WINDOW` AND `q` PARAMETERS
+    pub fn new_with_params(parent: impl Into<String>, samples_per_rev: usize, n_fft: usize, chunk_size: usize, retain: Arc<Retain>, window: usize, q: f64) -> Self {
+        let parent = parent.into();
+        // TODO: Исправить размер, он должен быть равен предполагаемому количеству углов исходя из размера входной выборки и максимальных оборотов
+        let capacity = n_fft;
+        let filters = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0].map(|order| {
+            // Идентификатор зоны для хранения в retain
+            let order_id = format!("{order}x");
+            // Скорость старения процесса
+            let retained: Retained = retain.get(&order_id).unwrap_or(Retained::default());
+            // Полуширина захвата в долях порядка (Для плавающих режимов ±0.05..±0.1 порядка).
+            let half_width = 0.05;
+            KalmanFilter::new(&parent, order_id.to_owned(), q, 0.01, retained, retain.clone(), // VORZHEV Z.A 07.09.2026 added `to_owned` cause of error "Expected `String` found `str`"
+                OrderZone::new(Order(order), half_width, 3, n_fft, samples_per_rev),
+                ShortSigma::new(
+                    window, 
                     retained.x_hat,
                 ),
             )
