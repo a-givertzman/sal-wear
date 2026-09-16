@@ -9,40 +9,39 @@ use crate::{
     domain::context::Context
 };
 ///
-/// Расчёт напряжения изгиба
+/// Расчёт напряжения контакта
 /// См. [раздел 8.3, шаг 5](../../Operion_Diag_Вибродиагностика_и_остаточный_ресурс.pdf)
 /// Формула: 
-/// σF_i = KF * (Ft / (b * m)) * YF
+/// σH_i = KH * ZH * sqrt(Ft_i / (b * d_p))
 /// Где:
-/// * `KF` — коэффициент нагрузки изгиба
+/// * `KH` — коэффициент нагрузки
 /// * `Ft` — окружная сила
 /// * `b` — ширина зубчатого венца [м]
 /// * `m` — модуль зубчатого колеса [м]
-/// * `YF` — коэффициент геометрии формы зуба 
-
-pub struct BendingStresses<Child> {
+/// * `Zgh` — коэффициент нагрузки
+pub struct ContactStresses<Child> {
     child: Child,
     dbg: Dbg,
 }
 //
 //
-impl<Child> BendingStresses<Child>
+impl<Child> ContactStresses<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
     ///
-    /// Новый экземпляр [BendingStresses]
+    /// Новый экземпляр [ContactStresses]
     pub fn new(
         parent: &Dbg, 
         child: Child
     ) -> Self {
-        let dbg = Dbg::new(parent, "BendingStresses");
+        let dbg = Dbg::new(parent, "ContactStresses");
         Self {
             child,
             dbg,
         }
     }
 }
-impl<Child> Eval<Context, Context> for BendingStresses<Child>
+impl<Child> Eval<Context, Context> for ContactStresses<Child>
 where
     Child: Eval<Context, Context> + Send + 'static {
     fn eval(&self, ctx: Context) -> Context {
