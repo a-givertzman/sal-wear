@@ -51,7 +51,9 @@ mod tests {
                 MockInputs {
                     rpm: Some(50.0),
                     z_p: Some(0),
+                    kf: Some(0.1),
                     motor_p: Some(50.0),
+                    yf: Some(0.1),
                     t_bearing: Some(0.0),
                     d_p: Some(0.1),
                 },
@@ -62,6 +64,8 @@ mod tests {
                 MockInputs {
                     rpm: Some(25.0),
                     motor_p: Some(50.0),
+                    kf: Some(0.1),
+                    yf: Some(0.1),
                     z_p: Some(0),
                     t_bearing: Some(0.0),
                     d_p: Some(0.1),
@@ -73,7 +77,9 @@ mod tests {
                 MockInputs {
                     z_p: Some(0),
                     rpm: Some(1450.0),
+                    kf: Some(0.1),
                     motor_p: Some(11.5),
+                    yf: Some(0.1),
                     t_bearing: Some(0.0),
                     d_p: Some(0.1),
                 },
@@ -84,6 +90,8 @@ mod tests {
                 MockInputs {
                     rpm: Some(1000.0),
                     z_p: Some(0),
+                    kf: Some(0.1),
+                    yf: Some(0.1),
                     motor_p: Some(0.0),
                     t_bearing: Some(0.0),
                     d_p: Some(0.1),
@@ -95,6 +103,8 @@ mod tests {
                 MockInputs {
                     z_p: Some(0),
                     rpm: None,
+                    kf: Some(0.1),
+                    yf: Some(0.1),
                     motor_p: Some(15.0),
                     t_bearing: Some(0.0),
                     d_p: Some(0.1),
@@ -106,7 +116,9 @@ mod tests {
                 MockInputs {
                     rpm: Some(1500.0),
                     motor_p: None,
+                    kf: Some(0.1),
                     z_p: Some(0),
+                    yf: Some(0.1),
                     t_bearing: None,
                     d_p: Some(0.1),
                 },

@@ -50,6 +50,8 @@ mod tests {
                     t_bearing: Some(0.0),
                     z_p: Some(0),
                     d_p: Some(0.1),
+                    yf: Some(0.1),
+                    kf: Some(0.1),
                 },
                 0.0,
                 None, // duration !>0
@@ -59,6 +61,8 @@ mod tests {
                 MockInputs {
                     rpm: Some(25.0),
                     motor_p: Some(50.0),
+                    kf: Some(0.1),
+                    yf: Some(0.1),
                     t_bearing: Some(0.0),
                     z_p: Some(0),
                     d_p: Some(0.1),
@@ -71,6 +75,8 @@ mod tests {
                 MockInputs {
                     rpm: Some(0.0),
                     motor_p: Some(11.5),
+                    yf: Some(0.1),
+                    kf: Some(0.1),
                     t_bearing: Some(0.0),
                     z_p: Some(0),
                     d_p: Some(0.1),
@@ -83,6 +89,8 @@ mod tests {
                 MockInputs {
                     rpm: None,
                     motor_p: Some(0.0),
+                    kf: Some(0.1),
+                    yf: Some(0.1),
                     t_bearing: Some(0.0),
                     z_p: Some(0),
                     d_p: Some(0.1),
@@ -94,8 +102,10 @@ mod tests {
                 6,
                 MockInputs {
                     rpm: Some(1500.0),
+                    kf: Some(0.1),
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
+                    yf: Some(0.1),
                     z_p: Some(0),
                     d_p: Some(0.1),
                 },

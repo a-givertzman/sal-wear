@@ -10,6 +10,10 @@ pub struct Inputs {
     z_p: Option<u64>,
     // Делительный диаметр шестерни [м]
     d_p: Option<f64>,
+    // Коэффициент нагрузки изгиба 
+    kf: Option<f64>,
+    // Коэффициент геометрии формы зуба 
+    yf: Option<f64>,
 }
 //
 //
@@ -29,6 +33,12 @@ impl Inputs {
     pub fn d_p(&self) -> Option<f64> {
         self.d_p
     }
+    pub fn kf(&self) -> Option<f64> {
+        self.kf
+    }
+    pub fn yf(&self) -> Option<f64> {
+        self.yf
+    }
 }
 /// Заглушка хранилище всех входящих событий  
 pub struct MockInputs {
@@ -42,6 +52,10 @@ pub struct MockInputs {
     pub z_p: Option<u64>,
     // Делительный диаметр шестерни [м]
     pub d_p: Option<f64>,
+    // Коэффициент нагрузки изгиба 
+    pub kf: Option<f64>,
+    // Коэффициент геометрии формы зуба 
+    pub yf: Option<f64>,
 }
 //
 //
@@ -52,7 +66,9 @@ impl MockInputs {
             motor_p: Some(0.1), 
             t_bearing: Some(0.1), 
             z_p: Some(1) ,
-            d_p: Some(0.1)
+            d_p: Some(0.1),
+            kf: Some(0.1),
+            yf: Some(0.1),
         }
     }
     pub fn rpm(&self) -> Option<f64> {
@@ -69,5 +85,11 @@ impl MockInputs {
     }
     pub fn d_p(&self) -> Option<f64> {
         self.d_p
+    }
+    pub fn kf(&self) -> Option<f64> {
+        self.kf
+    }
+    pub fn yf(&self) -> Option<f64> {
+        self.yf
     }
 }

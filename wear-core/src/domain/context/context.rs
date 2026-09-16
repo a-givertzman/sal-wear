@@ -16,6 +16,8 @@ pub struct Context {
     pub(crate) z_p: Option<u64>,
     // Число зубьев ведущей шестерни [м]
     pub(crate) d_p: Option<f64>,
+    // Коэффициент нагрузки изгиба 
+    pub(crate) kf: Option<f64>,
     ///
     /// Расчетные значения
     /// 
@@ -59,6 +61,7 @@ impl Context {
             motor_rpm: None,
             motor_p: None,
             t_bearing: None,
+            kf: None,
             z_p: None,
             d_p: None,
             duration: 0.0,

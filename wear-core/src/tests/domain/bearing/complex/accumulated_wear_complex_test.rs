@@ -46,6 +46,7 @@ mod tests {
                 1,
                 Context {
                     motor_rpm: None,
+                    kf: None,
                     d_p: None,
                     motor_p: None,
                     t_bearing: None,
@@ -72,6 +73,8 @@ mod tests {
                     t_bearing: Some(0.0),
                     d_p: Some(0.1),
                     z_p: Some(0),
+                    kf: Some(0.1),
+                    yf: Some(0.1),
                 },
                 0.2,
                 0.038, // диаметр вала
@@ -92,6 +95,7 @@ mod tests {
                     radial_load: 20.0,
                     number_mesh_cycles: 0.0,
                     axial_load: 10.0,
+                    kf: None,
                     equivalent_load: 0.0,
                     basic_rating_life: 0.0,
                     limiting_speed: 50.0,
@@ -106,10 +110,12 @@ mod tests {
                 },
                 MockInputs {
                     rpm: Some(3000.0),
+                    kf: Some(0.1),
                     motor_p: Some(45000.0),
                     t_bearing: Some(0.0),
                     z_p: Some(0),
                     d_p: Some(0.1),
+                    yf: Some(0.1),
                 },
                 0.2,
                 0.65, 
