@@ -38,7 +38,7 @@ mod tests {
     /// * `M` — крутящий момент на валу редуктора [Н·м]
     /// * `d_p` — делительный диаметр шестерни [м]
     #[test]
-    fn number_mesh_cycles() {
+    fn tangential_force() {
         DebugSession::new().filter(LogLevel::Debug).init();
         init_once();
         init_each();
