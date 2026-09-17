@@ -120,6 +120,30 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
                 ctx.zh = None;
             }
         }
+        match &self.inputs.m_f() {
+            Some(m_f) => {
+                ctx.m_f = Some(*m_f);
+            }
+            None => {
+                ctx.m_f = None;
+            }
+        }
+        match &self.inputs.f_lim() {
+            Some(f_lim) => {
+                ctx.f_lim = Some(*f_lim);
+            }
+            None => {
+                ctx.f_lim = None;
+            }
+        }
+        match &self.inputs.nf_0() {
+            Some(nf_0) => {
+                ctx.nf_0 = Some(*nf_0);
+            }
+            None => {
+                ctx.nf_0 = None;
+            }
+        }
         ctx
     }
     //

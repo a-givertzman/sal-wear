@@ -1,3 +1,5 @@
+mod bending_cycles_num;
+pub use bending_cycles_num::*;
 mod bending_stresses;
 pub use bending_stresses::*;
 mod contact_stresses;

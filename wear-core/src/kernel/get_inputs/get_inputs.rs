@@ -12,6 +12,9 @@ pub trait GetInputs: Send + Sync {
     fn m(&self) -> Option<f64>;
     fn kh(&self) -> Option<f64>;
     fn zh(&self) -> Option<f64>;
+    fn m_f(&self) -> Option<f64>;
+    fn f_lim(&self) -> Option<f64>;
+    fn nf_0(&self) -> Option<f64>;
 
 }
 
@@ -27,6 +30,10 @@ impl GetInputs for Inputs {
     fn m(&self) -> Option<f64> { self.m() }
     fn kh(&self) -> Option<f64> { self.kh() }
     fn zh(&self) -> Option<f64> { self.zh() }
+    fn m_f(&self) -> Option<f64> { self.m_f() }
+    fn f_lim(&self) -> Option<f64> { self.f_lim() }
+    fn nf_0(&self) -> Option<f64> { self.nf_0() }
+
 }
 
 // Реализуем трейт для вашего MockInputs
@@ -42,4 +49,7 @@ impl GetInputs for MockInputs {
     fn m(&self) -> Option<f64> { self.m }
     fn kh(&self) -> Option<f64> { self.kh }
     fn zh(&self) -> Option<f64> { self.zh }
+    fn m_f(&self) -> Option<f64> { self.m_f() }
+    fn f_lim(&self) -> Option<f64> { self.f_lim() }
+    fn nf_0(&self) -> Option<f64> { self.nf_0() }
 }
