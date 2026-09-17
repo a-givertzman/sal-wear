@@ -1,9 +1,13 @@
 mod bending_cycles_num;
 pub use bending_cycles_num::*;
+mod bending_fatigue_damage;
+pub use bending_fatigue_damage::*;
 mod bending_stresses;
 pub use bending_stresses::*;
 mod contact_cycles_num;
 pub use contact_cycles_num::*;
+mod contact_fatigue_damage;
+pub use contact_fatigue_damage::*;
 mod contact_stresses;
 pub use contact_stresses::*;
 mod gear_mesh_frequency;
@@ -14,4 +18,6 @@ mod rotational_frequency;
 pub use rotational_frequency::*;
 mod tangential_force;
 pub use tangential_force::*;
+mod tooth_damage;
+pub use tooth_damage::*;
 

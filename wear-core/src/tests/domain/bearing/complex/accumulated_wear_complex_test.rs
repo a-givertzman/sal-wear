@@ -82,6 +82,9 @@ mod tests {
                     gear_mesh_frequency: 0.0,
                     tangential_force: 0.0,
                     contact_stresses: 0.0,
+                    bending_fatigue_damage: 0.0,
+                    contact_fatigue_damage: 0.0,
+                    tooth_damage: 0.0,
                 },
                 MockInputs {
                     rpm: Some(1500.0),
@@ -149,6 +152,9 @@ mod tests {
                     gear_mesh_frequency: 0.0,
                     contact_stresses: 0.0,
                     tangential_force: 0.0,
+                    bending_fatigue_damage: 0.0,
+                    contact_fatigue_damage: 0.0,
+                    tooth_damage: 0.0,
                 },
                 MockInputs {
                     rpm: Some(3000.0),
