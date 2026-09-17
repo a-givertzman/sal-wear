@@ -47,6 +47,7 @@ mod tests {
                 Context {
                     motor_rpm: None,
                     motor_p: None,
+                    temp_tooth_damage: 0.0,
                     z_p: Some(0),
                     yf: None,
                     b: None,
@@ -132,6 +133,7 @@ mod tests {
                     basic_rating_life: 0.0,
                     yf: None,
                     b: None,
+                    temp_tooth_damage: 0.0,
                     m: None,
                     m_h: None,
                     bending_fatigue_damage: 0.0,

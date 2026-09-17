@@ -20,4 +20,6 @@ mod tangential_force;
 pub use tangential_force::*;
 mod tooth_damage;
 pub use tooth_damage::*;
+mod temp_tooth_damage;
+pub use temp_tooth_damage::*;
 
