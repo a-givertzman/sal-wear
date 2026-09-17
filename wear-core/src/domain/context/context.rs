@@ -34,6 +34,12 @@ pub struct Context {
     pub(crate) m_f: Option<f64>, 
     // Базовое число циклов при напряжении σ_lim для изгиба
     pub(crate) nf_0: Option<f64>,
+    // Предел выносливости по контакту [Па]
+    pub(crate) h_lim: Option<f64>,
+    // Показатели степени S–N кривой для контакта 
+    pub(crate) m_h: Option<f64>, 
+    // Базовое число циклов при напряжении σ_lim для контакта
+    pub(crate) nh_0: Option<f64>,
     ///
     /// Расчетные значения
     /// 
@@ -73,6 +79,8 @@ pub struct Context {
     pub(crate) contact_stresses: f64,
     // Допустимое число циклов (S–N) для изгиба
     pub(crate) bending_num_cycles: f64,
+    // Допустимое число циклов (S–N) для контакта
+    pub(crate) contact_num_cycles: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -96,6 +104,9 @@ impl Context {
             m_f: None,
             f_lim: None,
             nf_0: None,
+            m_h: None,
+            h_lim: None,
+            nh_0: None,
             duration: 0.0,
             motor_torque: 0.0,
             radial_load: 0.0,
@@ -114,6 +125,7 @@ impl Context {
             bending_stresses: 0.0,
             contact_stresses: 0.0,
             bending_num_cycles: 0.0,
+            contact_num_cycles: 0.0,
             err: None,
         }
     }
