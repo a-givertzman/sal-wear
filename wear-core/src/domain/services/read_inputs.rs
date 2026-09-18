@@ -104,6 +104,22 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
                 ctx.m = None;
             }
         }
+        match &self.inputs.kh() {
+            Some(kh) => {
+                ctx.kh = Some(*kh);
+            }
+            None => {
+                ctx.kh = None;
+            }
+        }
+        match &self.inputs.zh() {
+            Some(zh) => {
+                ctx.zh = Some(*zh);
+            }
+            None => {
+                ctx.zh = None;
+            }
+        }
         ctx
     }
     //

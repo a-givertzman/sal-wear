@@ -18,6 +18,10 @@ pub struct Inputs {
     b: Option<f64>,
     // Модуль зубчатого колеса [м] 
     m: Option<f64>,
+    // Коэффициент нагрузки изгиба
+    kh: Option<f64>,
+    // Коэффициент геометрии контакта
+    zh: Option<f64>,
 }
 //
 //
@@ -49,6 +53,12 @@ impl Inputs {
     pub fn m(&self) -> Option<f64> {
         self.m
     }
+    pub fn kh(&self) -> Option<f64> {
+        self.kh
+    }
+    pub fn zh(&self) -> Option<f64> {
+        self.zh
+    }
 }
 /// Заглушка хранилище всех входящих событий  
 pub struct MockInputs {
@@ -70,6 +80,10 @@ pub struct MockInputs {
     pub b: Option<f64>,
     // Модуль зубчатого колеса [м] 
     pub m: Option<f64>,
+    // Коэффициент нагрузки изгиба
+    pub kh: Option<f64>,
+    // Коэффициент геометрии контакта
+    pub zh: Option<f64>,
 }
 //
 //
@@ -85,6 +99,8 @@ impl MockInputs {
             yf: Some(0.1),
             b: Some(0.1),
             m: Some(0.1),
+            kh: Some(0.1),
+            zh: Some(0.1),
         }
     }
     pub fn rpm(&self) -> Option<f64> {
@@ -113,5 +129,11 @@ impl MockInputs {
     }
     pub fn m(&self) -> Option<f64> {
         self.m
+    }
+    pub fn kh(&self) -> Option<f64> {
+        self.kh
+    }
+    pub fn zh(&self) -> Option<f64> {
+        self.zh
     }
 }
