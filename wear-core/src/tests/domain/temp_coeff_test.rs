@@ -47,6 +47,7 @@ mod tests {
                 MockInputs {
                     rpm: Some(50.0),
                     motor_p: Some(50.0),
+                    z_p: Some(0),
                     t_bearing: Some(50.0),
                 },
                 50.0,
@@ -57,6 +58,7 @@ mod tests {
                 1,
                 MockInputs {
                     rpm: Some(50.0),
+                    z_p: Some(0),
                     motor_p: Some(50.0),
                     t_bearing: None,
                 },
