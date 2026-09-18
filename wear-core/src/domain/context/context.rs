@@ -81,6 +81,12 @@ pub struct Context {
     pub(crate) bending_num_cycles: f64,
     // Допустимое число циклов (S–N) для контакта
     pub(crate) contact_num_cycles: f64,
+    // Доля повреждения от усталости при изгибе
+    pub(crate) bending_fatigue_damage: f64,
+    // Доля повреждения от усталости при контакте
+    pub(crate) contact_fatigue_damage: f64,
+    // Повреждение зуба
+    pub(crate) tooth_damage: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -126,6 +132,9 @@ impl Context {
             contact_stresses: 0.0,
             bending_num_cycles: 0.0,
             contact_num_cycles: 0.0,
+            bending_fatigue_damage: 0.0,
+            contact_fatigue_damage: 0.0,
+            tooth_damage: 0.0,
             err: None,
         }
     }

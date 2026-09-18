@@ -13,7 +13,7 @@ mod tests {
     use sal_core::dbg::Dbg;
     use testing::stuff::max_test_duration::TestDuration;
     use crate::{
-        BendingStresses, Context, Eval, GearMeshFrequency, MockInputs, NumberOfMeshCycles, ReadInputs, RotationalFrequency,
+        BendingStresses, Context, Eval, MockInputs, ReadInputs,
     };
     ///
     ///

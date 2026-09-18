@@ -4,7 +4,7 @@ use sal_core::{
     error::Error
 };
 use crate::{
-    Eval, GetInputs, Inputs, domain::context::Context
+    Eval, GetInputs, domain::context::Context
 };
 ///
 /// Пишет актуальные входные значения в контекст [Context]
