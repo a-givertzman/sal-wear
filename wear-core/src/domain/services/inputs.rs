@@ -105,6 +105,12 @@ pub struct MockInputs {
     pub m_f: Option<f64>, 
     // Базовое число циклов при напряжении σ_lim для изгиба
     pub nf_0: Option<f64>,
+    // Предел выносливости по контакту [Па]
+    pub h_lim: Option<f64>,
+    // Показатели степени S–N кривой для контакта 
+    pub m_h: Option<f64>, 
+    // Базовое число циклов при напряжении σ_lim для контакта
+    pub nh_0: Option<f64>,
 }
 //
 //
@@ -125,6 +131,9 @@ impl MockInputs {
             f_lim: Some(0.1),
             m_f: Some(0.1),
             nf_0: Some(0.1),
+            h_lim: Some(0.1),
+            m_h: Some(0.1),
+            nh_0: Some(0.1),            
         }
     }
     pub fn rpm(&self) -> Option<f64> {
@@ -168,5 +177,14 @@ impl MockInputs {
     }
     pub fn nf_0(&self) -> Option<f64> {
         self.nf_0
+    }
+    pub fn h_lim(&self) -> Option<f64> {
+        self.h_lim
+    }
+    pub fn m_h(&self) -> Option<f64> {
+        self.m_h
+    }
+    pub fn nh_0(&self) -> Option<f64> {
+        self.nh_0
     }
 }

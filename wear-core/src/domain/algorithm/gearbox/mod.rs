@@ -2,6 +2,8 @@ mod bending_cycles_num;
 pub use bending_cycles_num::*;
 mod bending_stresses;
 pub use bending_stresses::*;
+mod contact_cycles_num;
+pub use contact_cycles_num::*;
 mod contact_stresses;
 pub use contact_stresses::*;
 mod gear_mesh_frequency;
