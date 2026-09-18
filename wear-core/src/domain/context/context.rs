@@ -87,6 +87,8 @@ pub struct Context {
     pub(crate) contact_fatigue_damage: f64,
     // Повреждение зуба
     pub(crate) tooth_damage: f64,
+    // Повреждение зуба с учётом температуры
+    pub(crate) temp_tooth_damage: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -135,6 +137,7 @@ impl Context {
             bending_fatigue_damage: 0.0,
             contact_fatigue_damage: 0.0,
             tooth_damage: 0.0,
+            temp_tooth_damage: 0.0,
             err: None,
         }
     }
