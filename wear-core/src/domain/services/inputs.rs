@@ -22,6 +22,12 @@ pub struct Inputs {
     kh: Option<f64>,
     // Коэффициент геометрии контакта
     zh: Option<f64>,
+    // Предел выносливости по изгибу [Па]
+    f_lim: Option<f64>,
+    // Показатели степени S–N кривой для изгиба 
+    m_f: Option<f64>, 
+    // Базовое число циклов при напряжении σ_lim для изгиба
+    nf_0: Option<f64>,
 }
 //
 //
@@ -59,6 +65,15 @@ impl Inputs {
     pub fn zh(&self) -> Option<f64> {
         self.zh
     }
+    pub fn f_lim(&self) -> Option<f64> {
+        self.f_lim
+    }
+    pub fn m_f(&self) -> Option<f64> {
+        self.m_f
+    }
+    pub fn nf_0(&self) -> Option<f64> {
+        self.nf_0
+    }
 }
 /// Заглушка хранилище всех входящих событий  
 pub struct MockInputs {
@@ -84,6 +99,12 @@ pub struct MockInputs {
     pub kh: Option<f64>,
     // Коэффициент геометрии контакта
     pub zh: Option<f64>,
+    // Предел выносливости по изгибу [Па]
+    pub f_lim: Option<f64>,
+    // Показатели степени S–N кривой для изгиба 
+    pub m_f: Option<f64>, 
+    // Базовое число циклов при напряжении σ_lim для изгиба
+    pub nf_0: Option<f64>,
 }
 //
 //
@@ -101,6 +122,9 @@ impl MockInputs {
             m: Some(0.1),
             kh: Some(0.1),
             zh: Some(0.1),
+            f_lim: Some(0.1),
+            m_f: Some(0.1),
+            nf_0: Some(0.1),
         }
     }
     pub fn rpm(&self) -> Option<f64> {
@@ -135,5 +159,14 @@ impl MockInputs {
     }
     pub fn zh(&self) -> Option<f64> {
         self.zh
+    }
+    pub fn f_lim(&self) -> Option<f64> {
+        self.f_lim
+    }
+    pub fn m_f(&self) -> Option<f64> {
+        self.m_f
+    }
+    pub fn nf_0(&self) -> Option<f64> {
+        self.nf_0
     }
 }
