@@ -14,6 +14,8 @@ pub struct Context {
     pub(crate) t_bearing: Option<f64>,
     // Число зубьев ведущей шестерни [кол-во]
     pub(crate) z_p: Option<u64>,
+    // Число зубьев ведущей шестерни [м]
+    pub(crate) d_p: Option<f64>,
     ///
     /// Расчетные значения
     /// 
@@ -45,6 +47,8 @@ pub struct Context {
     pub(crate) gear_mesh_frequency: f64,
     /// Число циклов зацепления
     pub(crate) number_mesh_cycles: f64,
+    /// Окружная сила
+    pub(crate) tangential_force: f64,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -58,6 +62,7 @@ impl Context {
             motor_p: None,
             t_bearing: None,
             z_p: None,
+            d_p: None,
             duration: 0.0,
             motor_torque: 0.0,
             radial_load: 0.0,
@@ -72,6 +77,7 @@ impl Context {
             rotational_frequency: 0.0,
             gear_mesh_frequency: 0.0,
             number_mesh_cycles: 0.0,
+            tangential_force: 0.0,
             err: None,
         }
     }

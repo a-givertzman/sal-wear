@@ -49,6 +49,7 @@ mod tests {
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
                     z_p: Some(0),
+                    d_p: Some(0.1),
                 },
                 0.0,
                 None, // duration !>0
@@ -60,6 +61,7 @@ mod tests {
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
                     z_p: Some(0),
+                    d_p: Some(0.1),
                 },
                 60.0,
                 Some(25.0 * (60.0 / 60.0)),
@@ -71,6 +73,7 @@ mod tests {
                     motor_p: Some(11.5),
                     t_bearing: Some(0.0),
                     z_p: Some(0),
+                    d_p: Some(0.1),
                 },
                 60.0,
                 None, // rpm !> 0
@@ -82,6 +85,7 @@ mod tests {
                     motor_p: Some(0.0),
                     t_bearing: Some(0.0),
                     z_p: Some(0),
+                    d_p: Some(0.1),
                 },
                 60.0,
                 None, // rpm is none
@@ -93,6 +97,7 @@ mod tests {
                     motor_p: Some(50.0),
                     t_bearing: Some(0.0),
                     z_p: Some(0),
+                    d_p: Some(0.1),
                 },
                 500.0,
                 Some(1500.0 * (500.0 / 60.0)),
