@@ -1,3 +1,5 @@
+mod bending_stresses;
+pub use bending_stresses::*;
 mod gear_mesh_frequency;
 pub use gear_mesh_frequency::*;
 mod number_mesh_cycles;
