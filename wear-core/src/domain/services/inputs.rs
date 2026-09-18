@@ -39,6 +39,14 @@ pub struct MockInputs {
 //
 //
 impl MockInputs {
+    pub fn new() -> Self {
+        Self { 
+            rpm: Some(0.1), 
+            motor_p: Some(0.1), 
+            t_bearing: Some(0.1), 
+            z_p: Some(1) 
+        }
+    }
     pub fn rpm(&self) -> Option<f64> {
         self.rpm
     }

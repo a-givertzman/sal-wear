@@ -55,6 +55,14 @@ impl<I: GetInputs> Eval<Context, Context> for ReadInputs<I> {
             None => {
                 ctx.t_bearing = None;
             }
+        }       
+        match &self.inputs.z_p() {
+            Some(z_p) => {
+                ctx.z_p = Some(*z_p);
+            }
+            None => {
+                ctx.z_p = None;
+            }
         }
         ctx
     }
