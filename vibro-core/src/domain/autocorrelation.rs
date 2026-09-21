@@ -1,7 +1,7 @@
 use std::f64::consts::TAU;
 
 use sal_core::dbg::Dbg;
-use crate::{Context, Eval, me};
+use crate::{AngularCtx, Eval, me};
 
 /// Вычисляет точный период вращения (в отсчетах) через автокорреляцию.
 /// Ищет максимум функции в узком окне от показаний тахометра.
@@ -13,7 +13,7 @@ pub struct Autocorrelation<Child> {
 }
 impl<Child> Autocorrelation<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> {
     ///
     /// ### Returns `Autocorrelation` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
@@ -50,18 +50,23 @@ where
         best_lag as f64
     }
 }
-impl<Child> Eval<Context, Context> for Autocorrelation<Child>
+impl<Child> Eval<AngularCtx, AngularCtx> for Autocorrelation<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static {
+    Child: Eval<AngularCtx, AngularCtx> {
     //
     #[inline]
-    fn eval(&self, ctx: Context) -> Context {
+    fn eval(&self, ctx: AngularCtx) -> AngularCtx {
         let mut ctx = self.child.eval(ctx);
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
         ctx.raw_period = self.sample_rate * 60.0 / ctx.raw_rpm;
-        ctx.period = Self::find_exact_period(ctx.ac_samples.read_window(), ctx.raw_period);
+        if let Some(window) = ctx.ac_samples.pop_window() {
+            ctx.period = Self::find_exact_period(window, ctx.raw_period);
+        } else {
+            // До накопления окна работаем от грубой оценки тахометра
+            ctx.period = ctx.raw_period;
+        }
         ctx.omega = TAU * self.sample_rate / ctx.period;
         ctx.dt = 1.0 / self.sample_rate;
         ctx

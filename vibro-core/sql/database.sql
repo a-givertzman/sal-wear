@@ -1,9 +1,11 @@
 -- 1. Справочник оборудования
 CREATE TABLE equipment (
-    id          SERIAL PRIMARY KEY,
+    id          integer GENERATED ALWAYS AS IDENTITY,
     name        VARCHAR(255) NOT NULL,       -- Наименование (например, 'Насос НП-101')
     model       VARCHAR(100),                -- Модель/Тип агрегата
-    created_at  TIMESTAMPTZ DEFAULT NOW()
+    created_at  TIMESTAMPTZ DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT pk_equipment PRIMARY KEY (id),
+    CONSTRAINT uq_equipment_name UNIQUE (name)
 );
 
 -- 2. Таблица учета наработки и ресурса (Wear & Lifespan)
@@ -14,13 +16,13 @@ CREATE TABLE equipment_wear (
     updated_at         TIMESTAMPTZ NOT NULL        -- Время последнего обновления наработки
 );
 
--- 3. Обновленная таблица трендов вибрации
+-- 3. Таблица трендов вибрации
 CREATE TABLE vibration_trends (
     timestamp      TIMESTAMPTZ NOT NULL,
     equipment_id   INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
     order_id       VARCHAR(10) NOT NULL,       -- '1x', '2x', '3x', '0.5x' и т.д.
     rms_value      REAL NOT NULL,              -- Амплитуда (RMS)
-    phase          REAL,                       -- Фаза в градусах [0..360)
+    phase          REAL NOT NULL,              -- Фаза в градусах [0..360)
     rpm            REAL NOT NULL,              -- Текущие обороты вала
     
     PRIMARY KEY (timestamp, equipment_id, order_id)

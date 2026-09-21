@@ -30,3 +30,12 @@ impl LowPassSignalCtx {
         }
     }
 }
+impl Default for LowPassSignalCtx {
+    fn default() -> Self {
+        Self {
+            coeffs: Default::default(),
+            last_rpm: Rpm(0.0),
+            state: Default::default(),
+        }
+    }
+}

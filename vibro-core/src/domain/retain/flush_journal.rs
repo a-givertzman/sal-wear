@@ -23,7 +23,7 @@ pub struct FlushJournal<Child> {
 }
 //
 impl<Child> FlushJournal<Child> {
-    pub fn new(parent: impl Into<String>, child: Child) -> Self {
+    pub fn new(parent: impl AsRef<str>, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
             child,

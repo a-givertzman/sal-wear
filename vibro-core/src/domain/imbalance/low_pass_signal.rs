@@ -1,4 +1,4 @@
-use sal_core::{dbg::Dbg, error::Error};
+use sal_core::dbg::Dbg;
 use crate::{BiquadCoeffs, Eval, domain::imbalance::context::ImbContext, me};
 
 /// Фильтр нижних частот (Баттерворт 2-го порядка) для подавления ВЧ-шумов.
@@ -56,13 +56,12 @@ where
     #[inline]
     fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
-        if ctx.err.is_some() {
+        if ctx.is_err() {
             return ctx.pass_err(&self.dbg, "eval");
         }
         // Защита от деления на ноль при старте системы
         if ctx.rpm.value() <= 0.1 {
-            ctx.err = Some(Error::new(&self.dbg, "eval").err("Low RPM"));
-            return ctx
+            return ctx.with_err(&self.dbg, "eval", "Low RPM");
         }
         // Пересчитываем математику фильтра, только если обороты изменились более чем на 1 RPM
         if (ctx.rpm - ctx.low_pass_signal.last_rpm).value().abs() > 1.0 {
@@ -84,7 +83,7 @@ where
             state.y1 = y0;
             // Кастим обратно с защитой от выхода за границы типа
             // Если ctx.samples имеет тип f32/f64, clamp и cast не нужны
-            *target = y0 as f32; 
+            *target = y0 as f32;
         }
         ctx.low_pass_signal.state = state;
         ctx

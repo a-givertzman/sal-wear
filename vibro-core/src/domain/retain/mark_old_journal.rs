@@ -14,7 +14,7 @@ pub struct MarkOldJournal {
 impl MarkOldJournal {
     ///
     /// Returns `MarkOldJournal` new instance
-    pub fn new(parent: impl Into<String>, mode: RetainMode) -> Self {
+    pub fn new(parent: impl AsRef<str>, mode: RetainMode) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
             mode,
@@ -24,7 +24,7 @@ impl MarkOldJournal {
     ///
     /// ### Переименование неактивного файла в `.old`.
     /// Это необходимо что бы при следующей перезагрузке знать в каком режиме писали retain журнал
-    /// 
+    ///
     /// Возвращает `true` усли переименование успешно
     #[named]
     fn mark_inactive_old(dbg: &Dbg, path: &Path, mode: RetainMode) -> Result<(), Error> {

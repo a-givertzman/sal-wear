@@ -1,12 +1,10 @@
 use std::marker::PhantomData;
 use sal_core::dbg::Dbg;
-use crate::{Eval, Sender};
+use crate::Eval;
 
-pub struct SqlExport<E, F, Ctx, Child> {
-    /// Канал передачи SQL запросов в сервис реализующий отправку в БД
-    api_link: Sender<E>,
+pub struct SqlExport<SqlBuilder, Ctx, Child> {
     /// Замыкание в котором формируются SQL запросы.
-    builder: F,
+    builder: SqlBuilder,
     /// Предыдущий узел конвейера вычислений (например, угловой ресемплер или оконный фильтр).
     child: Child,
     _ctx: PhantomData<Ctx>, 
@@ -14,19 +12,18 @@ pub struct SqlExport<E, F, Ctx, Child> {
     dbg: Dbg,
 }
 //
-impl<E, F, Ctx, Child> SqlExport<E, F, Ctx, Child>
+impl<F, Ctx, Child> SqlExport<F, Ctx, Child>
 where
-    F: Fn(&Ctx) -> Vec<E>,
+    F: Fn(&Ctx),
     Child: Eval<Ctx, Ctx> + Send + 'static {
     ///
     /// ### Returns `SqlExport` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки).
     /// - `builder` - Замыкание в котором формируются SQL запросы.
     /// - `child` - Дочерний (предыдущий) расчетный шаг
-    pub fn new(parent: &Dbg, api_link: Sender<E>, builder: F, child: Child) -> Self {
+    pub fn new(parent: &Dbg, builder: F, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
-            api_link,
             builder,
             child,
             _ctx: PhantomData,
@@ -35,9 +32,9 @@ where
     }
 }
 //
-impl<E, F, Ctx, Child> Eval<Ctx, Ctx> for SqlExport<E, F, Ctx, Child>
+impl<F, Ctx, Child> Eval<Ctx, Ctx> for SqlExport<F, Ctx, Child>
 where
-    F: Fn(&Ctx) -> Vec<E>,
+    F: Fn(&Ctx),
     Child: Eval<Ctx, Ctx> + Send + 'static {
     //
     #[inline]
@@ -46,13 +43,7 @@ where
         // if ctx.err.is_some() {
         //     return ctx.pass_err(&self.dbg, "eval");
         // }
-        let sqls = (self.builder)(&ctx);
-        for sql in sqls {
-            if self.api_link.send(sql).is_err() {
-                log::error!("{}.eval | Can't send sql, Api service disconnected", self.dbg);
-                break;
-            }
-        }
+        (self.builder)(&ctx);
         ctx
     }
     //

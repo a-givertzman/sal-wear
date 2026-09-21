@@ -3,7 +3,7 @@ use chrono::Utc;
 use debugging::session::debug_session::{DebugSession, LogLevel};
 use sal_core::dbg::Dbg;
 use sal_sync::{services::RECV_TIMEOUT, sync::channel::{self, RecvTimeoutError}, thread_pool::ThreadPool};
-use crate::{AngularGrid, Autocorrelation, Conf, Context, Eval, Frame, ImbContext, ImbalanceDetector, Inputs, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadInputs, Retain, Severity, SqlExport, WindowFn, escape, tests::{Frequency, Udp}};
+use crate::{AngularGrid, Autocorrelation, Conf, AngularCtx, Eval, Frame, ImbContext, ImbalanceDetector, MockEventValues, LowPassSignal, OrderDomainSamples, OrderFeatureFilter, OrderSpectrum, Pass, ReadEventValues, Retain, Severity, SqlExport, WindowFn, tests::{Frequency, Udp}};
 
 ///
 /// 
@@ -15,40 +15,42 @@ fn complex_test () {
     let tp = ThreadPool::new(&dbg, Some(8));
     let scheduler = tp.scheduler();
     let conf: Conf = serde_yaml::from_str(r#"
-        hardware:
+        adc:
             sample-rate-hz: 320000
             chunk-size: 512
-        angular:
-            max-order: 100
-            order-resolution: 0.05
-        bands:
-            low-order: 0.5..10.0
-            mid-hz: ..5000
-            high-hz: 5000..10000
+        analysis:
+            order-tracking:
+                max-order: 300              # Максимальный порядок (кратность частоты вращения), до которого производится спектральный анализ.
+                order-resolution: 0.01      # Требуемая спектральное разрешение в угловом домене.
+                # samples-per-rev: 256      # Плотность угловой дискретизации (сэмплов на оборот).
+            bands:
+                low-order: 0.5..10.0
+                mid-hz: ..5000
+                high-hz: 5000..10000
     "#).unwrap();
-    let inputs = Arc::new(Inputs::new());
-    let mut samples = [0u16; Frame::SIZE];
-    let mut ctx = Context::new();
+    let inputs = Arc::new(MockEventValues::new());
+    let mut samples = vec![0u16; conf.adc.chunk_size];
+    let mut ctx = AngularCtx::new(conf.adc.sample_rate_hz, conf.adc.chunk_size);
     let angular_grid = AngularGrid::new(&dbg,
+        conf.adc.chunk_size,
         Autocorrelation::new(&dbg,
-            conf.hardware.sample_rate_hz,
-            ReadInputs::new(&dbg, inputs.clone())
+            conf.adc.sample_rate_hz,
+            ReadEventValues::new(&dbg, ["rpm"], inputs.clone())
         ),
     );
-    let window_size = conf.angular.n_fft();
+    let window_size = conf.analysis.n_fft();
     let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65).unwrap();
     let (api_link, api_recv) = crate::channel_unbounded();
     let equipment_id = 1212;
-    let low_range = SqlExport::new(&dbg, api_link, move |ctx| {
-            if ctx.err.is_some() { return vec![]; }
-            let mut sqls = Vec::with_capacity(2);
+    let low_range = SqlExport::new(&dbg, move |ctx| {
+            if ctx.is_err() { return; }
             let mut sql = String::with_capacity(ctx.results.len() * 120 + 150);
             let mut results = ctx.results.iter().filter(|r| r.severity != Severity::Green).peekable();
             if results.peek().is_some() {
                 sql.push_str("INSERT INTO vibration_faults (timestamp, equipment_id, fault_kind, score, severity, rpm) VALUES ");
                 for (i, r) in results.enumerate() {
                     if i > 0 { sql.push_str(", "); }
-                    _ = write!(
+                    _ = write!(     // use std::fmt::Write - Required
                         sql,
                         "('{}', {}, '{}', {}, '{}', {})",
                         r.ts.to_rfc3339(),
@@ -61,7 +63,7 @@ fn complex_test () {
                 }
                 sql.push_str(" ON CONFLICT (equipment_id, fault_kind) DO UPDATE SET ");
                 sql.push_str("timestamp = EXCLUDED.timestamp, score = EXCLUDED.score, severity = EXCLUDED.severity, rpm = EXCLUDED.rpm;");
-                sqls.push(sql);
+                _ = api_link.send(sql)
             }
             if !ctx.features.is_empty() {
                 let mut sql = String::with_capacity(ctx.features.len() * 120 + 150);
@@ -80,22 +82,21 @@ fn complex_test () {
                     );
                 }
                 sql.push_str(" ON CONFLICT (timestamp, equipment_id, order_id) DO NOTHING;");
-                sqls.push(sql);
+                _ = api_link.send(sql)
             }
-            sqls
         },
         ImbalanceDetector::new(&dbg,
             OrderFeatureFilter::new(&dbg,
-                conf.angular.n_fft(),
-                conf.angular.angular_step_rad(),
+                conf.analysis.n_fft(),
+                conf.analysis.angular_step_rad(),
                 OrderSpectrum::new(&dbg,
-                    conf.angular.n_fft(),
+                    conf.analysis.n_fft(),
                     Some(window_fn),
                     OrderDomainSamples::new(&dbg,
-                        conf.angular.samples_per_rev(),
+                        conf.analysis.samples_per_rev(),
                         LowPassSignal::new(&dbg,
-                            conf.hardware.sample_rate_hz,
-                            conf.bands.low_cutoff_order(),
+                            conf.adc.sample_rate_hz,
+                            conf.analysis.bands.low_cutoff_order(),
                             Pass::new(),
                         ),
                     ),
@@ -103,12 +104,12 @@ fn complex_test () {
             ),
         ),
     );
-    let mut udp = Udp::new(Frame::SIZE, conf.hardware.sample_rate_hz, [
+    let mut udp = Udp::new(conf.adc.chunk_size, conf.adc.sample_rate_hz, [
         // Статический резонанс на 5 кГц с амплитудой 100
         (Frequency::Static(5000.0), 100),
     ]);
     let retain = Arc::new(Retain::mock(&dbg, []));
-    let mut low_range_ctx = ImbContext::new(&dbg, conf.angular.samples_per_rev(), conf.angular.n_fft(), retain);
+    let mut low_range_ctx = ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), conf.adc.chunk_size, retain);
     let (low_send, low_recv) = channel::bounded(1);
     let (mid_send, mid_recv) = channel::bounded(1);
     let (high_send, high_recv) = channel::bounded(1);
@@ -170,11 +171,19 @@ fn complex_test () {
             Some(err) => log::warn!("{}", err),
             None => {
                 if ctx.ac_samples.is_full() {
+                    let frame = Frame::new(ts, 2048f32, &samples, phases);
                     _ = low_send.send(frame.clone());
                     _ = mid_send.send(frame.clone());
                     _ = high_send.send(frame.clone());
                 }
             }
         }
+    }
+    let expected_results: usize = todo!();
+    let actual_results = api_recv.len();
+    assert!(actual_results == expected_results, "{dbg} | Total number of sql's is {}, expected {}", actual_results, expected_results);
+    let expected_sqls: Vec<&str> = vec![];
+    for (sql, expected_sql) in api_recv.zip(expected_sqls) {
+        assert!(sql == expected_sql, "{dbg} | \n Actual sql: {}, \n expected sql: {}", sql, expected_sql);
     }
 }

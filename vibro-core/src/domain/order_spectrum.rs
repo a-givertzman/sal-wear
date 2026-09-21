@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use rustfft::{Fft, FftPlanner};
-use sal_core::{dbg::Dbg, error::Error};
+use sal_core::dbg::Dbg;
 use crate::{Eval, ImbContext, WindowFn, me};
 
-/// ### Спектральный анализ сигнала в угловом домене (Order Tracking) 
+/// ### Спектральный анализ сигнала в угловом домене (Order Tracking)
 /// для низкочастотной диагностики роторного оборудования.
 ///
 /// #### Назначение
@@ -17,13 +17,13 @@ use crate::{Eval, ImbContext, WindowFn, me};
 /// * **3X RPM (Механические ослабления / люфты опор):** Появление третьей гармоники и субгармоник (0.5X, 1.5X).
 ///
 /// #### Математическое обоснование параметров
-/// * **Количество точек на оборот ($N_{rev} = 64$):** Обеспечивает верхнюю границу измеряемых порядков 
-///   по Найквисту $O_{max} = 64 / 2 = 32X$. С учетом переходной полосы цифрового антиалиасингового 
+/// * **Количество точек на оборот ($N_{rev} = 64$):** Обеспечивает верхнюю границу измеряемых порядков
+///   по Найквисту $O_{max} = 64 / 2 = 32X$. С учетом переходной полосы цифрового антиалиасингового
 ///   фильтра, гарантирует чистый спектр (без наложений) вплоть до $12X \dots 15X$ порядка.
-/// * **Шаг разрешения ($\Delta O = 0.01$):** Требует накопления данных минимум за $K = 1 / 0.01 = 100$ 
-///   полных оборотов вала. Это критически важно для селекции близких частот: разделения физического 
+/// * **Шаг разрешения ($\Delta O = 0.01$):** Требует накопления данных минимум за $K = 1 / 0.01 = 100$
+///   полных оборотов вала. Это критически важно для селекции близких частот: разделения физического
 ///   дисбаланса асинхронного двигателя ($1.0X \approx 49$ Гц) и сетевых электромагнитных наводок ($1.02X \approx 50$ Гц).
-/// 
+///
 /// [Подробнее об Order Spectrum](../../../design/order-spectrum.md)
 pub struct OrderSpectrum<Child> {
     /// Планировщик FFT.
@@ -63,17 +63,18 @@ where
     #[inline]
     fn eval(&self, ctx: ImbContext) -> ImbContext {
         let mut ctx = self.child.eval(ctx);
-        if ctx.err.is_some() {
+        if ctx.is_err() {
             return ctx.pass_err(&self.dbg, "eval");
         }
         if ctx.order_samples.len() > ctx.fft_buff.capacity() {
-            ctx.err = Some(Error::new(&self.dbg, "eval")
-                .err(format!("Размер входящей выборки ({}) превышает емкость FFT буфера ({})", ctx.order_samples.len(), ctx.fft_buff.capacity())));
-            return ctx;
+            let length = ctx.order_samples.len();
+            let capacity = ctx.fft_buff.capacity();
+            return ctx.with_err(&self.dbg, "eval",
+                format!("Размер входящей выборки ({}) превышает емкость FFT буфера ({})", length, capacity));
         }
         ctx.fft_buff.push_chunk(&ctx.order_samples[..]);
-        if ctx.fft_buff.is_full() {
-            ctx.fft_window.copy_from_slice(ctx.fft_buff.read_window());
+        if let Some(window) = ctx.fft_buff.pop_window() {
+            ctx.fft_window.copy_from_slice(window);
             if let Some(window_fn) = &self.window_fn {
                 if let Err(err) = window_fn.eval(&mut ctx.fft_window) {
                     log::warn!("{}.eval | {}", self.dbg, err);
