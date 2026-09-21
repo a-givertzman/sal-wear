@@ -10,3 +10,5 @@ mod order_zone;
 pub use order_zone::*;
 mod imbalance_detector;
 pub use imbalance_detector::*;
+mod rpm_detection;
+pub use rpm_detection::*;

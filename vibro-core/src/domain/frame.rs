@@ -41,6 +41,25 @@ where
             _d: PhantomData,
         })
     }
+    /// ### Создает новый инстанс `Frame` толлько с сырыми сэмплами, фазы добавим после расчета.
+    /// - `ts` - Метка времени выборки
+    /// - `samples` - сырые выборки из АЦП. Будет автоматически удален DC (`-2048.0`)
+    /// Размер: `Frame::SIZE`
+    pub fn raw(ts: DateTime<Utc>, samples: [u16; Self::SIZE]) -> Self {
+        Frame {
+            ts,
+            samples: samples.map(|v| v as f32 - 2048.0),
+            phases: Phases::new(0),
+        }
+    }
+    /// ### Добавляет угловую сетку в радианах.
+    /// - `phases` - Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
+    /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
+    /// Размер: `Frame::SIZE`
+    pub fn with_phases(mut self, phases: Phases<f32>) -> Self {
+        self.phases = phases;
+        self
+    }
 }
 impl<D, T: crate::num_traits::Float> Default for Frame<D, T> {
     fn default() -> Self {
