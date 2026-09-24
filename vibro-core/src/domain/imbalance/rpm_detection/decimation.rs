@@ -29,7 +29,7 @@ where
     /// - `parent` - Идентификатор родительской сущности (для отладки)
     /// - `factor` - Коэффициент децимации (во сколько крат проредить входной сигнал)
     /// - `child` - Дочерний (предыдущий) шаг вычислений
-    pub fn new(parent: &Dbg, factor: usize, child: Child) -> Self { // VORZHEV Z.A.: `parent: impl Into<String>` CHANGED TO  `parent: &Dbg` cause of error
+    pub fn new(parent: impl AsRef<str>, factor: usize, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
             factor,
@@ -108,7 +108,7 @@ use super::*;
         let decimator = Decimation::new(&dbg, 20, DummyChild);
         // Генерируем 512 сэмплов — для проверки количества элементов форма сигнала не важна
         let samples: [u16; 512] = [2048u16; 512]; // DC-уровень, "тишина"
-        let frame = Frame::raw(Utc::now(), samples);
+        let frame = Frame::raw(Utc::now(), 2048.0, &samples);
         let mut ctx = ImbContext::default();
         ctx.frame = Arc::new(frame);
         let result_ctx = decimator.eval(ctx);
@@ -143,7 +143,7 @@ use super::*;
         for chunk in raw_u16.chunks(512) {
             let samples: [u16; 512] = chunk.try_into()
                 .expect("ожидается ровно 512 отсчётов на чанк");
-            let frame = Frame::raw(Utc::now(), samples);
+            let frame = Frame::raw(Utc::now(), 2048.0, &samples);
             ctx.frame = Arc::new(frame);
             ctx = decimator.eval(ctx);
             all_decimated.extend(&ctx.decimation.decimated);

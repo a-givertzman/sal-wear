@@ -67,7 +67,7 @@ fn order_domain_stationary_test() {
         ctx.push_chunk(&samples);
         let phases;
         (ctx, phases) = angular_grid.eval(ctx);
-        let frame = Frame::new(Utc::now(), 2048f32, &samples, phases);
+        let frame = Frame::new(Utc::now(), 2048.0, &samples, phases);
         i_ctx.update(frame.clone());
         i_ctx.rpm = crate::Rpm(rpm);
         i_ctx = low_range.eval(i_ctx);
