@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use sal_core::dbg::Dbg;
-use crate::{Context, Eval};
+use crate::{ImbContext, Eval};
 
 /// Коэффициенты КИХ-фильтра нижних частот (ФНЧ)
 /// Расчитаны для Fs=320kHz, Fc=8kHz (спад к 16kHz), 32 тапа, окно Хемминга.
@@ -23,13 +23,13 @@ pub struct Decimation<Child> {
 
 impl<Child> Decimation<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static,
+    Child: Eval<ImbContext, ImbContext> + Send + 'static,
 {
     /// ### Returns `Decimation` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки)
     /// - `factor` - Коэффициент децимации (во сколько крат проредить входной сигнал)
     /// - `child` - Дочерний (предыдущий) шаг вычислений
-    pub fn new(parent: impl Into<String>, factor: usize, child: Child) -> Self {
+    pub fn new(parent: &Dbg, factor: usize, child: Child) -> Self { // VORZHEV Z.A.: `parent: impl Into<String>` CHANGED TO  `parent: &Dbg` cause of error
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
             factor,
@@ -40,22 +40,22 @@ where
     }
 }
 
-impl<Child> Eval<Context, Context> for Decimation<Child>
+impl<Child> Eval<ImbContext, ImbContext> for Decimation<Child>
 where
-    Child: Eval<Context, Context> + Send + 'static,
+    Child: Eval<ImbContext, ImbContext> + Send + 'static,
 {
     #[inline]
-    fn eval(&self, ctx: Context) -> Context {
+    fn eval(&self, ctx: ImbContext) -> ImbContext {
         // Передаем контекст дальше по цепочке вниз
         let mut ctx = self.child.eval(ctx);
-        if ctx.err.is_some() {
+        if ctx.is_err() {
             return ctx.pass_err(&self.dbg, "eval");
         }
         // Если стейт внутри контекста еще не инициализирован под размер фильтра
         if ctx.decimation.dec_fir_state.len() < FIR_TAPS_M20_N32.len() {
             ctx.decimation.dec_fir_state = VecDeque::from(vec![0.0; FIR_TAPS_M20_N32.len()]);
             // Выделяем емкость под новые децимированные сэмплы (примерно 512 / 20 = ~26 сэмплов)
-            let expected_capacity = ctx.ac_samples.capacity() / self.factor + 1;
+            let expected_capacity = ctx.samples.capacity() / self.factor + 1;
             ctx.decimation.decimated = Vec::with_capacity(expected_capacity);
         }
         ctx.decimation.decimated.clear();
@@ -90,45 +90,71 @@ where
 /// Basic Tests
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::f64::consts::PI;
+    use chrono::Utc;
+
+use crate::Frame;
+
+use super::*;
+    use std::{f64::consts::PI, sync::Arc};
     // Простая заглушка конечного дочернего элемента цепочки
     struct DummyChild;
-    impl Eval<Context, Context> for DummyChild {
-        fn eval(&self, ctx: Context) -> Context { ctx } // Просто возвращает контекст без изменений
+    impl Eval<ImbContext, ImbContext> for DummyChild {
+        fn eval(&self, ctx: ImbContext) -> ImbContext { ctx } // Просто возвращает контекст без изменений
         fn exit(&self) {}
     }
     #[test]
     fn test_decimation_factor_and_length() {
-        let decimator = Decimation::new("test", 20, DummyChild);
-        // Создаем контекст с пакетом из 512 сэмплов
-        let ctx = Context::new();
+        let dbg = Dbg::own("test_decimation_factor_and_length");
+        let decimator = Decimation::new(&dbg, 20, DummyChild);
+        // Генерируем 512 сэмплов — для проверки количества элементов форма сигнала не важна
+        let samples: [u16; 512] = [2048u16; 512]; // DC-уровень, "тишина"
+        let frame = Frame::raw(Utc::now(), samples);
+        let mut ctx = ImbContext::default();
+        ctx.frame = Arc::new(frame);
         let result_ctx = decimator.eval(ctx);
-        // 512 / 20 = 25.6 -> Должно получиться ровно 25 или 26 сэмплов (в зависимости от начального счетчика)
-        assert!(result_ctx.decimation.decimated.len() >= 25 && result_ctx.decimation.decimated.len() <= 26);
-        assert!(result_ctx.err.is_none());
+        // 512 / 20 = 25.6 -> Должно получиться ровно 25 или 26 сэмплов
+        assert!(
+            result_ctx.decimation.decimated.len() >= 25 && result_ctx.decimation.decimated.len() <= 26,
+            "Неожиданное количество децимированных сэмплов: {}",
+            result_ctx.decimation.decimated.len()
+        );
+        assert!(!result_ctx.is_err());
     }
     #[test]
     fn test_anti_aliasing_filtering() {
-        let decimator = Decimation::new("test", 20, DummyChild);
+        let dbg = Dbg::own("test_anti_aliasing_filtering");
+        let decimator = Decimation::new(&dbg, 20, DummyChild);
         let fs = 320000.0;
-        // Генерируем 1024 сэмпла:
-        // Сигнал = Полезный синус (50 Гц) + Сильная высокочастотная помеха (40 кГц, выше частоты среза в 8 кГц)
-        let mut raw = Vec::with_capacity(1024);
+        // Генерируем 1024 отсчёта: полезный синус 50Гц + сильная ВЧ-помеха 40кГц (выше среза 8кГц)
+        let mut raw: Vec<f64> = Vec::with_capacity(1024);
         for t in 0..1024 {
             let time = t as f64 / fs;
             let clean_signal = (2.0 * PI * 50.0 * time).sin();
-            let hf_noise = 2.0 * (2.0 * PI * 40000.0 * time).sin(); // Шум в два раза громче сигнала!
+            let hf_noise = 2.0 * (2.0 * PI * 40000.0 * time).sin();
             raw.push(clean_signal + hf_noise);
         }
-        let ctx = Context::new();
-        let result_ctx = decimator.eval(ctx);
-        // Проверяем амплитуду на выходе. Высокочастотный шум с амплитудой 2.0 должен быть подавлен.
-        // Выходной сигнал не должен содержать диких пиков помехи и прыгать выше значений полезного синуса.
-        for &sample in &result_ctx.decimation.decimated {
-            // КИХ-фильтр имеет КУ на постоянном токе около 1.0, 
-            // проверяем, что значения отфильтрованного сигнала лежат в разумных пределах исходного синуса (-1.5..1.5)
-            assert!(sample.abs() < 1.5, "Фильтр не подавил высокочастотный шум! Значение: {}", sample);
+        // Приводим к "сырому АЦП" формату (u16, с DC-смещением 2048)
+        let raw_u16: Vec<u16> = raw.iter()
+            .map(|&v| (v + 2048.0).round() as u16)
+            .collect();
+        let mut ctx = ImbContext::default();
+        let mut all_decimated: Vec<f64> = Vec::new();
+        // Прогоняем два фрейма по 512, т.к. Frame::raw() требует ровно FRAME_SIZE
+        for chunk in raw_u16.chunks(512) {
+            let samples: [u16; 512] = chunk.try_into()
+                .expect("ожидается ровно 512 отсчётов на чанк");
+            let frame = Frame::raw(Utc::now(), samples);
+            ctx.frame = Arc::new(frame);
+            ctx = decimator.eval(ctx);
+            all_decimated.extend(&ctx.decimation.decimated);
+        }
+        // Проверяем амплитуду на выходе — высокочастотный шум (амплитуда 2.0) должен быть подавлен
+        for &sample in &all_decimated {
+            // КИХ-фильтр имеет КУ на постоянном токе около 1.0
+            assert!(
+                sample.abs() < 1.5,
+                "Фильтр не подавил высокочастотный шум! Значение: {sample}"
+            );
         }
     }
 }
