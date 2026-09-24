@@ -25,12 +25,12 @@ where
         }
     }
 }
-impl<Child> Eval<AngularCtx, (AngularCtx, Phases<f32>)> for AngularGrid<Child>
+impl<Child> Eval<AngularCtx, (AngularCtx, Phases<f64>)> for AngularGrid<Child>
 where
     Child: Eval<AngularCtx, AngularCtx> {
     /// Возвращает `Context` и угловую сетку `Phases`.
     #[inline]
-    fn eval(&self, ctx: AngularCtx) -> (AngularCtx, Phases<f32>) {
+    fn eval(&self, ctx: AngularCtx) -> (AngularCtx, Phases<f64>) {
         let mut ctx = self.child.eval(ctx);
         if ctx.err.is_some() {
             return (ctx.pass_err(&self.dbg, "eval"), Phases::new(0));
@@ -43,7 +43,7 @@ where
         let mut phases = Phases::new(self.chunk_size);
         for i in 0..ctx.phases_size {
             ctx.current_theta += ctx.omega * ctx.dt;
-            phases[i] = ctx.current_theta as f32;
+            phases[i] = ctx.current_theta;
         }
         (ctx, phases)
     }

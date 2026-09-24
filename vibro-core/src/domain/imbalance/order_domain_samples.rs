@@ -64,21 +64,21 @@ where
         ctx.order_samples.clear();
         for target_theta in ideal_angles {
             // Ищем интервал [idx, idx + 1], в который попадает требуемый угол
-            while idx < phases.len() - 2 && (phases[idx + 1]) < target_theta as f32 {
+            while idx < phases.len() - 2 && (phases[idx + 1]) < target_theta {
                 idx += 1;
             }
             // Пропускаем точки, если для них не хватает истории по краям чанка
-            if (target_theta as f32) < phases[idx] || idx >= phases.len() - 2 {
+            if target_theta < phases[idx] || idx >= phases.len() - 2 {
                 continue;
             }
             let phase_start = phases[idx];
             let phase_end = phases[idx + 1];
-            let t = (target_theta as f32 - phase_start) / (phase_end - phase_start);
+            let t = (target_theta - phase_start) / (phase_end - phase_start);
             let p0 = samples[idx - 1];
             let p1 = samples[idx];
             let p2 = samples[idx + 1];
             let p3 = samples[idx + 2];
-            let resampled_val = Self::catmull_rom(p0, p1, p2, p3, t);
+            let resampled_val = Self::catmull_rom(p0, p1, p2, p3, t as f32);
             ctx.order_samples.push(Complex { re: resampled_val, im: 0.0 });
         }
         let delta_theta = std::f64::consts::TAU / (self.samples_per_rev as f64);

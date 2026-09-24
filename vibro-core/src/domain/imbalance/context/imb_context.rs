@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crate::{DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
+use crate::{DecimationCtx, DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
 use sal_core::error::Error;
 use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 
@@ -9,12 +9,13 @@ pub struct ImbContext {
     /// Уточненная частота вращения вала, об/мин.
     pub rpm: Rpm<f64>,
     /// Сырые выборки из АЦП и угловая сетка. Приходят из AngularGrid
-    pub frame: Arc<Frame<u16, f32>>,
+    pub frame: Arc<Frame<u16, f64>>,
     /// LowPassSinal Context.
     pub low_pass_signal: LowPassSignalCtx,
     /// Отфилтрованная выборка сырого АЦП сигнала.
     /// Имеет размер `conf.adc.chunk_size`
     pub samples: Vec<f32>,
+
 
     /// Сигнал развернутый в равномерную сетку угловой области.
     /// Значения вибрации соответствуют каждому углу поворота вала механизма.
@@ -23,6 +24,8 @@ pub struct ImbContext {
     /// Соответствует последнему элементу в `order_samples`
     pub total_phase: Phase<f64>,
 
+    // Результат работы адаптивного децимирующего фильтра (Anti-Aliasing)
+    pub decimation: DecimationCtx,
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
     pub fft_buff: MirroredBuffer<Complex<f32>>,
@@ -47,8 +50,7 @@ impl ImbContext {
     /// - `n_fft` - Размер буфера FFT (из конфига).
     /// - `chunk_size` - размер пакета данных, поступающего из АЦП за один раз.
     /// - `retain` - Инструмент хранения пар Key-Value на диске.
-    pub fn new(parent: impl Into<String>, samples_per_rev: usize, n_fft: usize, chunk_size: usize, retain: Arc<Retain>) -> Self {
-        let parent = parent.into();
+    pub fn new(parent: impl AsRef<str>, samples_per_rev: usize, n_fft: usize, chunk_size: usize, retain: Arc<Retain>) -> Self {
         // TODO: Исправить размер, он должен быть равен предполагаемому количеству углов исходя из размера входной выборки и максимальных оборотов
         let capacity = n_fft;
         log::debug!("{}.new | n_fft: {n_fft}", crate::me::<Self>());
@@ -60,7 +62,7 @@ impl ImbContext {
             let retained: Retained = retain.get(&order_id).unwrap_or(Retained::default());
             // Полуширина захвата в долях порядка (Для плавающих режимов ±0.05..±0.1 порядка).
             let half_width = 0.05;
-            KalmanFilter::new(&parent, order_id.to_owned(), q, 0.01, retained, retain.clone(), // VORZHEV Z.A 07.09.2026 added `to_owned` cause of error "Expected `String` found `str`"
+            KalmanFilter::new(parent.as_ref(), &order_id, q, 0.01, retained, retain.clone(),
                 OrderZone::new(Order(order), half_width, 3, n_fft, samples_per_rev),
                 ShortSigma::new(
                     10, 
@@ -81,11 +83,13 @@ impl ImbContext {
             features: vec![],
             results: vec![],
             err: None,
+            decimation: Default::default(),
         }
     }
-    /// VORZHEV Z.A. 1.09.2026 NEW CONSTRUCTOR FOR TESTING `WINDOW` AND `q` PARAMETERS
-    pub fn new_with_params(parent: impl Into<String>, samples_per_rev: usize, n_fft: usize, chunk_size: usize, retain: Arc<Retain>, window: usize, q: f64) -> Self {
-        let parent = parent.into();
+    /// Constructor for testing `WINDOW` and `q` parameters
+    #[cfg(test)]
+    pub fn new_with_params(parent: impl AsRef<str>, samples_per_rev: usize, n_fft: usize, chunk_size: usize, retain: Arc<Retain>, window: usize, q: f64) -> Self {
+        let parent = parent.as_ref();
         // TODO: Исправить размер, он должен быть равен предполагаемому количеству углов исходя из размера входной выборки и максимальных оборотов
         let capacity = n_fft;
         let filters = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0].map(|order| {
@@ -95,7 +99,7 @@ impl ImbContext {
             let retained: Retained = retain.get(&order_id).unwrap_or(Retained::default());
             // Полуширина захвата в долях порядка (Для плавающих режимов ±0.05..±0.1 порядка).
             let half_width = 0.05;
-            KalmanFilter::new(&parent, order_id.to_owned(), q, 0.01, retained, retain.clone(), // VORZHEV Z.A 07.09.2026 added `to_owned` cause of error "Expected `String` found `str`"
+            KalmanFilter::new(&parent, &order_id, q, 0.01, retained, retain.clone(),
                 OrderZone::new(Order(order), half_width, 3, n_fft, samples_per_rev),
                 ShortSigma::new(
                     window, 
@@ -116,12 +120,13 @@ impl ImbContext {
             features: vec![],
             results: vec![],
             err: None,
+            decimation: Default::default(),
         }
     }
     /// Добавляет новый массив сэмплов из АЦП в обработку
     /// - Сбрасывает массив результатов.
     /// - Сбрасывает ошибки.
-    pub fn update(&mut self, frame: Arc<Frame<u16, f32>>) {
+    pub fn update(&mut self, frame: Arc<Frame<u16, f64>>) {
         self.frame = frame;
         self.features = vec![];
         self.err = None;
@@ -173,6 +178,7 @@ impl Default for ImbContext {
             features: Default::default(),
             results: Default::default(),
             err: Default::default(),
+            decimation: Default::default(),
         }
     }
 }

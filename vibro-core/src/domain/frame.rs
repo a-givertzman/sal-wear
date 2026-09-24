@@ -2,6 +2,9 @@ use std::{marker::PhantomData, sync::Arc};
 use chrono::{DateTime, Utc};
 use crate::Phases;
 
+
+pub const FRAME_SIZE: usize = 512; // VORZHEV Z.A.: 
+
 /// Контейнер для раздачи имутабельных данных вычислительным потокам
 /// - `<D>` - Тип входного значения сэмпла
 /// - `<T>` - Тип выходного значения сэмпла
@@ -24,7 +27,7 @@ where
     /// Количество сырых сэмплов в одной пачке,
     /// Которая за раз заходит на обработку (приходит из сети).
     #[deprecated(note="Use `conf.adc.chunk_size` instead.")]
-    pub const SIZE: usize = 512;
+    pub const SIZE: usize = FRAME_SIZE;
     /// ### Создает новый инстанс `Frame`.
     /// - `ts` - Метка времени выборки
     /// - `total_phase` - Текущий абсолютный вычисленный угол θ поворота вала (не сбрасывается), не используется в расчетах, для отчетности.
@@ -45,18 +48,19 @@ where
     /// - `ts` - Метка времени выборки
     /// - `samples` - сырые выборки из АЦП. Будет автоматически удален DC (`-2048.0`)
     /// Размер: `Frame::SIZE`
-    pub fn raw(ts: DateTime<Utc>, samples: [u16; Self::SIZE]) -> Self {
+    pub fn raw(ts: DateTime<Utc>, dc_offset: T, samples: &[D]) -> Self {
         Frame {
             ts,
-            samples: samples.map(|v| v as f32 - 2048.0),
+            samples: samples.iter().map(|v| Into::<T>::into(*v) - dc_offset).collect(),
             phases: Phases::new(0),
+            _d: PhantomData,
         }
     }
     /// ### Добавляет угловую сетку в радианах.
     /// - `phases` - Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
     /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
     /// Размер: `Frame::SIZE`
-    pub fn with_phases(mut self, phases: Phases<f32>) -> Self {
+    pub fn with_phases(mut self, phases: Phases<T>) -> Self {
         self.phases = phases;
         self
     }
