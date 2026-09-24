@@ -1,5 +1,5 @@
-use std::sync::Arc;
-use crate::{DecimationCtx, DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
+use std::{sync::Arc, todo};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
 use sal_core::error::Error;
 use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 
@@ -26,6 +26,8 @@ pub struct ImbContext {
 
     // Результат работы адаптивного децимирующего фильтра (Anti-Aliasing)
     pub decimation: DecimationCtx,
+    // Результат работы комплексного гетеродина (снос 1X на нулевую частоту)
+    pub complex_local_oscillator: ComplexLocalOscillatorCtx,
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
     pub fft_buff: MirroredBuffer<Complex<f32>>,
@@ -85,6 +87,7 @@ impl ImbContext {
             results: vec![],
             err: None,
             decimation: Default::default(),
+            complex_local_oscillator: Default::default(),
         }
     }
     /// VORZHEV Z.A. 1.09.2026 NEW CONSTRUCTOR FOR TESTING `WINDOW` AND `q` PARAMETERS
@@ -121,6 +124,7 @@ impl ImbContext {
             results: vec![],
             err: None,
             decimation: Default::default(),
+            complex_local_oscillator: Default::default(),
         }
     }
     /// Добавляет новый массив сэмплов из АЦП в обработку
@@ -179,6 +183,7 @@ impl Default for ImbContext {
             results: Default::default(),
             err: Default::default(),
             decimation: Default::default(),
+            complex_local_oscillator: Default::default(),
         }
     }
 }
