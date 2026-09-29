@@ -1,5 +1,5 @@
 use std::{sync::Arc, todo};
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, DiagFeatures, DiagnosticResult, LPFTrackingBandCtx, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
 use sal_core::error::Error;
 use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 
@@ -28,6 +28,8 @@ pub struct ImbContext {
     pub decimation: DecimationCtx,
     // Результат работы комплексного гетеродина (снос 1X на нулевую частоту)
     pub complex_local_oscillator: ComplexLocalOscillatorCtx,
+    // Результат работы фиксированного ФНЧ полосы слежения (2 биквада, I/Q)
+    pub lpf_tracking_band_ctx: LPFTrackingBandCtx,
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
     pub fft_buff: MirroredBuffer<Complex<f32>>,
@@ -88,6 +90,7 @@ impl ImbContext {
             err: None,
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
+            lpf_tracking_band_ctx: Default::default(),
         }
     }
     /// VORZHEV Z.A. 1.09.2026 NEW CONSTRUCTOR FOR TESTING `WINDOW` AND `q` PARAMETERS
@@ -125,6 +128,7 @@ impl ImbContext {
             err: None,
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
+            lpf_tracking_band_ctx: Default::default(),
         }
     }
     /// Добавляет новый массив сэмплов из АЦП в обработку
@@ -184,6 +188,7 @@ impl Default for ImbContext {
             err: Default::default(),
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
+            lpf_tracking_band_ctx: Default::default(),
         }
     }
 }
