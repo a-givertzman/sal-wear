@@ -8,6 +8,8 @@ mod lpf_tracking_band_ctx;
 pub use lpf_tracking_band_ctx::*;
 mod imb_context;
 pub use imb_context::*;
+mod instant_shaft_phase_ctx;
+pub use instant_shaft_phase_ctx::*;
 mod low_pass_signal_ctx;
 pub use low_pass_signal_ctx::*;
 mod order_domain_samples_ctx;
