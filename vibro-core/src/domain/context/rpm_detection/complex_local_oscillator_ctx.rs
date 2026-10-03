@@ -1,5 +1,4 @@
 use rustfft::num_complex::Complex;
-
 ///
 /// Результат работы комплексного гетеродина (снос 1X на нулевую частоту)
 pub struct ComplexLocalOscillatorCtx {
