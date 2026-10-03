@@ -1,5 +1,5 @@
-use std::{sync::Arc, todo};
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, DiagFeatures, DiagnosticResult, LPFTrackingBandCtx, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
+use std::sync::Arc;
+use crate::{DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
 use sal_core::error::Error;
 use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 
@@ -16,20 +16,12 @@ pub struct ImbContext {
     /// Имеет размер `conf.adc.chunk_size`
     pub samples: Vec<f32>,
 
-
     /// Сигнал развернутый в равномерную сетку угловой области.
     /// Значения вибрации соответствуют каждому углу поворота вала механизма.
     pub order_samples: Vec<Complex<f32>>,
     /// Текущий абсолютный вычисленный угол θ поворота вала (не сбрасывается), не используется в расчетах, для отчетности.
     /// Соответствует последнему элементу в `order_samples`
     pub total_phase: Phase<f64>,
-
-    // Результат работы адаптивного децимирующего фильтра (Anti-Aliasing)
-    pub decimation: DecimationCtx,
-    // Результат работы комплексного гетеродина (снос 1X на нулевую частоту)
-    pub complex_local_oscillator: ComplexLocalOscillatorCtx,
-    // Результат работы фиксированного ФНЧ полосы слежения (2 биквада, I/Q)
-    pub lpf_tracking_band_ctx: LPFTrackingBandCtx,
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
     pub fft_buff: MirroredBuffer<Complex<f32>>,
@@ -88,9 +80,6 @@ impl ImbContext {
             features: vec![],
             results: vec![],
             err: None,
-            decimation: Default::default(),
-            complex_local_oscillator: Default::default(),
-            lpf_tracking_band_ctx: Default::default(),
         }
     }
     /// VORZHEV Z.A. 1.09.2026 NEW CONSTRUCTOR FOR TESTING `WINDOW` AND `q` PARAMETERS
@@ -126,9 +115,6 @@ impl ImbContext {
             features: vec![],
             results: vec![],
             err: None,
-            decimation: Default::default(),
-            complex_local_oscillator: Default::default(),
-            lpf_tracking_band_ctx: Default::default(),
         }
     }
     /// Добавляет новый массив сэмплов из АЦП в обработку
@@ -186,9 +172,6 @@ impl Default for ImbContext {
             features: Default::default(),
             results: Default::default(),
             err: Default::default(),
-            decimation: Default::default(),
-            complex_local_oscillator: Default::default(),
-            lpf_tracking_band_ctx: Default::default(),
         }
     }
 }
