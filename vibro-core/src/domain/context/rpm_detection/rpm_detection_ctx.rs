@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use sal_core::error::Error;
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, Frame};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, Frame, LPFTrackingBandCtx};
 ///
 /// Контейнер для передачи данных между вычислительными шагами
 pub struct RpmDetectionCtx {
@@ -12,7 +12,8 @@ pub struct RpmDetectionCtx {
     pub(crate) decimation: DecimationCtx,
     /// Результат работы комплексного гетеродина (снос 1X на нулевую частоту)
     pub(crate) complex_local_oscillator: ComplexLocalOscillatorCtx,
-
+    /// Результат работы фиксированного ФНЧ полосы слежения (2 биквада, I/Q)
+    pub(crate) lpf_tracking_band_ctx: LPFTrackingBandCtx,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шаги эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -25,6 +26,7 @@ impl RpmDetectionCtx {
             raw_rpm: f64::NAN,
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
+            lpf_tracking_band_ctx: Default::default(),
             err: None,
         }
     }
@@ -61,6 +63,7 @@ impl Default for RpmDetectionCtx {
             raw_rpm: Default::default(),
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
+            lpf_tracking_band_ctx: Default::default(),
             err: None,
         }
     }
