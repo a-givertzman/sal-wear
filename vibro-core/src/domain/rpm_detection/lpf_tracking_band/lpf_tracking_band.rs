@@ -1,6 +1,6 @@
 use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
-use crate::{Eval, ImbContext};
+use crate::{Eval, RpmDetectionCtx};
 ///
 /// Фиксированный ФНЧ полосы слежения (2 биквада, I/Q)
 pub struct LPFTrackingBand<Child> {
@@ -11,7 +11,7 @@ pub struct LPFTrackingBand<Child> {
 //
 impl<Child> LPFTrackingBand<Child>
 where
-    Child: Eval<ImbContext, ImbContext> + Send + 'static,
+    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
 {
     /// ### Returns `LPFTrackingBand` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки)
@@ -26,11 +26,11 @@ where
 }
 //
 //
-impl<Child> Eval<ImbContext, ImbContext> for LPFTrackingBand<Child>
+impl<Child> Eval<RpmDetectionCtx, RpmDetectionCtx> for LPFTrackingBand<Child>
 where
-    Child: Eval<ImbContext, ImbContext> + Send + 'static,
+    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
 {
-    fn eval(&self, ctx: ImbContext) -> ImbContext {
+    fn eval(&self, ctx: RpmDetectionCtx) -> RpmDetectionCtx {
         let mut ctx = self.child.eval(ctx);
         if ctx.is_err() {
             return ctx.pass_err(&self.dbg, "eval");
