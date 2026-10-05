@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use sal_core::error::Error;
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, Frame, LPFTrackingBandCtx};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, Frame, InstantShaftPhaseCtx, LPFTrackingBandCtx};
 ///
 /// Контейнер для передачи данных между вычислительными шагами
 pub struct RpmDetectionCtx {
@@ -14,6 +14,8 @@ pub struct RpmDetectionCtx {
     pub(crate) complex_local_oscillator: ComplexLocalOscillatorCtx,
     /// Результат работы фиксированного ФНЧ полосы слежения (2 биквада, I/Q)
     pub(crate) lpf_tracking_band_ctx: LPFTrackingBandCtx,
+    /// Результаты вычисления мгновенной фазы вала
+    pub(crate) instant_shaft_phase: InstantShaftPhaseCtx,
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шаги эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -27,6 +29,7 @@ impl RpmDetectionCtx {
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
             lpf_tracking_band_ctx: Default::default(),
+            instant_shaft_phase: Default::default(),
             err: None,
         }
     }
@@ -64,6 +67,7 @@ impl Default for RpmDetectionCtx {
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
             lpf_tracking_band_ctx: Default::default(),
+            instant_shaft_phase: Default::default(),
             err: None,
         }
     }

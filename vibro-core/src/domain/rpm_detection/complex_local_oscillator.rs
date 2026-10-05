@@ -16,8 +16,6 @@ where
     /// ### Returns `ComplexLocalOscillator` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки)
     /// - `child` - Дочерний (предыдущий) шаг вычислений
-    /// - `rpm_net` - Грубая оценка оборотов вала, об/мин
-    /// - `f_decimation` - Частота дискретизации входного потока, Гц
     pub fn new(parent: &Dbg, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
@@ -53,26 +51,28 @@ where
         // Первый вызов — инициализация буфера и точки отсчёта фазы
         if ctx.complex_local_oscillator.complex_signal.capacity() == 0 {
             ctx.complex_local_oscillator.complex_signal = Vec::with_capacity(ctx.decimation.decimated.len());
-            ctx.complex_local_oscillator.phi_net = 0.0;
+            ctx.complex_local_oscillator.phi_net = Vec::with_capacity(ctx.decimation.decimated.len());
+            ctx.complex_local_oscillator.phi_last = 0.0;
+        } else {
+            ctx.complex_local_oscillator.complex_signal.clear();
+            ctx.complex_local_oscillator.phi_net.clear();
+            ctx.complex_local_oscillator.phi_last = 0.0;
         }
-        ctx.complex_local_oscillator.complex_signal.clear();
+        // Расчет шага фазы
         let f_het = ctx.raw_rpm / 60.0; // об/мин → Гц
         let f_decimation = ctx.decimation.f_decimation;
         let f_coeff = f_het / f_decimation;
         let delta_phi = 2.0 * PI * f_coeff;
-        // Извлекаем фазу во внутреннюю переменную, чтобы не перегружать обращения к ctx в цикле
-        let mut phi = ctx.complex_local_oscillator.phi_net;
+        let mut phi = ctx.complex_local_oscillator.phi_last;
         for &x in ctx.decimation.decimated.iter() {
-            // 1. Строим экспоненту на основе ТЕКУЩЕЙ фазы φ[n]
-            let euler_phi_net = Complex::new(phi.cos(), -phi.sin());
-            // 2. Умножаем вещественное число напрямую на комплексное
-            let oscillated_value = euler_phi_net * (x as f64);
-            ctx.complex_local_oscillator.complex_signal.push(oscillated_value);
-            // 3. Продвигаем фазу для СЛЕДУЮЩЕГО шага: φ[n+1] = (φ[n] + Δφ) mod 2π
+            ctx.complex_local_oscillator.phi_net.push(phi);
+            // e^(-j*phi) = cos(phi) - j*sin(phi)
+            let e = Complex::new(phi.cos(), -phi.sin());
+            ctx.complex_local_oscillator.complex_signal.push(e * (x as f64));
+            // Накопление фазы с нормализацией в пределах [0, 2π)
             phi = (phi + delta_phi) % (2.0 * PI);
         }
-        // Сохраняем накопленную фазу обратно в контекст для следующего вызова eval
-        ctx.complex_local_oscillator.phi_net = phi;
+        ctx.complex_local_oscillator.phi_last = phi;
         ctx
     }
     //
