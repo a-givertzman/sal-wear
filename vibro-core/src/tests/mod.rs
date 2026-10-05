@@ -1,6 +1,7 @@
-mod order_domain;
 mod complex_local_oscillator_test;
+mod order_domain;
 mod complex_test;
+mod decimation_test;
 mod low_pass_signal_test;
 mod lpf_tracking_band_test;
 mod mock_udp;

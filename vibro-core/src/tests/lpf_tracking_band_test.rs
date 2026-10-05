@@ -1,12 +1,12 @@
 use std::f64::consts::PI;
 use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
-use crate::{Biquad, Eval, ImbContext, LPFTrackingBand};
+use crate::{Biquad, Eval, RpmDetectionCtx, LPFTrackingBand};
 ///
 /// Заглушка для интерфейса `Child`
 struct DummyChild;
-impl Eval<ImbContext, ImbContext> for DummyChild {
-    fn eval(&self, ctx: ImbContext) -> ImbContext { ctx }
+impl Eval<RpmDetectionCtx, RpmDetectionCtx> for DummyChild {
+    fn eval(&self, ctx: RpmDetectionCtx) -> RpmDetectionCtx { ctx }
     fn exit(&self) {}
 }
 const F: f64 = 320000.0;
@@ -22,8 +22,8 @@ fn make_filter() -> LPFTrackingBand<DummyChild> {
 }
 ///
 /// Контекст с настроенным каскадом Баттерворта 4-го порядка.
-fn make_ctx() -> ImbContext {
-    let mut ctx = ImbContext::default();
+fn make_ctx() -> RpmDetectionCtx {
+    let mut ctx = RpmDetectionCtx::default();
     let f_cutoff = BAND_HZ / 2.0;
     ctx.lpf_tracking_band_ctx.stage1 = Biquad::new(f_cutoff, FS, 0.5412);
     ctx.lpf_tracking_band_ctx.stage2 = Biquad::new(f_cutoff, FS, 1.3066);

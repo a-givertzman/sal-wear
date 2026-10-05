@@ -26,6 +26,8 @@ mod types;
 pub use types::*;
 mod retain;
 pub use retain::*;
+mod rpm_detection;
+pub use rpm_detection::*;
 mod sql_export;
 pub use sql_export::*;
 mod vibro_sensor;

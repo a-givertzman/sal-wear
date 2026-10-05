@@ -1,7 +1,6 @@
 use std::f64::consts::PI;
-
 use sal_core::dbg::Dbg;
-use crate::{ImbContext, Eval};
+use crate::{RpmDetectionCtx, Eval};
 ///
 /// Вычисление мгновенной фазы вала
 pub struct InstantShaftPhase<Child> {
@@ -11,7 +10,7 @@ pub struct InstantShaftPhase<Child> {
 
 impl<Child> InstantShaftPhase<Child>
 where
-    Child: Eval<ImbContext, ImbContext> + Send + 'static,
+    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
 {
     /// ### Returns `InstantShaftPhase` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки)
@@ -25,12 +24,12 @@ where
     }
 }
 
-impl<Child> Eval<ImbContext, ImbContext> for InstantShaftPhase<Child>
+impl<Child> Eval<RpmDetectionCtx, RpmDetectionCtx> for InstantShaftPhase<Child>
 where
-    Child: Eval<ImbContext, ImbContext> + Send + 'static,
+    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
 {
     #[inline]
-    fn eval(&self, ctx: ImbContext) -> ImbContext {
+    fn eval(&self, ctx: RpmDetectionCtx) -> RpmDetectionCtx {
         // Передаем контекст дальше по цепочке вниз
         let mut ctx = self.child.eval(ctx);
         if ctx.is_err() {
