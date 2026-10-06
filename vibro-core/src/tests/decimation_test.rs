@@ -2,14 +2,12 @@
 /// Basic Tests
 #[cfg(test)]
 mod tests {
-    use chrono::Utc;
-    use sal_core::dbg::Dbg;
-    use crate::{Conf, Decimation, Eval, Frame, RpmDetectionCtx, tests::{Frequency, Udp}};
-    use std::sync::Arc;
+use sal_core::dbg::Dbg;
+    use crate::{Decimation, Eval, AngularCtx, tests::{Frequency, Udp}};
     // Простая заглушка конечного дочернего элемента цепочки
     struct DummyChild;
-    impl Eval<RpmDetectionCtx, RpmDetectionCtx> for DummyChild {
-        fn eval(&self, ctx: RpmDetectionCtx) -> RpmDetectionCtx { ctx } // Просто возвращает контекст без изменений
+    impl Eval<AngularCtx, AngularCtx> for DummyChild {
+        fn eval(&self, ctx: AngularCtx) -> AngularCtx { ctx } // Просто возвращает контекст без изменений
         fn exit(&self) {}
     }
     #[test]
@@ -26,17 +24,16 @@ mod tests {
         let mut udp = Udp::new(512, 320_000.0, []);
         let mut samples = [0u16; 512];
         udp.parse(0.0, &mut samples); // rpm=0, Frequency::Rpm-гармоник нет, так что rpm не важен
-        let frame = Frame::raw(Utc::now(), samples);
-        let mut ctx = RpmDetectionCtx::default();
-        ctx.frame = Arc::new(frame);
+        let mut ctx = AngularCtx::default();
+        ctx.samples = samples.to_vec();
         let result_ctx = decimator.eval(ctx);
         // 512 / 20 = 25.6 -> должно получиться 25 или 26 сэмплов
         assert!(
-            result_ctx.decimation.decimated.len() >= 25 && result_ctx.decimation.decimated.len() <= 26,
+            result_ctx.rpm_detection.decimation.decimated.len() >= 25 && result_ctx.rpm_detection.decimation.decimated.len() <= 26,
             "Неожиданное количество децимированных сэмплов: {}",
-            result_ctx.decimation.decimated.len()
+            result_ctx.rpm_detection.decimation.decimated.len()
         );
-        assert!(!result_ctx.is_err());
+        assert!(!result_ctx.err.is_some());
     }
     #[test]
     fn test_anti_aliasing_filtering() {
@@ -58,16 +55,14 @@ mod tests {
                 (Frequency::Static(40_000.0), 1000),
             ],
         );
-        let mut ctx = RpmDetectionCtx::default();
+        let mut ctx = AngularCtx::default();
         let mut all_decimated: Vec<f64> = Vec::new();
         for _ in 0..2 {
             let mut samples = [0u16; 512];
             udp.parse(0.0, &mut samples); // rpm не важен — обе гармоники Static
-
-            let frame = Frame::raw(Utc::now(), samples);
-            ctx.frame = Arc::new(frame);
+            ctx.samples = samples.to_vec();
             ctx = decimator.eval(ctx);
-            all_decimated.extend(&ctx.decimation.decimated);
+            all_decimated.extend(&ctx.rpm_detection.decimation.decimated);
         }
         // Высокочастотный шум должен быть подавлен. Порог масштабирован под
         // амплитуду полезного сигнала (500), а не под 1.0, как в нормированной версии -1..1.
@@ -77,6 +72,6 @@ mod tests {
                 "Фильтр не подавил высокочастотный шум! Значение: {sample}"
             );
         }
-        assert!(!ctx.is_err());
+        assert!(!ctx.err.is_some());
     }
 }

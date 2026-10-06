@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
-use crate::{RpmDetectionCtx, Eval};
+use crate::{AngularCtx, Eval};
 ///
 /// Комплексный гетеродин — снос 1X на нулевую частоту
 pub struct ComplexLocalOscillator<Child> {
@@ -11,7 +11,7 @@ pub struct ComplexLocalOscillator<Child> {
 //
 impl<Child> ComplexLocalOscillator<Child>
 where
-    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static,
 {
     /// ### Returns `ComplexLocalOscillator` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки)
@@ -27,9 +27,9 @@ where
     }
 }
 //
-impl<Child> Eval<RpmDetectionCtx, RpmDetectionCtx> for ComplexLocalOscillator<Child>
+impl<Child> Eval<AngularCtx, AngularCtx> for ComplexLocalOscillator<Child>
 where
-    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static,
 {
     /// ### Сносит частоту 1X к нулю, обрабатывая децимированный сигнал сэмпл за сэмплом
     ///
@@ -44,35 +44,35 @@ where
     /// непрерывно на протяжении всей работы системы, не только в пределах
     /// одного вызова `eval`.
     #[inline]
-    fn eval(&self, ctx: RpmDetectionCtx) -> RpmDetectionCtx {
+    fn eval(&self, ctx: AngularCtx) -> AngularCtx {
         // Передаем контекст дальше по цепочке вниз
         let mut ctx = self.child.eval(ctx);
-        if ctx.is_err() {
+        if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
         // Первый вызов — инициализация буфера и точки отсчёта фазы
-        if ctx.complex_local_oscillator.complex_signal.capacity() == 0 {
-            ctx.complex_local_oscillator.complex_signal = Vec::with_capacity(ctx.decimation.decimated.len());
-            ctx.complex_local_oscillator.phi_net = 0.0;
+        if ctx.rpm_detection.complex_local_oscillator.complex_signal.capacity() == 0 {
+            ctx.rpm_detection.complex_local_oscillator.complex_signal = Vec::with_capacity(ctx.rpm_detection.decimation.decimated.len());
+            ctx.rpm_detection.complex_local_oscillator.phi_net = 0.0;
         }
-        ctx.complex_local_oscillator.complex_signal.clear();
+        ctx.rpm_detection.complex_local_oscillator.complex_signal.clear();
         let f_het = ctx.raw_rpm / 60.0; // об/мин → Гц
-        let f_decimation = ctx.decimation.f_decimation;
+        let f_decimation = ctx.rpm_detection.decimation.f_decimation;
         let f_coeff = f_het / f_decimation;
         let delta_phi = 2.0 * PI * f_coeff;
         // Извлекаем фазу во внутреннюю переменную, чтобы не перегружать обращения к ctx в цикле
-        let mut phi = ctx.complex_local_oscillator.phi_net;
-        for &x in ctx.decimation.decimated.iter() {
+        let mut phi = ctx.rpm_detection.complex_local_oscillator.phi_net;
+        for &x in ctx.rpm_detection.decimation.decimated.iter() {
             // 1. Строим экспоненту на основе ТЕКУЩЕЙ фазы φ[n]
             let euler_phi_net = Complex::new(phi.cos(), -phi.sin());
             // 2. Умножаем вещественное число напрямую на комплексное
             let oscillated_value = euler_phi_net * (x as f64);
-            ctx.complex_local_oscillator.complex_signal.push(oscillated_value);
+            ctx.rpm_detection.complex_local_oscillator.complex_signal.push(oscillated_value);
             // 3. Продвигаем фазу для СЛЕДУЮЩЕГО шага: φ[n+1] = (φ[n] + Δφ) mod 2π
             phi = (phi + delta_phi) % (2.0 * PI);
         }
         // Сохраняем накопленную фазу обратно в контекст для следующего вызова eval
-        ctx.complex_local_oscillator.phi_net = phi;
+        ctx.rpm_detection.complex_local_oscillator.phi_net = phi;
         ctx
     }
     //
