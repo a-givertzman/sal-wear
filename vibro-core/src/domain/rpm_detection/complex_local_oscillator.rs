@@ -81,14 +81,14 @@ where
         ctx.rpm_detection.complex_local_oscillator.phi_net.clear();
         // Переводим грубую частоту вращения из об/мин в Гц (f_het)
         let f_het = ctx.raw_rpm / 60.0; 
-        let f_decimation = ctx.rpm_detection.decimation.f_sample_dec;
+        let f_sample_dec = ctx.rpm_detection.decimation.f_sample_dec;
         // Валидация входных физических параметров на корректность и бесконечность
-        if !ctx.raw_rpm.is_finite() || !f_decimation.is_finite() || f_decimation <= 0.0 {
-            ctx.err = Some(err!(self.dbg, "ctx.raw_rpm {} or f_decimation {f_decimation} is not a valid number", ctx.raw_rpm));
+        if !ctx.raw_rpm.is_finite() || !f_sample_dec.is_finite() || f_sample_dec <= 0.0 {
+            ctx.err = Some(err!(self.dbg, "ctx.raw_rpm {} or f_sample_dec {f_sample_dec} is not a valid number", ctx.raw_rpm));
             return ctx;
         }
         // Расчет нормированного шага частоты и соответствующего приращения фазы на один сэмпл (delta_phi)
-        let f_coeff = f_het / f_decimation;
+        let f_coeff = f_het / f_sample_dec;
         let delta_phi = 2.0 * PI * f_coeff;
         // Восстанавливаем сохраненное значение фазы с предыдущего шага/блока данных
         let mut phi = ctx.rpm_detection.complex_local_oscillator.phi_last;
