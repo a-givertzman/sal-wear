@@ -35,16 +35,3 @@ impl<T: EventValueAccess<str, f64>> Eval<AngularCtx, AngularCtx> for ReadEventVa
     //
     fn exit(&self) {}
 }
-impl<T: EventValueAccess<str, f64>> Eval<RpmDetectionCtx, RpmDetectionCtx> for ReadEventValues<T> {
-    fn eval(&self, mut ctx: RpmDetectionCtx) -> RpmDetectionCtx {
-        for key in &self.keys {
-            match &self.values.get(key) {
-                Some(rpm) => ctx.raw_rpm = *rpm,
-                None => ctx.err = Some(Error::new(&self.dbg, "eval").err(format!("{key} isn't initialized yet."))),
-            }
-        }
-        ctx
-    }
-    //
-    fn exit(&self) {}
-}

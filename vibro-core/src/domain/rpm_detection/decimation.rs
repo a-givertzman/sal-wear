@@ -1,91 +1,118 @@
-use std::collections::VecDeque;
 use sal_core::dbg::Dbg;
-use crate::{RpmDetectionCtx, Eval};
-
-/// Коэффициенты КИХ-фильтра нижних частот (ФНЧ)
-/// Расчитаны для Fs=320kHz, Fc=8kHz (спад к 16kHz), 32 тапа, окно Хемминга.
-const FIR_TAPS_M20_N32: [f64; 32] = [
-    -0.000713, -0.001646, -0.002497, -0.002570, -0.000958,  0.003180,  0.010260,  0.020141,
-     0.032213,  0.045431,  0.058371,  0.069485,  0.077366,  0.081125,  0.081125,  0.077366,
-     0.069485,  0.058371,  0.045431,  0.032213,  0.020141,  0.010260,  0.003180, -0.000958,
-    -0.002570, -0.002497, -0.001646, -0.000713,  0.000000,  0.000000,  0.000000,  0.000000,
-];
-
-/// Адаптивный децимирующий фильтр (Anti-Aliasing)
+use crate::{AngularCtx, Eval, FIR_TAPS_M20_N32, err};
+use function_name::named;
+/// Адаптивный децимирующий фильтр (Anti-Aliasing Filter + Downsampler).
+/// 
+/// # Входные данные
+/// Потоковые сырые пакеты по 512 сэмплов с частотой дискретизации 
+/// `F_sample_raw = 320 кГц`.
+/// 
+/// # Математическая суть
+/// Чтобы понизить частоту дискретизации в `M = 20` раз без эффекта наложения 
+/// частот (алиасинга), сигнал пропускается через КИХ-фильтр (FIR) нижних частот. 
+/// Частота среза фильтра динамически или статически привязывается к коэффициенту 
+/// прореживания по формуле:
+/// 
+/// ```text
+/// Fc = F_sample_raw / (2 * M) = 320 кГц / (2 * 20) = 8 кГц
+/// ```
+/// 
+/// # Реализация и оптимизация
+/// Фильтр проектируется как полифазный КИХ-фильтр с длиной окна (количество тапов), 
+/// равным 32 или 64. На языке Rust данный блок оптимизируется компилятором через 
+/// автовекторизацию (SIMD/AVX2), выполняя умножение массивов параллельно на уровне 
+/// процессора. Вычисление и сохранение в историю происходит только для каждого 
+/// `M`-го (20-го) сэмпла, что экономит такты CPU.
+/// 
+/// # Выход данных
+/// Очищенный от шума (выше частоты среза) сигнал с новой частотой дискретизации 
+/// `F_sample_dec = 16 кГц`. За время одного сетевого полупакета (256 исходных сэмплов) 
+/// этот блок выдает ≈ 13 новых сэмплов.
 pub struct Decimation<Child> {
-    /// Коэффициент децимации (во сколько крат проредить входной сигнал)
-    factor: usize,
-    /// Размер истории сэмплов для КИХ-фильтра (длина 32 .. 64)
+    /// Размер линии задержки (истории сэмплов) для КИХ-фильтра. Строго соответствует количеству тапов.
     fir_size: usize,
-    /// Частота дискретизации в Гц.
-    sample_rate: f64,
+    /// Дочерний вычислительный узел, вызываемый перед текущим шагом децимации.
     child: Child,
+    /// Контекст отладки и логирования.
     dbg: Dbg,
 }
-
+//
 impl<Child> Decimation<Child>
 where
-    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static,
 {
-    /// ### Returns `Decimation` new instance
-    /// - `parent` - Идентификатор родительской сущности (для отладки)
-    /// - `factor` - Коэффициент децимации (во сколько крат проредить входной сигнал)
-    /// - `child` - Дочерний (предыдущий) шаг вычислений
-    pub fn new(parent: &Dbg, factor: usize, sample_rate: f64, child: Child) -> Self { // VORZHEV Z.A.: `parent: impl Into<String>` CHANGED TO  `parent: &Dbg` cause of error
+    /// Создает новый экземпляр вычислительного узла `Decimation`.
+    /// 
+    /// Инициализирует контекст отладки, привязывая его к имени текущего типа, и жестко 
+    /// задает длину линии задержки КИХ-фильтра (по умолчанию 32 тапа).
+    ///
+    /// # Аргументы
+    /// * `parent` - Ссылка на отладочный контекст родительской сущности для построения дерева вызовов.
+    /// * `child` - Следующий (или предыдущий по цепочке выполнения) вычислительный шаг.
+    pub fn new(parent: &Dbg, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
-            factor,
             fir_size: 32,
-            sample_rate,
             child,
             dbg,
         }
     }
 }
-
-impl<Child> Eval<RpmDetectionCtx, RpmDetectionCtx> for Decimation<Child>
+//
+impl<Child> Eval<AngularCtx, AngularCtx> for Decimation<Child>
 where
-    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static,
 {
+    /// Выполняет фильтрацию и прореживание входного массива отсчетов.
+    /// 
+    /// Метод сначала продвигает контекст по цепочке вызовов, валидирует конфигурацию 
+    /// дециматора и запускает потоковую обработку каждого отсчета из `ctx.samples`.
     #[inline]
-    fn eval(&self, ctx: RpmDetectionCtx) -> RpmDetectionCtx {
-        // Передаем контекст дальше по цепочке вниз
+    #[named]
+    fn eval(&self, ctx: AngularCtx) -> AngularCtx {
+        // Передаем контекст дальше по цепочке вниз для накопления сырых данных/сэмплов
         let mut ctx = self.child.eval(ctx);
-        if ctx.is_err() {
+        if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        // Если стейт внутри контекста еще не инициализирован под размер фильтра
-        if ctx.decimation.dec_fir_state.len() < FIR_TAPS_M20_N32.len() {
-            ctx.decimation.dec_fir_state = VecDeque::from(vec![0.0; FIR_TAPS_M20_N32.len()]);
-            // Выделяем емкость под новые децимированные сэмплы (примерно 512 / 20 = ~26 сэмплов)
-            let expected_capacity = ctx.frame.samples.capacity() / self.factor + 1;
-            ctx.decimation.decimated = Vec::with_capacity(expected_capacity);
+        // Защита от некорректной инициализации контекста (например, при создании через Default)
+        if ctx.rpm_detection.decimation.factor == 0 {
+            ctx.err = Some(err!(self.dbg, "factor не задан (контекст создан через default)"));
+            return ctx;
         }
-        ctx.decimation.decimated.clear();
-        ctx.decimation.f_decimation = self.sample_rate / (self.factor as f64);
-        // Горячий цикл обработки сырых данных
-        for sample in &ctx.frame.samples {
-            // Продвигаем кольцевой буфер КИХ-фильтра
-            if ctx.decimation.dec_fir_state.len() >= self.fir_size {
-                ctx.decimation.dec_fir_state.pop_back();
+        // Очищаем выходной буфер текущего чанка перед заполнением новыми отсчетами
+        ctx.rpm_detection.decimation.decimated.clear();
+        // Горячий цикл потоковой обработки сырых данных (DSP Pipeline)
+        for raw in ctx.samples.iter() {
+            // Центрируем сигнал: вычитаем постоянную составляющую (DC offset) для 12-битного АЦП (2048 = Vref / 2).
+            // Это переводит беззнаковый сигнал АЦП в знаковый диапазон для корректной фильтрации.
+            let sample = *raw as f64 - 2048.0;
+            // Продвигаем линию задержки (сдвиговый регистр КИХ-фильтра):
+            // Если очередь заполнена до размера тапов, удаляем самый старый отсчет с конца.
+            if ctx.rpm_detection.decimation.dec_fir_state.len() >= self.fir_size {
+                ctx.rpm_detection.decimation.dec_fir_state.pop_back();
             }
-            ctx.decimation.dec_fir_state.push_front((*sample).into());
-            ctx.decimation.dec_counter += 1;
-            // Прореживание: считаем КИХ-фильтр только для каждого М-го сэмпла
-            if ctx.decimation.dec_counter >= self.factor {
-                ctx.decimation.dec_counter = 0;
-                // Свертка КИХ-фильтра.
+            // Добавляем новый отсчет в начало очереди (индекс 0 — новейший сэмпл)
+            ctx.rpm_detection.decimation.dec_fir_state.push_front(sample);
+            // Инкрементируем фазовый счетчик прореживания
+            ctx.rpm_detection.decimation.dec_counter += 1;
+            // Условие прореживания: КИХ-фильтр рассчитывается и выдает отсчет строго один раз на каждые M (factor) входных сэмплов
+            if ctx.rpm_detection.decimation.dec_counter >= ctx.rpm_detection.decimation.factor {
+                // Сбрасываем счетчик для отслеживания следующей группы отсчетов
+                ctx.rpm_detection.decimation.dec_counter = 0;
+                // Математическая свертка (convolution) КИХ-фильтра: y[n] = Σ (x[n-i] * h[i])
                 let mut filtered_value = 0.0;
-                for (i, &state_val) in ctx.decimation.dec_fir_state.iter().enumerate() {
+                for (i, &state_val) in ctx.rpm_detection.decimation.dec_fir_state.iter().enumerate() {
+                    // Перемножаем элементы линии задержки на соответствующие коэффициенты фильтра Хемминга
                     filtered_value += state_val * FIR_TAPS_M20_N32[i];
                 }
-                // Записываем результат децимации в контекст
-                ctx.decimation.decimated.push(filtered_value);
+                // Записываем отфильтрованное и прореженное значение в выходной вектор контекста
+                ctx.rpm_detection.decimation.decimated.push(filtered_value);
             }
         }
         ctx
     }
-    //
+    /// Корректно завершает работу текущего узла и каскадно вызывает `exit` для дочерних элементов цепочки.
     fn exit(&self) {
         self.child.exit();
     }
