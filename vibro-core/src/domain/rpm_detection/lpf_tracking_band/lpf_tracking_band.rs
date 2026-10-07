@@ -1,6 +1,6 @@
 use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
-use crate::{Eval, RpmDetectionCtx};
+use crate::{Eval, AngularCtx};
 ///
 /// Фиксированный ФНЧ полосы слежения (2 биквада, I/Q)
 pub struct LPFTrackingBand<Child> {
@@ -11,7 +11,7 @@ pub struct LPFTrackingBand<Child> {
 //
 impl<Child> LPFTrackingBand<Child>
 where
-    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static,
 {
     /// ### Returns `LPFTrackingBand` new instance
     /// - `parent` - Идентификатор родительской сущности (для отладки)
@@ -26,20 +26,20 @@ where
 }
 //
 //
-impl<Child> Eval<RpmDetectionCtx, RpmDetectionCtx> for LPFTrackingBand<Child>
+impl<Child> Eval<AngularCtx, AngularCtx> for LPFTrackingBand<Child>
 where
-    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static,
 {
-    fn eval(&self, ctx: RpmDetectionCtx) -> RpmDetectionCtx {
+    fn eval(&self, ctx: AngularCtx) -> AngularCtx {
         let mut ctx = self.child.eval(ctx);
-        if ctx.is_err() {
+        if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        ctx.lpf_tracking_band_ctx.filtered_signal.clear();
-        for y in ctx.complex_local_oscillator.complex_signal.iter() {
-            let (i1, q1) = ctx.lpf_tracking_band_ctx.stage1.process(y.re, y.im);
-            let (i_filt, q_filt) = ctx.lpf_tracking_band_ctx.stage2.process(i1, q1);
-            ctx.lpf_tracking_band_ctx.filtered_signal.push(Complex::new(i_filt, q_filt));
+        ctx.rpm_detection.lpf_tracking_band.filtered_signal.clear();
+        for y in ctx.rpm_detection.complex_local_oscillator.complex_signal.iter() {
+            let (i1, q1) = ctx.rpm_detection.lpf_tracking_band.stage1.process(y.re, y.im);
+            let (i_filt, q_filt) = ctx.rpm_detection.lpf_tracking_band.stage2.process(i1, q1);
+            ctx.rpm_detection.lpf_tracking_band.filtered_signal.push(Complex::new(i_filt, q_filt));
         }
         ctx
     }

@@ -66,7 +66,11 @@ impl AngularCtx {
             dt: f64::NAN,
             current_theta: 0.0,
             phases_size: chunk_size,
-            rpm_detection: RpmDetectionCtx::new(f_sample, chunk_size, 20),
+            rpm_detection: RpmDetectionCtx::new(
+                f_sample, 
+                chunk_size,
+                20,
+            ),
             err: None,
         }
     }
