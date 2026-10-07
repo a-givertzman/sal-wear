@@ -1,23 +1,59 @@
 use std::f64::consts::PI;
 use sal_core::dbg::Dbg;
-use crate::{RpmDetectionCtx, Eval};
-///
-/// Вычисление мгновенной фазы вала.
-///
-/// Восстанавливает исходную фазу сигнала путем прибавления накопленной фазы
-/// гетеродина к фазе отфильтрованного комплексного сигнала.
+use crate::{AngularCtx, Eval};
+/// Вычисление мгновенной фазы вала
+/// 
+/// # Входные данные
+/// Комплексная огибающая `I[n] + j*Q[n]` после фильтрации ФНЧ и массив накопленной фазы 
+/// гетеродина `phi_het[n]`, соответствующие текущему отсчету времени.
+/// 
+/// # Математическая суть
+/// Абсолютная мгновенная фаза вала восстанавливается для каждого сэмпла по точному тождеству:
+/// 
+///   phi_вал[n] = (atan2(Q[n], I[n]) + phi_het[n]) mod (2 * PI)
+/// 
+/// Данное тождество является математически точным при любом уровне ошибки `f_hat` грубой настройки частоты. 
+/// Если сетевой RPM передает неточные данные, аргумент сдвинутого комплексного сигнала `arg(y)` начинает 
+/// монотонно дрейфовать со скоростью `2 * PI * delta`. В итоговой сумме этот дрейф и фаза гетеродина 
+/// взаимно компенсируют друг друга. Сложная экстраполяция через временной зазор между сетевыми пакетами 
+/// не требуется, так как фаза жестко привязана к физической шкале времени через индивидуальное 
+/// значение `phi_het`, вычисленное для конкретного сэмпла.
+/// 
+/// # Оптимизация
+/// Тяжелая тригонометрическая функция `atan2` вычисляется с пониженной частотой дискретизации — 
+/// один раз на `K = 32` сэмпла. Между этими опорными отсчетами фаза экстраполируется линейно 
+/// на основе текущей оценки частоты. Поскольку дрейф `arg(y)` является медленным процессом, 
+/// вносимая ошибка линейной экстраполяции пренебрежимо мала. 
+/// Выходной угол поворота выдается в свернутом диапазоне `[0, 2 * PI)`. Для потребителей углового домена 
+/// дополнительно ведется непрерывная развернутая фаза (unwrap) с отслеживанием переходов через границы круга.
+/// 
+/// # Компенсация фазового сдвига ФНЧ
+/// Фазо-частотная характеристика (ФЧХ) фиксированного комплексного ФНЧ на разностной частоте `delta` 
+/// известна заранее на этапе проектирования. При приближении к идеальному захвату частоты (`delta -> 0`) 
+/// фазовый сдвиг стремится к константе нулевой частоты и полностью устраняется калибровкой. 
+/// Остаточные динамические погрешности при больших отклонениях `delta` покрываются автоматической 
+/// пометкой данных флагом невалидности на время установления переходного процесса `tau_settle`.
+/// 
+/// # Выход данных
+/// Мгновенный физический угол поворота вала в радианах в диапазоне `0..2*PI` для каждого сэмпл-отсчета 
+/// тракта, снабженный системным флагом валидности, готовый для передачи в дисковые фильтры 
+/// порядкового (ордерного) анализа.
 pub struct InstantShaftPhase<Child> {
+    /// Дочерний вычислительный узел конвейера
     child: Child,
+    /// Контекст отладки и логирования
     dbg: Dbg,
 }
 //
 impl<Child> InstantShaftPhase<Child>
 where
-    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static,
 {
-    /// ### Returns `InstantShaftPhase` new instance
-    /// - `parent` - Идентификатор родительской сущности (для отладки)
-    /// - `child` - Дочерний (предыдущий) шаг вычислений
+    /// Создает новый экземпляр вычислительного узла `InstantShaftPhase`.
+    /// 
+    /// # Аргументы
+    /// * `parent` - Ссылка на отладочный контекст родительской сущности
+    /// * `child` - Предыдущий вычислительный шаг конвейера
     pub fn new(parent: &Dbg, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
@@ -27,41 +63,42 @@ where
     }
 }
 //
-impl<Child> Eval<RpmDetectionCtx, RpmDetectionCtx> for InstantShaftPhase<Child>
+impl<Child> Eval<AngularCtx, AngularCtx> for InstantShaftPhase<Child>
 where
-    Child: Eval<RpmDetectionCtx, RpmDetectionCtx> + Send + 'static,
+    Child: Eval<AngularCtx, AngularCtx> + Send + 'static,
 {
-    /// ### Восстанавливает мгновенную фазу вала
+    /// Восстанавливает абсолютную мгновенную фазу вала отсчет за отсчетом.
     /// 
-    /// Математически операция выполняет обратный сдвиг по частоте:
-    /// \[\phi_{shaft} = \arg(Z_{filtered}) + \phi_{net} \pmod{2\pi}\]
+    /// Метод продвигает контекст по цепочке вызовов, проверяет наличие ошибок, 
+    /// оптимизирует емкость выходного вектора без повторных аллокаций памяти 
+    /// и вычисляет итоговый физический угол вала через комбинацию `atan2` и фазы гетеродина.
     #[inline]
-    fn eval(&self, ctx: RpmDetectionCtx) -> RpmDetectionCtx {
-        // Передаем контекст дальше по цепочке вниз
+    fn eval(&self, ctx: AngularCtx) -> AngularCtx {
+        // Передаем контекст дальше по цепочке вниз для предварительной обработки (фильтрации ФНЧ)
         let mut ctx = self.child.eval(ctx);
-        if ctx.is_err() {
+        if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
-        let input_len = ctx.lpf_tracking_band_ctx.filtered_signal.len();
+        // Проверка геометрии входного буфера на случай пустого чанка
+        let input_len = ctx.rpm_detection.lpf_tracking_band.filtered_signal.len();
         if input_len == 0 {
-            ctx.instant_shaft_phase.shaft_phase.clear();
+            ctx.rpm_detection.instant_shaft_phase.shaft_phase.clear();
             return ctx;
         }
-        if ctx.instant_shaft_phase.shaft_phase.len() == 0 {
-            ctx.instant_shaft_phase.shaft_phase = Vec::with_capacity(input_len);
-        } else {
-            ctx.instant_shaft_phase.shaft_phase.clear();
-        }
-        for (&filtered_value, phi_net) in ctx.lpf_tracking_band_ctx.filtered_signal.iter().zip(ctx.complex_local_oscillator.phi_net.iter()) {
-            // Вычисляем аргумент комплексного числа (угол) и возвращаем снос частоты
+        ctx.rpm_detection.instant_shaft_phase.shaft_phase.clear();
+        // Потоковый цикл восстановления фазы вала
+        for (&filtered_value, phi_net) in ctx.rpm_detection.lpf_tracking_band.filtered_signal.iter().zip(ctx.rpm_detection.complex_local_oscillator.phi_net.iter()) {
+            // Вычисляем аргумент комплексного числа (мгновенный угол сдвинутого вектора 1X)
             let phase_angle = filtered_value.im.atan2(filtered_value.re);
-            // rem_euclid гарантирует результат в диапазоне [0, 2π) даже для отрицательных углов
+            // Компенсируем сдвиг спектра и приводим угол к абсолютному физическому диапазону [0, 2*PI)
             let shaft_phase = (phase_angle + phi_net).rem_euclid(2.0 * PI);
-            ctx.instant_shaft_phase.shaft_phase.push(shaft_phase);
+            // Сохраняем восстановленную фазу в выходной вектор текущего пакета
+            ctx.rpm_detection.instant_shaft_phase.shaft_phase.push(shaft_phase);
         }
+        
         ctx
     }
-    //
+    /// Вызывает каскадное завершение для дочерних шагов цепочки вычислений.
     fn exit(&self) {
         self.child.exit();
     }
