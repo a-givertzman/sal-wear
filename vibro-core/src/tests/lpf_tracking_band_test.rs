@@ -1,12 +1,12 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, println};
 use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
-use crate::{Biquad, Eval, RpmDetectionCtx, LPFTrackingBand};
+use crate::{Biquad, Eval, AngularCtx, LPFTrackingBand};
 ///
 /// Заглушка для интерфейса `Child`
 struct DummyChild;
-impl Eval<RpmDetectionCtx, RpmDetectionCtx> for DummyChild {
-    fn eval(&self, ctx: RpmDetectionCtx) -> RpmDetectionCtx { ctx }
+impl Eval<AngularCtx, AngularCtx> for DummyChild {
+    fn eval(&self, ctx: AngularCtx) -> AngularCtx { ctx }
     fn exit(&self) {}
 }
 const F: f64 = 320000.0;
@@ -22,11 +22,11 @@ fn make_filter() -> LPFTrackingBand<DummyChild> {
 }
 ///
 /// Контекст с настроенным каскадом Баттерворта 4-го порядка.
-fn make_ctx() -> RpmDetectionCtx {
-    let mut ctx = RpmDetectionCtx::default();
+fn make_ctx() -> AngularCtx {
+    let mut ctx = AngularCtx::default();
     let f_cutoff = BAND_HZ / 2.0;
-    ctx.lpf_tracking_band_ctx.stage1 = Biquad::new(f_cutoff, FS, 0.5412);
-    ctx.lpf_tracking_band_ctx.stage2 = Biquad::new(f_cutoff, FS, 1.3066);
+    ctx.rpm_detection.lpf_tracking_band.stage1 = Biquad::new(f_cutoff, FS, 0.5412);
+    ctx.rpm_detection.lpf_tracking_band.stage2 = Biquad::new(f_cutoff, FS, 1.3066);
     ctx
 }
 ///
@@ -50,10 +50,10 @@ fn run(f: f64, seconds: f64) -> f64 {
     let mut peak = 0.0f64;
     let mut k = 0;
     while k < total {
-        ctx.complex_local_oscillator.complex_signal = tone(f, k, chunk);
+        ctx.rpm_detection.complex_local_oscillator.complex_signal = tone(f, k, chunk);
         ctx = filter.eval(ctx);
         if k > total * 3 / 4 {
-            for y in &ctx.lpf_tracking_band_ctx.filtered_signal {
+            for y in &ctx.rpm_detection.lpf_tracking_band.filtered_signal {
                 peak = peak.max(y.norm());
             }
         }
@@ -117,14 +117,14 @@ fn state_persists_between_frames() {
     let mut ctx_a = make_ctx();
     let mut chunked: Vec<Complex<f64>> = Vec::new();
     for k in (0..total).step_by(13) {
-        ctx_a.complex_local_oscillator.complex_signal = tone(3.0, k, 13);
+        ctx_a.rpm_detection.complex_local_oscillator.complex_signal = tone(3.0, k, 13);
         ctx_a = filter.eval(ctx_a);
-        chunked.extend(ctx_a.lpf_tracking_band_ctx.filtered_signal.iter().cloned());
+        chunked.extend(ctx_a.rpm_detection.lpf_tracking_band.filtered_signal.iter().cloned());
     }
     let mut ctx_b = make_ctx();
-    ctx_b.complex_local_oscillator.complex_signal = tone(3.0, 0, total);
+    ctx_b.rpm_detection.complex_local_oscillator.complex_signal = tone(3.0, 0, total);
     ctx_b = filter.eval(ctx_b);
-    let whole = &ctx_b.lpf_tracking_band_ctx.filtered_signal;
+    let whole = &ctx_b.rpm_detection.lpf_tracking_band.filtered_signal;
     assert_eq!(chunked.len(), whole.len());
     for (a, b) in chunked.iter().zip(whole.iter()) {
         assert!((a - b).norm() < 1e-12, "состояние потеряно между фреймами: {a} vs {b}");
@@ -141,10 +141,10 @@ fn state_persists_between_frames() {
 fn iq_channels_are_independent() {
     let filter = make_filter();
     let mut ctx = make_ctx();
-    ctx.complex_local_oscillator.complex_signal =
+    ctx.rpm_detection.complex_local_oscillator.complex_signal =
         (0..2000).map(|k| Complex::new((2.0 * PI * 1.0 * k as f64 / FS).cos(), 0.0)).collect();
     ctx = filter.eval(ctx);
-    for y in &ctx.lpf_tracking_band_ctx.filtered_signal {
+    for y in &ctx.rpm_detection.lpf_tracking_band.filtered_signal {
         assert!(y.im.abs() < 1e-12, "Q-канал получил сигнал из I: {}", y.im);
     }
 }

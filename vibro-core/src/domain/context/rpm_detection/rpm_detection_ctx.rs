@@ -1,74 +1,72 @@
-use std::sync::Arc;
-use sal_core::error::Error;
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, Frame, InstantShaftPhaseCtx, LPFTrackingBandCtx};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, LPFTrackingBandCtx};
 ///
-/// Контейнер для передачи данных между вычислительными шагами
+/// Агрегирующий контекст конвейера обработки сигналов (DSP Pipeline) для оценки частоты вращения (RPM).
+///
+/// Является структурой-контейнером, которая аккумулирует промежуточные состояния, 
+/// конфигурационные параметры и буферы данных, передаваемые между последовательными 
+/// этапами цифровой обработки сигналов: от децимации до гетеродинирования.
 pub struct RpmDetectionCtx {
-    /// Сырые выборки из АЦП и угловая сетка. Приходят из AngularGrid
-    pub frame: Arc<Frame<u16, f32>>,
-    /// Приблизительная частота вращения с тахометра (об/мин).
-    pub(crate) raw_rpm: f64,
-    /// Результат работы адаптивного децимирующего фильтра (Anti-Aliasing)
+    /// Состояние и выходные буферы адаптивного децимирующего фильтра.
+    /// 
+    /// Отвечает за предварительную низкочастотную фильтрацию (Anti-Aliasing) 
+    /// и понижение частоты дискретизации (прореживание) входного вещественного сигнала.
     pub(crate) decimation: DecimationCtx,
-    /// Результат работы комплексного гетеродина (снос 1X на нулевую частоту)
+    /// Состояние и выходные буферы комплексного локального осциллятора (гетеродина).
+    /// 
+    /// Отвечает за перенос спектра первой оборотной гармоники (1X) на нулевую частоту 
+    /// путем комплексного умножения и непрерывного интегрирования фазы вала.
     pub(crate) complex_local_oscillator: ComplexLocalOscillatorCtx,
-    /// Результат работы фиксированного ФНЧ полосы слежения (2 биквада, I/Q)
-    pub(crate) lpf_tracking_band_ctx: LPFTrackingBandCtx,
-    /// Результаты вычисления мгновенной фазы вала
-    pub(crate) instant_shaft_phase: InstantShaftPhaseCtx,
-    /// Текущая ошибка вычислений
-    /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шаги эскалируют наверх.
-    pub(crate) err: Option<Error>,
+    /// Состояние и выходные буферы фиксированного ФНЧ полосы слежения.
+    /// 
+    /// Отвечает за каскадную фильтрацию 4-го порядка комплексного I/Q сигнала. 
+    /// Вырезает все высокочастотные компоненты, гармоники редуктора и шумы, оставляя 
+    /// идеально чистую комплексную огибающую первой оборотной гармоники (1X).
+    pub(crate) lpf_tracking_band: LPFTrackingBandCtx,
 }
+//
 impl RpmDetectionCtx {
-    /// - `f_sample` - Частота дискретизации АЦП.
-    pub fn new() -> Self {
+    /// Создает и инициализирует единый вычислительный контекст конвейера с глубоким 
+    /// резервированием памяти под внутренние структуры.
+    ///
+    /// Конструктор гарантирует, что все вложенные векторы и сдвиговые регистры будут 
+    /// проаллоцированы один раз при запуске системы, предотвращая задержки (jitter) 
+    /// из-за выделения памяти на куче (heap allocations) во время обработки потока данных.
+    ///
+    /// # Аргументы
+    /// * `sample_rate` - Исходная частота дискретизации входного сигнала (например, 320000.0 Гц).
+    /// * `samples_capacity` - Размер входящего чанка данных в отсчетах (используется для расчета емкости буферов).
+    /// * `factor` - Коэффициент прореживания `M` для блока децимации.
+    pub fn new(
+        sample_rate: f64, 
+        samples_capacity: usize, 
+        factor: usize,
+    ) -> Self {
         Self {
-            frame: Arc::new(Frame::default()),
-            raw_rpm: f64::NAN,
-            decimation: Default::default(),
-            complex_local_oscillator: Default::default(),
-            lpf_tracking_band_ctx: Default::default(),
-            instant_shaft_phase: Default::default(),
-            err: None,
+            decimation: DecimationCtx::new(
+                sample_rate, 
+                samples_capacity, 
+                factor
+            ),
+            // Выделяем память под комплексный сигнал на основе размера чанка
+            complex_local_oscillator: ComplexLocalOscillatorCtx::new(samples_capacity),
+            lpf_tracking_band: LPFTrackingBandCtx::new(
+                sample_rate,
+                samples_capacity,
+            )
         }
-    }
-    /// ### Устанавливает ошибку в контекст.
-    /// 
-    /// Это приведет к останову вычислений и экалации ошибки на верхний уровень.
-    /// 
-    /// - `me` - Имя текущего класса.
-    /// - `area` - Имя текущего метода.
-    /// - `err` - Ошибка.
-    /// - Возвращает [RpmDetectionCtx] с установленной ошибкой `err`.
-    pub fn with_err(mut self, me: impl Into<String>, area: impl Into<String>, err: impl ToString) -> RpmDetectionCtx {
-        self.err = Some(Error::new(me, area).err(err.to_string()));
-        self
-    }
-    /// Возвращает `true` если предыдущий шаг вернул ошибку
-    pub fn is_err(&self) -> bool {
-        self.err.is_some()
-    }
-    /// Эскалирует ошибку
-    pub fn pass_err(mut self, me: impl Into<String>, area: impl Into<String>) -> RpmDetectionCtx {
-        self.err = match self.err {
-            Some(err) => Some(Error::new(me, area).pass(err)),
-            None => Some(Error::new(me, area)),
-        };
-        self
     }
 }
 //
 impl Default for RpmDetectionCtx {
+    /// Создает пустой контекст конвейера со значениями вложенных структур по умолчанию.
+    /// 
+    /// Векторы инициализируются с нулевой емкостью. Для боевого использования в DSP-цепочках 
+    /// настоятельно рекомендуется использовать метод `new` во избежание динамических реаллокаций памяти.
     fn default() -> Self {
         Self {
-            frame: Default::default(),
-            raw_rpm: Default::default(),
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
-            lpf_tracking_band_ctx: Default::default(),
-            instant_shaft_phase: Default::default(),
-            err: None,
+            lpf_tracking_band: Default::default(),
         }
     }
 }
