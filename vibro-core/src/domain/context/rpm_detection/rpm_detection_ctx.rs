@@ -1,4 +1,4 @@
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, LPFTrackingBandCtx};
 ///
 /// Агрегирующий контекст конвейера обработки сигналов (DSP Pipeline) для оценки частоты вращения (RPM).
 ///
@@ -16,6 +16,12 @@ pub struct RpmDetectionCtx {
     /// Отвечает за перенос спектра первой оборотной гармоники (1X) на нулевую частоту 
     /// путем комплексного умножения и непрерывного интегрирования фазы вала.
     pub(crate) complex_local_oscillator: ComplexLocalOscillatorCtx,
+    /// Состояние и выходные буферы фиксированного ФНЧ полосы слежения.
+    /// 
+    /// Отвечает за каскадную фильтрацию 4-го порядка комплексного I/Q сигнала. 
+    /// Вырезает все высокочастотные компоненты, гармоники редуктора и шумы, оставляя 
+    /// идеально чистую комплексную огибающую первой оборотной гармоники (1X).
+    pub(crate) lpf_tracking_band: LPFTrackingBandCtx,
 }
 //
 impl RpmDetectionCtx {
@@ -30,7 +36,11 @@ impl RpmDetectionCtx {
     /// * `sample_rate` - Исходная частота дискретизации входного сигнала (например, 320000.0 Гц).
     /// * `samples_capacity` - Размер входящего чанка данных в отсчетах (используется для расчета емкости буферов).
     /// * `factor` - Коэффициент прореживания `M` для блока децимации.
-    pub fn new(sample_rate: f64, samples_capacity: usize, factor: usize) -> Self {
+    pub fn new(
+        sample_rate: f64, 
+        samples_capacity: usize, 
+        factor: usize,
+    ) -> Self {
         Self {
             decimation: DecimationCtx::new(
                 sample_rate, 
@@ -39,6 +49,10 @@ impl RpmDetectionCtx {
             ),
             // Выделяем память под комплексный сигнал на основе размера чанка
             complex_local_oscillator: ComplexLocalOscillatorCtx::new(samples_capacity),
+            lpf_tracking_band: LPFTrackingBandCtx::new(
+                sample_rate,
+                samples_capacity,
+            )
         }
     }
 }
@@ -52,6 +66,7 @@ impl Default for RpmDetectionCtx {
         Self {
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
+            lpf_tracking_band: Default::default(),
         }
     }
 }
