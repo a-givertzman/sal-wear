@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use sal_core::error::Error;
 use crate::MirroredBuffer;
 

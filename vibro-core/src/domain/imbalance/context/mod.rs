@@ -6,3 +6,5 @@ mod order_domain_samples_ctx;
 pub use order_domain_samples_ctx::*;
 mod diag_result;
 pub use diag_result::*;
+mod decimation_ctx;
+pub use decimation_ctx::*;
