@@ -130,22 +130,22 @@ where
         })
     }
 }
-impl<T, SqlBuilder> Eval<&[u16], Result<(), Error>> for VibroSensor<T, SqlBuilder>
+impl<T, SqlBuilder> Eval<&Frame<f64>, Result<(), Error>> for VibroSensor<T, SqlBuilder>
 where
     T: EventValueAccess<str, f64>,
     SqlBuilder: Fn(&ImbContext) {
     //
     #[named]
     #[inline]
-    fn eval(&self, samples: &[u16]) -> Result<(), Error> {
+    fn eval(&self, frame: &Frame<f64>) -> Result<(), Error> {
         let ts = chrono::Utc::now();
         let mut angular_ctx = self.angular_ctx.take();
         let mut low_range_ctx = self.low_range_ctx.take();
-        angular_ctx.push_chunk(samples);
+        angular_ctx.push_chunk(frame);
         let phases;
         (angular_ctx, phases) = self.angular.eval(angular_ctx);
-        let frame = Frame::new(ts, self.conf.adc.dc_offset as f64, samples, phases);
-        low_range_ctx.update(frame.clone());
+        let frame = Arc::new(frame.clone().with_phases(phases));
+        low_range_ctx.update(frame);
         low_range_ctx = self.low_range.eval(low_range_ctx);
         if let Some(err) = low_range_ctx.err() {
             self.angular_ctx.set(angular_ctx);

@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{sync::Arc};
 use chrono::{DateTime, Utc};
 use crate::Phases;
 
@@ -8,22 +8,21 @@ pub const FRAME_SIZE: usize = 512; // VORZHEV Z.A.:
 /// Контейнер для раздачи имутабельных данных вычислительным потокам
 /// - `<D>` - Тип входного значения сэмпла
 /// - `<T>` - Тип выходного значения сэмпла
-pub struct Frame<D, T> {
+#[derive(Debug, Clone)]
+pub struct Frame<T> {
     ///  Метка времени выборки
     pub ts: DateTime<Utc>,
     /// Сырые выборки из АЦП
     /// Размер: `Frame::SIZE`
-    pub samples: Vec<T>,
+    pub samples: Arc<Vec<T>>,
     /// Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
     /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
     /// Размер: `Frame::SIZE`
     pub phases: Phases<T>,
-    _d: PhantomData<D>,
 }
-impl<D, T> Frame<D, T> 
+impl<T> Frame<T> 
 where
-    T: crate::num_traits::Float,
-    D: crate::num_traits::PrimInt + Into<T> {
+    T: crate::num_traits::Float {
     /// Количество сырых сэмплов в одной пачке,
     /// Которая за раз заходит на обработку (приходит из сети).
     #[deprecated(note="Use `conf.adc.chunk_size` instead.")]
@@ -36,24 +35,22 @@ where
     /// - `phases` - Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
     /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
     /// Размер: `Frame::SIZE`
-    pub fn new(ts: DateTime<Utc>, dc_offset: T, samples: &[D], phases: Phases<T>) -> Arc<Self> {
+    pub fn new<D: crate::num_traits::PrimInt + Into<T>>(ts: DateTime<Utc>, dc_offset: T, samples: &[D], phases: Phases<T>) -> Arc<Self> {
         Arc::new(Frame {
             ts,
-            samples: samples.iter().map(|v| Into::<T>::into(*v) - dc_offset).collect(),
+            samples: Arc::new(samples.iter().map(|v| Into::<T>::into(*v) - dc_offset).collect()),
             phases,
-            _d: PhantomData,
         })
     }
     /// ### Создает новый инстанс `Frame` толлько с сырыми сэмплами, фазы добавим после расчета.
     /// - `ts` - Метка времени выборки
     /// - `samples` - сырые выборки из АЦП. Будет автоматически удален DC (`-2048.0`)
     /// Размер: `Frame::SIZE`
-    pub fn raw(ts: DateTime<Utc>, dc_offset: T, samples: &[D]) -> Self {
+    pub fn raw<D: crate::num_traits::PrimInt + Into<T>>(ts: DateTime<Utc>, dc_offset: T, samples: &[D]) -> Self {
         Frame {
             ts,
-            samples: samples.iter().map(|v| Into::<T>::into(*v) - dc_offset).collect(),
+            samples: Arc::new(samples.iter().map(|v| Into::<T>::into(*v) - dc_offset).collect()),
             phases: Phases::new(0),
-            _d: PhantomData,
         }
     }
     /// ### Добавляет угловую сетку в радианах.
@@ -65,13 +62,12 @@ where
         self
     }
 }
-impl<D, T: crate::num_traits::Float> Default for Frame<D, T> {
+impl<T: crate::num_traits::Float> Default for Frame<T> {
     fn default() -> Self {
         Self {
             ts: Utc::now(),
-            samples: vec![],
+            samples: Arc::new(vec![]),
             phases: Phases::new(0),
-            _d: PhantomData,
         }
     }
 }

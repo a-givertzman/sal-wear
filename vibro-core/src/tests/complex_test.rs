@@ -163,10 +163,11 @@ fn complex_test () {
         // для тестирования вручную обновляем rpm на входе, в работе он будет приходить извне
         inputs.set_rpm(rpm);
         
-        // ctx.push_chunk(&samples);
+        let frame = Frame::raw(ts, conf.adc.dc_offset, &samples);
+        ctx.push_chunk(&frame);
         let phases;
         (ctx, phases) = angular_grid.eval(ctx);
-        let frame = Frame::new(ts, conf.adc.dc_offset, &samples, phases);
+        let frame = Arc::new(frame.with_phases(phases));
 
         match &ctx.err {
             Some(err) => log::warn!("{}", err),

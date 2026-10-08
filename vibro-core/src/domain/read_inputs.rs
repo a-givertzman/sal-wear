@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use sal_core::{dbg::Dbg, error::Error};
 use sal_sync::services::EventValueAccess;
-use crate::{AngularCtx, Eval};
+use crate::{AngularCtx, Eval, RpmDetectionCtx};
 
 /// Пишет актуальные входные значения в контекст
 pub struct ReadEventValues<T> {

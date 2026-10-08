@@ -1,14 +1,15 @@
-use std::sync::Arc;
-
 use sal_core::error::Error;
-use crate::MirroredBuffer;
+use crate::{Frame, MirroredBuffer, RpmDetectionCtx};
 
 ///
 /// Контейнер для передачи данных между вычислительными шагами
 pub struct AngularCtx {
     /// Аккумулятор сырых сэмплов, окно Автокорреляции.
     /// Должен вмещать 2–3 полных оборота вала
+    #[deprecated(note="To be deleted with `Autocorrelation`, replaced with `samples` field")]
     pub(crate) ac_samples: MirroredBuffer<u16>,
+    /// Последнее окно сырых сэмплов
+    pub(super) samples: Vec<f64>,
     /// Приблизительная частота вращения с тахометра (об/мин).
     pub(crate) raw_rpm: f64,
     /// Примерный (грубый) период вращения (в отсчетах АЦП).
@@ -26,10 +27,11 @@ pub struct AngularCtx {
     pub current_theta: f64,
     /// Размер угловой сетки
     pub phases_size: usize,
+    /// Контейнер вычислительных шагов по определению текущей RPM и угла поворота вала
+    pub(crate) rpm_detection: RpmDetectionCtx,
     // /// Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
     // /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
     // pub phases: Box<[f32; Frame::SIZE]>,
-
     /// Текущая ошибка вычислений
     /// Будет `Some(Error)` если шаг вычислений вернул ошибку, остальные шали эскалируют наверх.
     pub(crate) err: Option<Error>,
@@ -55,6 +57,7 @@ impl AngularCtx {
         log::info!("AngularCtx.new | Буфер автокореляции выбран {capacity} сэмплов. Из расчета на 3 оборота при минимальной частоте вращения 200 RPM и частоте дискретизации {f_sample}");
         Self {
             ac_samples: MirroredBuffer::new(capacity).with_hop_size(capacity / 8),
+            samples: Vec::with_capacity(chunk_size),
             raw_rpm: f64::NAN,
             raw_period: f64::NAN,
             period: f64::NAN,
@@ -62,18 +65,24 @@ impl AngularCtx {
             dt: f64::NAN,
             current_theta: 0.0,
             phases_size: chunk_size,
+            rpm_detection: RpmDetectionCtx::new(f_sample, chunk_size, 20),
             err: None,
         }
     }
     /// Добавляет новый массив сэмплов из АЦП в обработку
-    pub fn push_chunk(&mut self, samples: &[u16]) {
-        if samples.len() > self.ac_samples.capacity() {
+    pub fn push_chunk(&mut self, frame: &Frame<f64>) {
+        self.samples.clear();
+        if frame.samples.len() > self.samples.capacity() {
             log::error!("{}.push_chunk | Размер выборки samples больше размера буфера аккумулятора сырых сэмплов", crate::me::<Self>());
-            self.ac_samples.push_chunk(&samples[..self.ac_samples.capacity()]);
+            self.samples.extend_from_slice(&frame.samples[..self.samples.capacity()]);
         } else {
-            self.ac_samples.push_chunk(samples);
+            self.samples.extend_from_slice(&frame.samples);
         }
         self.err = None;
+    }
+    /// Срез по последнему окну сырых сэмплов
+    pub fn samples(&self) -> &[f64] {
+        &self.samples
     }
     /// Эскалирует ошибку
     pub fn pass_err(mut self, me: impl Into<String>, area: impl Into<String>) -> AngularCtx {
@@ -89,6 +98,7 @@ impl Default for AngularCtx {
     fn default() -> Self {
         Self {
             ac_samples: MirroredBuffer::new(0),
+            samples: Default::default(),
             raw_rpm: Default::default(),
             raw_period: Default::default(),
             period: Default::default(),
@@ -96,6 +106,7 @@ impl Default for AngularCtx {
             dt: Default::default(),
             current_theta: Default::default(),
             phases_size: Default::default(),
+            rpm_detection: Default::default(),
             err: None,
         }
     }

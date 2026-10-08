@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crate::{DecimationCtx, DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
+use crate::{DiagFeatures, DiagnosticResult, Order, OrderZone, Phase, Retain, Retained, Rpm, ShortSigma, num_complex::Complex};
 use sal_core::error::Error;
 use crate::{Frame, KalmanFilter, LowPassSignalCtx, MirroredBuffer};
 
@@ -9,13 +9,12 @@ pub struct ImbContext {
     /// Уточненная частота вращения вала, об/мин.
     pub rpm: Rpm<f64>,
     /// Сырые выборки из АЦП и угловая сетка. Приходят из AngularGrid
-    pub frame: Arc<Frame<u16, f64>>,
+    pub frame: Arc<Frame<f64>>,
     /// LowPassSinal Context.
     pub low_pass_signal: LowPassSignalCtx,
     /// Отфилтрованная выборка сырого АЦП сигнала.
     /// Имеет размер `conf.adc.chunk_size`
     pub samples: Vec<f32>,
-
 
     /// Сигнал развернутый в равномерную сетку угловой области.
     /// Значения вибрации соответствуют каждому углу поворота вала механизма.
@@ -23,9 +22,6 @@ pub struct ImbContext {
     /// Текущий абсолютный вычисленный угол θ поворота вала (не сбрасывается), не используется в расчетах, для отчетности.
     /// Соответствует последнему элементу в `order_samples`
     pub total_phase: Phase<f64>,
-
-    // Результат работы адаптивного децимирующего фильтра (Anti-Aliasing)
-    pub decimation: DecimationCtx,
 
     /// Буфер для аккумулирования выборок для FFT (OrderSpectrum)
     pub fft_buff: MirroredBuffer<Complex<f32>>,
@@ -83,7 +79,6 @@ impl ImbContext {
             features: vec![],
             results: vec![],
             err: None,
-            decimation: Default::default(),
         }
     }
     /// Constructor for testing `WINDOW` and `q` parameters
@@ -120,13 +115,12 @@ impl ImbContext {
             features: vec![],
             results: vec![],
             err: None,
-            decimation: Default::default(),
         }
     }
     /// Добавляет новый массив сэмплов из АЦП в обработку
     /// - Сбрасывает массив результатов.
     /// - Сбрасывает ошибки.
-    pub fn update(&mut self, frame: Arc<Frame<u16, f64>>) {
+    pub fn update(&mut self, frame: Arc<Frame<f64>>) {
         self.frame = frame;
         self.features = vec![];
         self.err = None;
@@ -178,7 +172,6 @@ impl Default for ImbContext {
             features: Default::default(),
             results: Default::default(),
             err: Default::default(),
-            decimation: Default::default(),
         }
     }
 }
