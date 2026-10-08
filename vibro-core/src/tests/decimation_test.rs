@@ -1,8 +1,9 @@
 /// Модульные тесты для проверки корректности алгоритма децимации и антиалиасинг-фильтрации.
 #[cfg(test)]
 mod tests {
-    use sal_core::dbg::Dbg;
-    use crate::{Decimation, Eval, AngularCtx, tests::{Frequency, Udp}};
+    use chrono::Utc;
+use sal_core::dbg::Dbg;
+    use crate::{AngularCtx, Decimation, Eval, Frame, tests::{Frequency, Udp}};
     /// Фиктивный конечный дочерний элемент (`DummyChild`) для изоляции тестируемого блока.
     /// 
     /// Реализует типаж `Eval`. Не выполняет никаких модификаций контекста и не вносит 
@@ -36,7 +37,9 @@ mod tests {
         let mut samples = [0u16; 512];
         udp.parse(0.0, &mut samples); // Значение RPM не важно, так как гармоники отсутствуют
         let mut ctx = AngularCtx::new(conf_adc_sample_rate_hz, conf_adc_chunk_size);
-        ctx.samples = samples.to_vec();
+        let ts = Utc::now();
+        let frame = Frame::raw(ts, 2048.0, &samples);
+        ctx.push_chunk(&frame);
         // Выполняем децимацию сигнала
         let result_ctx = decimator.eval(ctx);
         // Проверка: размер выходного буфера должен соответствовать математическому расчету с учетом дробного сдвига фазы
@@ -85,7 +88,9 @@ mod tests {
         for _ in 0..2 {
             let mut samples = [0u16; 512];
             udp.parse(0.0, &mut samples); // RPM не важен, так как обе компоненты частоты заданы жестко (Static)
-            ctx.samples = samples.to_vec();
+            let ts = Utc::now();
+            let frame = Frame::raw(ts, 2048.0, &samples);
+            ctx.push_chunk(&frame);
             ctx = decimator.eval(ctx);
             all_decimated.extend(&ctx.rpm_detection.decimation.decimated);
         }

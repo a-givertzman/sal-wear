@@ -21,7 +21,6 @@ fn full_signal_simulation(
     rpm: f64,
     k: f64,
     inputs: &mut Arc<MockEventValues>,
-    samples: &mut [u16],
     low_range: &OrderDomainSamples<Pass>,
     chunk_size: usize,
 ) -> (AngularCtx, ImbContext, usize) {
@@ -30,15 +29,17 @@ fn full_signal_simulation(
     let delta_per_sample = std::f64::consts::TAU * k * rpm_hz / f_sample;
     let i_peak = (std::f64::consts::FRAC_PI_2 / delta_per_sample).round() as usize;
     let chunks_needed = (i_peak as f64 / chunk_size as f64).ceil() as usize;
+    let mut samples = vec![0u16; chunk_size];
     for _ in 0..chunks_needed {
-        udp.parse(rpm, samples);
+        udp.parse(rpm, &mut samples);
         inputs.set_rpm(rpm);
-        ctx.push_chunk(samples);
+        let frame = Frame::raw(Utc::now(), 2048.0, &samples);
+        ctx.push_chunk(&frame);
         let phases;
         let t = Instant::now();
         (ctx, phases) = angular_grid.eval(ctx);
         log::debug!("AngularGrid<Autocorrelation> elapsed {:?}", t.elapsed());
-        let frame = Frame::new(Utc::now(), 2048.0, &samples, phases);
+        let frame = Arc::new(frame.with_phases(phases));
         i_ctx.update(frame.clone());
         i_ctx.samples.clone_from_slice(&frame.samples.iter().map(|v| *v as f32).collect::<Vec<f32>>());
         i_ctx.rpm = Rpm(rpm);
@@ -78,7 +79,6 @@ fn order_domain_phase_shift_test() {
     ];
     for (step, k, target_rms, target_angle_rad, rpm, freqs) in test_data.iter() {
         log::debug!("Шаг {}: Симуляция сигнала с амплитудой {}, фазой {:.1} и частотой {} об/мин", step, target_rms, target_angle_rad.to_degrees(), rpm);
-        let mut samples = vec![0u16; chunk_size];
         let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
         let mut inputs = Arc::new(MockEventValues::new());
         let mut ctx = AngularCtx::new(f_sample as f64, chunk_size);
@@ -103,7 +103,6 @@ fn order_domain_phase_shift_test() {
             *rpm,
             *k,
             &mut inputs,
-            &mut samples,
             &low_range,
             chunk_size,
         );

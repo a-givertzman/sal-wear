@@ -83,7 +83,7 @@ where
         let f_het = ctx.raw_rpm / 60.0; 
         let f_sample_dec = ctx.rpm_detection.decimation.f_sample_dec;
         // Валидация входных физических параметров на корректность и бесконечность
-        if !ctx.raw_rpm.is_finite() || !f_sample_dec.is_finite() || f_sample_dec <= 0.0 {
+        if !ctx.raw_rpm.is_finite() || ctx.raw_rpm < 0.0 || !f_sample_dec.is_finite() || f_sample_dec <= 0.0{
             ctx.err = Some(err!(self.dbg, "ctx.raw_rpm {} or f_sample_dec {f_sample_dec} is not a valid number", ctx.raw_rpm));
             return ctx;
         }

@@ -1,16 +1,15 @@
-use std::sync::Arc;
-
 use sal_core::error::Error;
-use crate::{MirroredBuffer, RpmDetectionCtx};
+use crate::{Frame, MirroredBuffer, RpmDetectionCtx};
 
 ///
 /// Контейнер для передачи данных между вычислительными шагами
 pub struct AngularCtx {
     /// Аккумулятор сырых сэмплов, окно Автокорреляции.
     /// Должен вмещать 2–3 полных оборота вала
+    #[deprecated(note="To be deleted with `Autocorrelation`, replaced with `samples` field")]
     pub(crate) ac_samples: MirroredBuffer<u16>,
     /// Последнее окно сырых сэмплов
-    pub(crate) samples: Vec<u16>,
+    pub(super) samples: Vec<f64>,
     /// Приблизительная частота вращения с тахометра (об/мин).
     pub(crate) raw_rpm: f64,
     /// Примерный (грубый) период вращения (в отсчетах АЦП).
@@ -71,16 +70,19 @@ impl AngularCtx {
         }
     }
     /// Добавляет новый массив сэмплов из АЦП в обработку
-    pub fn push_chunk(&mut self, samples: &[u16]) {
+    pub fn push_chunk(&mut self, frame: &Frame<f64>) {
         self.samples.clear();
-        self.samples.extend_from_slice(samples);  // VORZHEV Z.A. 06.10.2026 сохраняем последний чанк для обработки в децимации
-        if samples.len() > self.ac_samples.capacity() {
+        if frame.samples.len() > self.samples.capacity() {
             log::error!("{}.push_chunk | Размер выборки samples больше размера буфера аккумулятора сырых сэмплов", crate::me::<Self>());
-            self.ac_samples.push_chunk(&samples[..self.ac_samples.capacity()]);
+            self.samples.extend_from_slice(&frame.samples[..self.samples.capacity()]);
         } else {
-            self.ac_samples.push_chunk(samples);
+            self.samples.extend_from_slice(&frame.samples);
         }
         self.err = None;
+    }
+    /// Срез по последнему окну сырых сэмплов
+    pub fn samples(&self) -> &[f64] {
+        &self.samples
     }
     /// Эскалирует ошибку
     pub fn pass_err(mut self, me: impl Into<String>, area: impl Into<String>) -> AngularCtx {

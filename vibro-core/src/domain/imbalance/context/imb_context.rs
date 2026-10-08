@@ -9,7 +9,7 @@ pub struct ImbContext {
     /// Уточненная частота вращения вала, об/мин.
     pub rpm: Rpm<f64>,
     /// Сырые выборки из АЦП и угловая сетка. Приходят из AngularGrid
-    pub frame: Arc<Frame<u16, f64>>,
+    pub frame: Arc<Frame<f64>>,
     /// LowPassSinal Context.
     pub low_pass_signal: LowPassSignalCtx,
     /// Отфилтрованная выборка сырого АЦП сигнала.
@@ -120,7 +120,7 @@ impl ImbContext {
     /// Добавляет новый массив сэмплов из АЦП в обработку
     /// - Сбрасывает массив результатов.
     /// - Сбрасывает ошибки.
-    pub fn update(&mut self, frame: Arc<Frame<u16, f64>>) {
+    pub fn update(&mut self, frame: Arc<Frame<f64>>) {
         self.frame = frame;
         self.features = vec![];
         self.err = None;

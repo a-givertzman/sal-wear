@@ -64,10 +64,11 @@ fn order_domain_stationary_test() {
         let rpm = rpm_start + (rpm_end - rpm_start) * progress_sin;
         udp.parse(rpm, &mut samples);
         inputs.set_rpm(rpm);
-        ctx.push_chunk(&samples);
+        let frame = Frame::raw(Utc::now(), 2048.0, &samples);
+        ctx.push_chunk(&frame);
         let phases;
         (ctx, phases) = angular_grid.eval(ctx);
-        let frame = Frame::new(Utc::now(), 2048.0, &samples, phases);
+        let frame = Arc::new(frame.with_phases(phases));
         i_ctx.update(frame.clone());
         i_ctx.rpm = crate::Rpm(rpm);
         i_ctx = low_range.eval(i_ctx);
