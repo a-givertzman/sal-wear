@@ -17,7 +17,7 @@ fn full_signal_simulation(
     udp: &mut Udp,
     mut ctx: AngularCtx,
     mut i_ctx: ImbContext,
-    angular_grid: &impl Eval<AngularCtx, (AngularCtx, Phases<f32>)>,
+    angular_grid: &impl Eval<AngularCtx, (AngularCtx, Phases<f64>)>,
     rpm: f64,
     k: f64,
     inputs: &mut Arc<MockEventValues>,
@@ -38,9 +38,9 @@ fn full_signal_simulation(
         let t = Instant::now();
         (ctx, phases) = angular_grid.eval(ctx);
         log::debug!("AngularGrid<Autocorrelation> elapsed {:?}", t.elapsed());
-        let frame = Frame::new(Utc::now(), 2048f32, &samples, phases);
+        let frame = Frame::new(Utc::now(), 2048.0, &samples, phases);
         i_ctx.update(frame.clone());
-        i_ctx.samples.clone_from_slice(&frame.samples);
+        i_ctx.samples.clone_from_slice(&frame.samples.iter().map(|v| *v as f32).collect::<Vec<f32>>());
         i_ctx.rpm = Rpm(rpm);
         let t = Instant::now();
         i_ctx = low_range.eval(i_ctx);

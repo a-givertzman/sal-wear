@@ -144,7 +144,7 @@ where
         angular_ctx.push_chunk(samples);
         let phases;
         (angular_ctx, phases) = self.angular.eval(angular_ctx);
-        let frame = Frame::new(ts, self.conf.adc.ds_offset as f32, samples, phases);
+        let frame = Frame::new(ts, self.conf.adc.dc_offset as f64, samples, phases);
         low_range_ctx.update(frame.clone());
         low_range_ctx = self.low_range.eval(low_range_ctx);
         if let Some(err) = low_range_ctx.err() {

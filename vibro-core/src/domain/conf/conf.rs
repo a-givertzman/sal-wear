@@ -97,7 +97,7 @@ pub struct HardwareConf {
     /// Возвращает размер пакета данных, поступающего из АЦП.
     pub chunk_size: usize,
     /// Постоянная составляющая сигнала.
-    pub ds_offset: f64,
+    pub dc_offset: f64,
 }
 
 /// ### Настройки углового домена (Order Tracking).

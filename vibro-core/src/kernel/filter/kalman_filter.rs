@@ -92,7 +92,7 @@ impl KalmanFilter {
     /// - `sigma` — Текущая краткосрочная дисперсия
     pub fn new(
         parent: impl AsRef<str>,
-        id: String,
+        id: impl AsRef<str>,
         q: f64,
         saving_threshold: f64,
         retained: Retained,
@@ -100,9 +100,10 @@ impl KalmanFilter {
         value: OrderZone,
         sigma: ShortSigma,
     ) -> Self {
+        let id = id.as_ref();
         let dbg = Dbg::new(parent, format!("{}({})", me::<Self>(), id));
         Self {
-            order_id: id,
+            order_id: id.to_string(),
             q,
             saving_threshold,
             x_hat: AtomicF64::new(retained.x_hat),

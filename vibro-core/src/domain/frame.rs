@@ -44,34 +44,26 @@ where
             _d: PhantomData,
         })
     }
-
-
-    // 24/09/2026 VOZHEV Z.A. Ошибка использования generic-тип: внутри impl используется [u16; Self::SIZE] как тип параметра функции, 
-    // компилятор компилирует размер массива как «анонимную константу» — а такие анонимные константы 
-    // не наследуют generic-параметры (D, T) окружающего impl-блока
-
-    // /// ### Создает новый инстанс `Frame` толлько с сырыми сэмплами, фазы добавим после расчета.
-    // /// - `ts` - Метка времени выборки
-    // /// - `samples` - сырые выборки из АЦП. Будет автоматически удален DC (`-2048.0`)
-    // /// Размер: `Frame::SIZE`
-    // pub fn raw(ts: DateTime<Utc>, samples: [u16; Self::SIZE]) -> Self {
-    //     Frame {
-    //         ts,
-    //         samples: samples.map(|v| v as f32 - 2048.0),
-    //         phases: Phases::new(0),
-    //     }
-    // }
-
-    // 24/09/2026 VOZHEV Z.A. Ошибка: поле `phases` требует Phases<T> а параметр = Phases<f32>
-
-    // /// ### Добавляет угловую сетку в радианах.
-    // /// - `phases` - Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
-    // /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
-    // /// Размер: `Frame::SIZE`
-    // pub fn with_phases(mut self, phases: Phases<f32>) -> Self {
-    //     self.phases = phases;
-    //     self
-    // }
+    /// ### Создает новый инстанс `Frame` толлько с сырыми сэмплами, фазы добавим после расчета.
+    /// - `ts` - Метка времени выборки
+    /// - `samples` - сырые выборки из АЦП. Будет автоматически удален DC (`-2048.0`)
+    /// Размер: `Frame::SIZE`
+    pub fn raw(ts: DateTime<Utc>, dc_offset: T, samples: &[D]) -> Self {
+        Frame {
+            ts,
+            samples: samples.iter().map(|v| Into::<T>::into(*v) - dc_offset).collect(),
+            phases: Phases::new(0),
+            _d: PhantomData,
+        }
+    }
+    /// ### Добавляет угловую сетку в радианах.
+    /// - `phases` - Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
+    /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
+    /// Размер: `Frame::SIZE`
+    pub fn with_phases(mut self, phases: Phases<T>) -> Self {
+        self.phases = phases;
+        self
+    }
 }
 impl<D, T: crate::num_traits::Float> Default for Frame<D, T> {
     fn default() -> Self {
@@ -81,31 +73,5 @@ impl<D, T: crate::num_traits::Float> Default for Frame<D, T> {
             phases: Phases::new(0),
             _d: PhantomData,
         }
-    }
-}
-
-impl<D> Frame<D, f32>
-where
-    D: crate::num_traits::PrimInt + Into<f32>,
-{
-    /// ### Создает новый инстанс `Frame` только с сырыми сэмплами, фазы добавим после расчета.
-    /// - `ts` - Метка времени выборки
-    /// - `samples` - сырые выборки из АЦП. Будет автоматически удален DC (`-2048.0`)
-    /// Размер: `FRAME_SIZE`
-    pub fn raw(ts: DateTime<Utc>, samples: [u16; FRAME_SIZE]) -> Self {
-        Frame {
-            ts,
-            samples: samples.map(|v| v as f32 - 2048.0).to_vec(),
-            phases: Phases::new(0),
-            _d: PhantomData,
-        }
-    }
-    /// ### Добавляет угловую сетку в радианах.
-    /// - `phases` - Угловая сетка в радианах (фазовый профиль) для заданного окна временных отсчетов.
-    /// Представляет собой массив углов поворота вала (в радианах), соответствующих каждому отсчету вибрации.
-    /// Размер: `FRAME_SIZE`
-    pub fn with_phases(mut self, phases: Phases<f32>) -> Self {
-        self.phases = phases;
-        self
     }
 }

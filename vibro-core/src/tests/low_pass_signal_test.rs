@@ -66,7 +66,7 @@ fn low_pass_signal_test () {
         let ts = Utc::now();
         // Имитируем получение АЦП выборки из сети
         udp.parse(rpm.value(), &mut samples);
-        let frame = Frame::new(ts, 2048f32, &samples, Phases::new(conf.adc.chunk_size));
+        let frame = Frame::new(ts, 2048.0, &samples, Phases::new(conf.adc.chunk_size));
         ctx.rpm = rpm;    // Имитируем чтение текущей частоты, в работе делает ReadInpurs,
         ctx.update(frame);
         // log::debug!("{dbg} | Before filter: {:?}", low_range_ctx.frame.samples);
