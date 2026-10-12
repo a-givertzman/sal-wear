@@ -18,6 +18,7 @@ fn complex_test () {
         adc:
             sample-rate-hz: 320000
             chunk-size: 512
+            ds-offset: 2048
         analysis:
             order-tracking:
                 max-order: 300              # Максимальный порядок (кратность частоты вращения), до которого производится спектральный анализ.
@@ -162,21 +163,17 @@ fn complex_test () {
         // для тестирования вручную обновляем rpm на входе, в работе он будет приходить извне
         inputs.set_rpm(rpm);
         
-        // VORZHEV Z.A. : errors 
-        // let frame = Frame::raw(ts, samples);  
-        // ctx.push_frame(&frame); 
-        
-        // ctx.push_chunk(&samples);
+        let frame = Frame::raw(ts, conf.adc.dc_offset, &samples);
+        ctx.push_chunk(&frame);
         let phases;
         (ctx, phases) = angular_grid.eval(ctx);
-
-        //  let frame = Arc::new(frame.with_phases(phases)); VORZHEV Z.A. : error
+        let frame = Arc::new(frame.with_phases(phases));
 
         match &ctx.err {
             Some(err) => log::warn!("{}", err),
             None => {
                 if ctx.ac_samples.is_full() {
-                    let frame = Frame::new(ts, 2048f32, &samples, phases);
+                    // let frame = Frame::new(ts, 2048f32, &samples, phases);
                     _ = low_send.send(frame.clone());
                     _ = mid_send.send(frame.clone());
                     _ = high_send.send(frame.clone());
