@@ -108,6 +108,7 @@ impl Biquad {
     ///
     /// # Возвращаемое значение
     /// Кортеж `(f64, f64)`, представляющий собой отфильтрованный комплексный отсчет `(I_out, Q_out)`.
+    #[inline]
     pub fn process(&mut self, i: f64, q: f64) -> (f64, f64) {
         let y_i = Self::process_one(self.b0, self.b1, self.b2, self.a1, self.a2, i, &mut self.w1_i, &mut self.w2_i);
         let y_q = Self::process_one(self.b0, self.b1, self.b2, self.a1, self.a2, q, &mut self.w1_q, &mut self.w2_q);
