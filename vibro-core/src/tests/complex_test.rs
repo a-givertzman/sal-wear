@@ -31,7 +31,12 @@ fn complex_test () {
     "#).unwrap();
     let inputs = Arc::new(MockEventValues::new());
     let mut samples = vec![0u16; conf.adc.chunk_size];
-    let mut ctx = AngularCtx::new(conf.adc.sample_rate_hz, conf.adc.chunk_size);
+    let mut ctx = AngularCtx::new(
+        crate::FSample(conf.adc.sample_rate_hz), 
+        conf.adc.chunk_size,
+        conf.analysis.rpm_detection.decimation_factor(crate::FSample(conf.adc.sample_rate_hz as f64)), 
+        conf.analysis.rpm_detection.tracking_band_hz()
+    ); // VORZHEV Z.A. 13.10.2026
     let angular_grid = AngularGrid::new(&dbg,
         conf.adc.chunk_size,
         Autocorrelation::new(&dbg,

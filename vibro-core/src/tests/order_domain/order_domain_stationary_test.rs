@@ -36,7 +36,12 @@ fn order_domain_stationary_test() {
     let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
     let freqs = [(Frequency::Rpm(1.0), 200)];
     let inputs = Arc::new(MockEventValues::new());
-    let mut ctx = AngularCtx::new(f_sample as f64, chunk_size);
+    let mut ctx = AngularCtx::new(
+        crate::FSample(f_sample as f64), 
+        chunk_size, 
+        conf.analysis.rpm_detection.decimation_factor(crate::FSample(f_sample as f64)), 
+        conf.analysis.rpm_detection.tracking_band_hz()
+    );
     let angular_grid = AngularGrid::new(
         &dbg, chunk_size,
         Autocorrelation::new(

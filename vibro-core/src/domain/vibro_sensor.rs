@@ -89,7 +89,14 @@ where
         let window_size = conf.analysis.n_fft();
         let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65)
             .map_err(|err| err_pass!(dbg, err))?;
-        let angular_ctx = Cell::new(AngularCtx::new(conf.adc.sample_rate_hz, conf.adc.chunk_size));
+        let angular_ctx = Cell::new(AngularCtx::new(
+            crate::FSample(conf.adc.sample_rate_hz), 
+            conf.adc.chunk_size, 
+            conf.analysis.rpm_detection.decimation_factor(
+                crate::FSample(conf.adc.sample_rate_hz)
+            ),
+            conf.analysis.rpm_detection.tracking_cutoff_hz(),
+        )); // VORZHEV Z.A. 13.10.2026
         let low_range_ctx = Cell::new(ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), conf.adc.chunk_size, retain.clone()));
         Ok(Self {
             angular: AngularGrid::new(&dbg, conf.adc.chunk_size,

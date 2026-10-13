@@ -29,8 +29,6 @@ use function_name::named;
 /// `F_sample_dec = 16 кГц`. За время одного сетевого полупакета (256 исходных сэмплов) 
 /// этот блок выдает ≈ 13 новых сэмплов.
 pub struct Decimation<Child> {
-    /// Размер линии задержки (истории сэмплов) для КИХ-фильтра. Строго соответствует количеству тапов.
-    fir_size: usize,
     /// Дочерний вычислительный узел, вызываемый перед текущим шагом децимации.
     child: Child,
     /// Контекст отладки и логирования.
@@ -52,7 +50,6 @@ where
     pub fn new(parent: &Dbg, child: Child) -> Self {
         let dbg = Dbg::new(parent, crate::me::<Self>());
         Self {
-            fir_size: 32,
             child,
             dbg,
         }
@@ -89,7 +86,7 @@ where
         for sample in samples {
             // Продвигаем линию задержки (сдвиговый регистр КИХ-фильтра):
             // Если очередь заполнена до размера тапов, удаляем самый старый отсчет с конца.
-            if ctx.rpm_detection.decimation.dec_fir_state.len() >= self.fir_size {
+            if ctx.rpm_detection.decimation.dec_fir_state.len() >= FIR_TAPS_M20_N32.len() {
                 ctx.rpm_detection.decimation.dec_fir_state.pop_back();
             }
             // Добавляем новый отсчет в начало очереди (индекс 0 — новейший сэмпл)
