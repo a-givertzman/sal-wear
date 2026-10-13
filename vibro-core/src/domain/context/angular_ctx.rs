@@ -1,5 +1,5 @@
 use sal_core::error::Error;
-use crate::{Frame, MirroredBuffer, RpmDetectionCtx};
+use crate::{FSample, Frame, MirroredBuffer, RpmDetectionCtx};
 
 ///
 /// Контейнер для передачи данных между вычислительными шагами
@@ -39,7 +39,7 @@ pub struct AngularCtx {
 impl AngularCtx {
     /// - `f_sample` - Частота дискретизации АЦП.
     /// - `chunk_size` - Размер выборки, пакета сэмплов, поступающего из АЦП за один раз.
-    pub fn new(f_sample: f64, chunk_size: usize) -> Self {
+    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64) -> Self {
         // Формула вычисления размера выборки `capacity`
         // Чтобы автокорреляция надежно зацепилась за оборотную частоту,
         // в буфере должно лежать минимум 2–3 полных оборота вала.
@@ -53,8 +53,8 @@ impl AngularCtx {
         //      RPMmin — минимальная скорость вращения вала, при которой мы ведем анализ.
         // Для привода 1500: `3 * 320 000 * 60 / 300 => 192 000`
         // Для привода 1500: `3 * 320 000 * 60 / 600 => 96 000`
-        let capacity = (3.0 * f_sample * 60.0 / 200.0).ceil() as usize;
-        log::info!("AngularCtx.new | Буфер автокореляции выбран {capacity} сэмплов. Из расчета на 3 оборота при минимальной частоте вращения 200 RPM и частоте дискретизации {f_sample}");
+        let capacity = (3.0 * f_sample.value() * 60.0 / 200.0).ceil() as usize;
+        log::info!("AngularCtx.new | Буфер автокореляции выбран {capacity} сэмплов. Из расчета на 3 оборота при минимальной частоте вращения 200 RPM и частоте дискретизации {}", f_sample.value());
         Self {
             ac_samples: MirroredBuffer::new(capacity).with_hop_size(capacity / 8),
             samples: Vec::with_capacity(chunk_size),
@@ -65,7 +65,12 @@ impl AngularCtx {
             dt: f64::NAN,
             current_theta: 0.0,
             phases_size: chunk_size,
-            rpm_detection: RpmDetectionCtx::new(f_sample, chunk_size, 20),
+            rpm_detection: RpmDetectionCtx::new(
+                f_sample, 
+                chunk_size,
+                factor,
+                f_cutoff
+            ),
             err: None,
         }
     }

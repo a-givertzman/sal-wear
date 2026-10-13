@@ -29,14 +29,19 @@ use sal_core::dbg::Dbg;
     #[test]
     fn test_decimation_factor_and_length() {
         let dbg = Dbg::own("test_decimation_factor_and_length");
-        let conf_adc_sample_rate_hz = 320000.0;
+        let conf_adc_f_sample_hz = 320000.0;
         let conf_adc_chunk_size = 512;
         let decimator = Decimation::new(&dbg, DummyChild);
         // Формируем чистую "тишину" на нулевом уровне (без гармоник), чтобы проверить исключительно геометрию буферов
         let mut udp = Udp::new(512, 320_000.0, []);
         let mut samples = [0u16; 512];
         udp.parse(0.0, &mut samples); // Значение RPM не важно, так как гармоники отсутствуют
-        let mut ctx = AngularCtx::new(conf_adc_sample_rate_hz, conf_adc_chunk_size);
+        let mut ctx = AngularCtx::new(
+            crate::FSample(conf_adc_f_sample_hz), 
+            conf_adc_chunk_size,
+            20,
+            3.5,
+        );
         let ts = Utc::now();
         let frame = Frame::raw(ts, 2048.0, &samples);
         ctx.push_chunk(&frame);
@@ -55,7 +60,7 @@ use sal_core::dbg::Dbg;
     ///
     /// # Цель теста
     /// Проверить способность КИХ-фильтра эффективно ослаблять компоненты спектра, лежащие 
-    /// за пределами новой частоты Найквиста (`f_decimation / 2 = 8 кГц`), предотвращая их зеркальное 
+    /// за пределами новой частоты Найквиста (`f_sample_dec / 2 = 8 кГц`), предотвращая их зеркальное 
     /// наложение (aliasing) в область низких частот.
     /// 
     /// # Физическая суть
@@ -69,7 +74,7 @@ use sal_core::dbg::Dbg;
     #[test]
     fn test_anti_aliasing_filtering() {
         let dbg = Dbg::own("test_anti_aliasing_filtering");
-        let conf_adc_sample_rate_hz = 320000.0;
+        let conf_adc_f_sample_hz = 320000.0;
         let conf_adc_chunk_size = 512;
         let decimator = Decimation::new(&dbg, DummyChild);
         let fs = 320_000.0;
@@ -82,7 +87,12 @@ use sal_core::dbg::Dbg;
                 (Frequency::Static(40_000.0), 1000),
             ],
         );
-        let mut ctx = AngularCtx::new(conf_adc_sample_rate_hz, conf_adc_chunk_size);
+        let mut ctx = AngularCtx::new(
+            crate::FSample(conf_adc_f_sample_hz), 
+            conf_adc_chunk_size,
+            20, 
+            3.5,
+        );
         let mut all_decimated: Vec<f64> = Vec::new();
         // Симулируем потоковую обработку двух последовательных чанков для заполнения линии задержки фильтра
         for _ in 0..2 {

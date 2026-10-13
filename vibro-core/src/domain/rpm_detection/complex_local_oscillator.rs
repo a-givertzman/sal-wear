@@ -78,24 +78,24 @@ where
         }
         // Очищаем буферы комплексного локального осциллятора перед новым циклом расчета
         ctx.rpm_detection.complex_local_oscillator.complex_signal.clear();
-        ctx.rpm_detection.complex_local_oscillator.phi_net.clear();
+        ctx.rpm_detection.complex_local_oscillator.phi_het.clear();
         // Переводим грубую частоту вращения из об/мин в Гц (f_het)
         let f_het = ctx.raw_rpm / 60.0; 
         let f_sample_dec = ctx.rpm_detection.decimation.f_sample_dec;
         // Валидация входных физических параметров на корректность и бесконечность
-        if !ctx.raw_rpm.is_finite() || ctx.raw_rpm < 0.0 || !f_sample_dec.is_finite() || f_sample_dec <= 0.0{
-            ctx.err = Some(err!(self.dbg, "ctx.raw_rpm {} or f_sample_dec {f_sample_dec} is not a valid number", ctx.raw_rpm));
+        if !ctx.raw_rpm.is_finite() || ctx.raw_rpm < 0.0 || !f_sample_dec.value().is_finite() || f_sample_dec.value() <= 0.0{
+            ctx.err = Some(err!(self.dbg, "ctx.raw_rpm {} or f_sample_dec {} is not a valid number", ctx.raw_rpm, f_sample_dec.value()));
             return ctx;
         }
         // Расчет нормированного шага частоты и соответствующего приращения фазы на один сэмпл (delta_phi)
-        let f_coeff = f_het / f_sample_dec;
+        let f_coeff = f_het / f_sample_dec.value();
         let delta_phi = 2.0 * PI * f_coeff;
         // Восстанавливаем сохраненное значение фазы с предыдущего шага/блока данных
-        let mut phi = ctx.rpm_detection.complex_local_oscillator.phi_last;
+        let mut phi = ctx.rpm_detection.complex_local_oscillator.phi_het_last;
         // Основной цикл гетеродинирования прореженного сигнала
         for &x in ctx.rpm_detection.decimation.decimated.iter() {
             // Сохраняем текущую накопленную фазу для истории/диагностики
-            ctx.rpm_detection.complex_local_oscillator.phi_net.push(phi);
+            ctx.rpm_detection.complex_local_oscillator.phi_het.push(phi);
             // Формируем сопряженную комплексную экспоненту по формуле Эйлера: e^(-j*phi) = cos(phi) - j*sin(phi)
             let e = Complex::new(phi.cos(), -phi.sin());
             // Сдвигаем спектр вещественного отсчета x[n] на величину e^(-j*phi), приводя компоненту 1X к нулевой частоте
@@ -110,7 +110,7 @@ where
             }
         }
         // Сохраняем конечную фазу текущего блока как начальную для следующего блока (обеспечение непрерывности)
-        ctx.rpm_detection.complex_local_oscillator.phi_last = phi;
+        ctx.rpm_detection.complex_local_oscillator.phi_het_last = phi;
         ctx
     }
     //

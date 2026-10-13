@@ -19,7 +19,7 @@ mod tests {
         let mut ctx = AngularCtx::default();
         ctx.raw_rpm = raw_rpm;
         ctx.rpm_detection.decimation.decimated = decimated;
-        ctx.rpm_detection.decimation.f_sample_dec = f_sample_dec;
+        ctx.rpm_detection.decimation.f_sample_dec = crate::FSampleDec(f_sample_dec);
         ctx
     }
     /// Однобиновое ДФТ комплексного сигнала на частоте `f` Гц: (1/N)·Σ y[n]·e^(-j2πfn/fs).
@@ -131,11 +131,11 @@ mod tests {
     /// # Физико-математическое обоснование
     /// Процесс симулирует потоковую обработку двух последовательных пакетов по `n = 13` отсчетов:
     /// 1. В первом пакете частота вала составляет `f_1 = 50 Гц`. Фаза интегрируется от `0` до конечного 
-    ///    значения `phi_last` со скоростью приращения `delta_phi_1 = 2*pi*50/fs`.
+    ///    значения `phi_het_last` со скоростью приращения `delta_phi_1 = 2*pi*50/fs`.
     /// 2. Во втором пакете частота скачкообразно меняется до `f_2 = 60 Гц`. 
     /// 
-    /// При физически корректной реализации начальная фаза второго пакета (`phi_net[0]`) должна строго 
-    /// совпасть с конечной фазой первого пакета (`phi_last`), обеспечивая гладкость функции. 
+    /// При физически корректной реализации начальная фаза второго пакета (`phi_het[0]`) должна строго 
+    /// совпасть с конечной фазой первого пакета (`phi_het_last`), обеспечивая гладкость функции. 
     /// В случае ошибочной реализации через `f_hat * t` на стыке пакетов возникнет мгновенный скачок фазы 
     /// на величину `13 * 2*pi*(60 - 50)/fs`, что приведет к спектральному взрыву и разрыву трекинга вала.
     #[test]
@@ -145,18 +145,18 @@ mod tests {
         let n = node();
         // --- ПАКЕТ 1: Обработка на частоте 50 Гц ---
         let ctx = n.eval(ctx_with(vec![1.0; n_samples], fs, 50.0 * 60.0));
-        let phi_end_1 = ctx.rpm_detection.complex_local_oscillator.phi_last;
+        let phi_end_1 = ctx.rpm_detection.complex_local_oscillator.phi_het_last;
         // Аналитически рассчитываем, где должна закончиться фаза после 13 сэмплов на 50 Гц
         let expected_end_1 = (n_samples as f64 * 2.0 * PI * 50.0 / fs).rem_euclid(2.0 * PI);
         // Проверяем, что первый пакет рассчитался математически верно
-        assert!(wrap(phi_end_1 - expected_end_1).abs() < 1e-12, "phi_last после пакета 1 = {phi_end_1}");
+        assert!(wrap(phi_end_1 - expected_end_1).abs() < 1e-12, "phi_het_last после пакета 1 = {phi_end_1}");
         // --- ПАКЕТ 2: Скачкообразный переход на частоту 60 Гц ---
         let mut ctx = ctx;
         ctx.raw_rpm = 60.0 * 60.0; // Симулируем мгновенное ускорение генератора/двигателя
         ctx.rpm_detection.decimation.decimated = vec![1.0; n_samples];
         // Прогоняем второй пакет через гетеродин
         let ctx = n.eval(ctx);
-        let phi = &ctx.rpm_detection.complex_local_oscillator.phi_net;
+        let phi = &ctx.rpm_detection.complex_local_oscillator.phi_het;
         // 1. ПРОВЕРКА ИНВАРИАНТА НЕПРЕРЫВНОСТИ: 
         // Начальная фаза нового пакета обязана быть бесшовным продолжением предыдущего
         assert!(

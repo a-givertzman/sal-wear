@@ -81,7 +81,12 @@ fn order_domain_phase_shift_test() {
         log::debug!("Шаг {}: Симуляция сигнала с амплитудой {}, фазой {:.1} и частотой {} об/мин", step, target_rms, target_angle_rad.to_degrees(), rpm);
         let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
         let mut inputs = Arc::new(MockEventValues::new());
-        let mut ctx = AngularCtx::new(f_sample as f64, chunk_size);
+        let mut ctx = AngularCtx::new(
+            crate::FSample(f_sample as f64), 
+            chunk_size,
+            conf.analysis.rpm_detection.decimation_factor(crate::FSample(f_sample as f64)), 
+            conf.analysis.rpm_detection.tracking_band_hz()
+        );
         let angular_grid = AngularGrid::new(
             &dbg,
             chunk_size,
