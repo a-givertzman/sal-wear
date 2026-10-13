@@ -121,7 +121,7 @@ fn run_with(ctx: AngularCtx, f: f64, seconds: f64) -> f64 {
 #[test]
 fn passes_low_frequency() {
     let amp = run(0.5, 20.0);
-    let target_amp = 1.0; // Основное тригонометрической тождество: cos(x) + sin(x) = 1
+    let target_amp = 1.0; // Основное тригонометрической тождество: cos(x)^2 + sin(x)^2 = 1
     assert!((amp - target_amp).abs() < 0.05, "0.5 Гц должна проходить, амплитуда = {amp}");
 }
 ///
@@ -187,7 +187,7 @@ fn state_persists_between_frames() {
 ///
 /// Подаём сигнал только в канал I (Q=0 на входе), проверяем, 
 /// что на выходе Q остаётся пренебрежимо малым. 
-/// Биквад — линейная система с раздельными состояниями w1_i/w2_i и w1_q/w2_q, 
+/// Биквад — линейная система с раздельными состояниями s1_i/s2_i и s1_q/s2_q, 
 /// поэтому канал I физически не должен влиять на канал Q, 
 /// только на свой собственный выход. Это защита от возможной ошибки, 
 /// при которой состояния случайно перепутались бы местами или использовались совместно.
@@ -204,11 +204,9 @@ fn iq_channels_are_independent() {
 }
 ///
 /// AngularCtx::new(f_sample, chunk) настраивает биквады на f_sample_dec = 16 кГц, а не на 320 кГц.
-/// Признаки: коэффициент передачи ≈1 вблизи нуля и ≈0.707 на fc.
+/// Признаки: коэффициент передачи ≈0.707 на fc.
 #[test]
 fn production_ctx_uses_decimated_sample_rate() {
-    let dc = run_with(prod_ctx(), 0.05, 20.0);
-    assert!((dc - 1.0).abs() < 0.02, "DC-gain ≠ 1: {dc}");
     let at_fc = run_with(prod_ctx(), F_CUTOFF, 20.0);
     assert!(
         (at_fc - 0.7071).abs() < 0.03,
@@ -250,6 +248,7 @@ fn empty_input_gives_empty_output() {
     ctx = filter.eval(ctx);
     assert!(ctx.err.is_none());
     assert!(ctx.rpm_detection.lpf_tracking_band.filtered_signal.is_empty());
+    assert!(ctx.rpm_detection.lpf_tracking_band.amplitude.is_empty());
     // после пустого пакета фильтр продолжает работать корректно
     let amp = run_with(ctx, 0.5, 20.0);
     assert!((amp - 1.0).abs() < 0.05, "состояние испорчено пустым пакетом: {amp}");

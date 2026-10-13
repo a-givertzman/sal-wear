@@ -77,8 +77,8 @@ impl Biquad {
     /// ```
     /// Частота `omega0` берётся напрямую, без предыскажения `tan(ω/2)`. При `fc/fs ≪ 1`
     /// отличие от строгого билинейного преобразования пренебрежимо мало.
-    pub fn new(f_cutoff: f64, f_sample: f64, q_factor: f64) -> Self {
-        let omega0 = 2.0 * PI * f_cutoff / f_sample;
+    pub fn new(f_cutoff: f64, f_sample_dec: f64, q_factor: f64) -> Self {
+        let omega0 = 2.0 * PI * f_cutoff / f_sample_dec;
         let alpha = omega0.sin() / (2.0 * q_factor);
         let cos_omega0 = omega0.cos();
 

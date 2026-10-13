@@ -243,8 +243,10 @@ impl RpmDetectionConf {
     /// Полная полоса слежения B, Гц
     /// B ≥ |ḟ|_max·(τ_net + T_update) + |Δf_net| + B_запас.
     pub fn tracking_band_hz(&self) -> f64 {
-        self.max_freq_rate_hz_s * (self.tau_net_s + self.t_update_s)
-            + self.delta_f_net_hz + self.band_margin_hz
+        let b = self.max_freq_rate_hz_s * (self.tau_net_s + self.t_update_s)
+            + self.delta_f_net_hz + self.band_margin_hz;
+        assert!(b > 0.0); 
+        return b
     }
     /// Частота среза одного ФНЧ: B/2.
     pub fn tracking_cutoff_hz(&self) -> f64 { self.tracking_band_hz() / 2.0 }
@@ -253,11 +255,11 @@ impl Default for RpmDetectionConf {
     fn default() -> Self {
         Self { 
             f_sample_dec_target_hz: 16000.0, 
-            max_freq_rate_hz_s: Default::default(), 
-            tau_net_s: Default::default(), 
-            t_update_s: Default::default(), 
-            delta_f_net_hz: Default::default(), 
-            band_margin_hz: Default::default() 
+            max_freq_rate_hz_s: 2.0, 
+            tau_net_s: 0.5, 
+            t_update_s: 0.5, 
+            delta_f_net_hz: 3.0, 
+            band_margin_hz: 2.0  
         }
     }
 }
