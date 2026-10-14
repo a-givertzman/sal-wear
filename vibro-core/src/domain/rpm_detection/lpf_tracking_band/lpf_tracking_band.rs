@@ -80,6 +80,7 @@ where
         }
         // Очищаем выходной комплексный буфер текущего чанка перед заполнением
         ctx.rpm_detection.lpf_tracking_band.filtered_signal.clear();
+        ctx.rpm_detection.lpf_tracking_band.amplitude.clear();
         // Потоковый цикл фильтрации комплексного сигнала (I/Q каскад 4-го порядка)
         for y in ctx.rpm_detection.complex_local_oscillator.complex_signal.iter() {
             // Первая стадия фильтрации (Биквад 1, порядок 2)
@@ -88,6 +89,7 @@ where
             let (i_filt, q_filt) = ctx.rpm_detection.lpf_tracking_band.stage2.process(i1, q1);
             // Сохраняем отфильтрованный комплексный вектор в историю текущего чанка
             ctx.rpm_detection.lpf_tracking_band.filtered_signal.push(Complex::new(i_filt, q_filt));
+            ctx.rpm_detection.lpf_tracking_band.amplitude.push(i_filt.hypot(q_filt)); // sqrt(I² + Q²) без переполнения
         }
         ctx
     }
