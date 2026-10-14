@@ -87,7 +87,7 @@ where
         }
         ctx.rpm_detection.instant_shaft_phase.shaft_phase.clear();
         // Потоковый цикл восстановления фазы вала
-        for (&filtered_value, phi_net) in ctx.rpm_detection.lpf_tracking_band.filtered_signal.iter().zip(ctx.rpm_detection.complex_local_oscillator.phi_net.iter()) {
+        for (&filtered_value, phi_net) in ctx.rpm_detection.lpf_tracking_band.filtered_signal.iter().zip(ctx.rpm_detection.complex_local_oscillator.phi_het.iter()) {
             // Вычисляем аргумент комплексного числа (мгновенный угол сдвинутого вектора 1X)
             let phase_angle = filtered_value.im.atan2(filtered_value.re);
             // Компенсируем сдвиг спектра и приводим угол к абсолютному физическому диапазону [0, 2*PI)

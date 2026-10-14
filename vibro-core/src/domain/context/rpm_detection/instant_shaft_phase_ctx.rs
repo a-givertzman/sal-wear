@@ -20,11 +20,11 @@ impl InstantShaftPhaseCtx {
     /// высоконагруженного DSP-конвейера.
     ///
     /// # Аргументы
-    /// * `samples_capacity` - Ожидаемый максимальный размер выходного чанка прореженного сигнала 
+    /// * `chunk_size_dec` - Ожидаемое число отсчётов децимированного сигнала в одном пакете.
     ///   в отсчетах (используется для предрасчета размера буфера `shaft_phase`).
-    pub fn new(samples_capacity: usize) -> Self {
+    pub fn new(chunk_size_dec: usize) -> Self {
         Self { 
-            shaft_phase: Vec::with_capacity(samples_capacity) 
+            shaft_phase: Vec::with_capacity(chunk_size_dec) 
         }
     }
 }

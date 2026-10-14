@@ -19,7 +19,7 @@ fn phase_is_atan2_plus_phi_het() {
     let mut ctx = AngularCtx::default();
     ctx.rpm_detection.lpf_tracking_band.filtered_signal = [0.3f64, 1.0, -1.0]
         .iter().map(|&a| Complex::from_polar(2.0, a)).collect();
-    ctx.rpm_detection.complex_local_oscillator.phi_net = vec![5.0, 0.5, 0.2];
+    ctx.rpm_detection.complex_local_oscillator.phi_het = vec![5.0, 0.5, 0.2];
     ctx = node().eval(ctx);
     let out = &ctx.rpm_detection.instant_shaft_phase.shaft_phase;
     assert_eq!(out.len(), 3);
@@ -39,7 +39,7 @@ fn phase_is_in_range() {
     let mut ctx = AngularCtx::default();
     ctx.rpm_detection.lpf_tracking_band.filtered_signal =
         (0..100).map(|k| Complex::from_polar(1.0, k as f64 * 0.37 - 3.0)).collect();
-    ctx.rpm_detection.complex_local_oscillator.phi_net = (0..100).map(|k| k as f64 * 0.11).collect();
+    ctx.rpm_detection.complex_local_oscillator.phi_het = (0..100).map(|k| k as f64 * 0.11).collect();
     ctx = node().eval(ctx);
     assert_eq!(ctx.rpm_detection.instant_shaft_phase.shaft_phase.len(), 100);
     for &p in &ctx.rpm_detection.instant_shaft_phase.shaft_phase {
@@ -54,7 +54,7 @@ fn output_is_cleared_between_calls() {
     let mut ctx = AngularCtx::default();
     for _ in 0..3 {
         ctx.rpm_detection.lpf_tracking_band.filtered_signal = vec![Complex::new(1.0, 0.0); 13];
-        ctx.rpm_detection.complex_local_oscillator.phi_net = vec![0.0; 13];
+        ctx.rpm_detection.complex_local_oscillator.phi_het = vec![0.0; 13];
         ctx = n.eval(ctx);
         assert_eq!(ctx.rpm_detection.instant_shaft_phase.shaft_phase.len(), 13);
     }
@@ -66,11 +66,11 @@ fn empty_input_leaves_empty_output() {
     let n = node();
     let mut ctx = AngularCtx::default();
     ctx.rpm_detection.lpf_tracking_band.filtered_signal = vec![Complex::new(1.0, 0.0); 5];
-    ctx.rpm_detection.complex_local_oscillator.phi_net = vec![0.0; 5];
+    ctx.rpm_detection.complex_local_oscillator.phi_het = vec![0.0; 5];
     ctx = n.eval(ctx);
     assert_eq!(ctx.rpm_detection.instant_shaft_phase.shaft_phase.len(), 5);
     ctx.rpm_detection.lpf_tracking_band.filtered_signal.clear();
-    ctx.rpm_detection.complex_local_oscillator.phi_net.clear();
+    ctx.rpm_detection.complex_local_oscillator.phi_het.clear();
     ctx = n.eval(ctx);
     assert!(ctx.rpm_detection.instant_shaft_phase.shaft_phase.is_empty(), "остались данные прошлого вызова");
 }
@@ -86,7 +86,7 @@ fn phase_rate_equals_true_frequency_for_any_f_het() {
         let mut ctx = AngularCtx::default();
         ctx.rpm_detection.lpf_tracking_band.filtered_signal = (0..n)
             .map(|k| Complex::from_polar(0.5, 2.0 * PI * delta * k as f64 / fs)).collect();
-        ctx.rpm_detection.complex_local_oscillator.phi_net = (0..n)
+        ctx.rpm_detection.complex_local_oscillator.phi_het = (0..n)
             .map(|k| (2.0 * PI * f_het * k as f64 / fs).rem_euclid(2.0 * PI)).collect();
         ctx = node().eval(ctx);
         let ph = &ctx.rpm_detection.instant_shaft_phase.shaft_phase;
