@@ -40,14 +40,14 @@ impl ValidityDetectorCtx {
     /// на повторные аллокации памяти во время работы горячего DSP-цикла.
     ///
     /// # Аргументы
-    /// * `signal_capacity` - Ожидаемый максимальный размер выходного чанка прореженного сигнала 
+    /// * `chunk_size_dec` - Ожидаемое число отсчётов децимированного сигнала в одном пакете.
     ///   в отсчетах (используется для предрасчета размера буфера `valid_flags`).
-    pub fn new(signal_capacity: usize) -> Self {
+    pub fn new(chunk_size_dec: usize) -> Self {
         Self { 
             valid: false, 
             invalid_samples: 0, 
             state: TrackState::Acquisition, 
-            valid_flags: Vec::with_capacity(signal_capacity),
+            valid_flags: Vec::with_capacity(chunk_size_dec),
         }
     }
 }

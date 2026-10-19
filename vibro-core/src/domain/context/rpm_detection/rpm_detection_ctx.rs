@@ -1,4 +1,4 @@
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx, group_delay_samples};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx, ValidityDetectorCtx, group_delay_samples};
 
 ///
 /// Агрегирующий контекст конвейера обработки сигналов (DSP Pipeline) для оценки частоты вращения (RPM).
@@ -59,6 +59,7 @@ impl RpmDetectionCtx {
             complex_local_oscillator: ComplexLocalOscillatorCtx::new(chunk_dec),
             lpf_tracking_band: LPFTrackingBandCtx::new(f_sample_dec, chunk_dec, f_cutoff),
             instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, delay),
+            validity_detector: ValidityDetectorCtx::new(chunk_dec)
         }
     }
 }
