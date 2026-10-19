@@ -1,4 +1,5 @@
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, InstantShaftPhaseCtx, LPFTrackingBandCtx, ValidityDetectorCtx};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx, group_delay_samples};
+
 ///
 /// Агрегирующий контекст конвейера обработки сигналов (DSP Pipeline) для оценки частоты вращения (RPM).
 ///
@@ -46,28 +47,18 @@ impl RpmDetectionCtx {
     /// из-за выделения памяти на куче (heap allocations) во время обработки потока данных.
     ///
     /// # Аргументы
-    /// * `sample_rate` - Исходная частота дискретизации входного сигнала (например, 320000.0 Гц).
-    /// * `samples_capacity` - Размер входящего чанка данных в отсчетах (используется для расчета емкости буферов).
-    /// * `factor` - Коэффициент прореживания `M` для блока децимации.
-    pub fn new(
-        sample_rate: f64, 
-        samples_capacity: usize, 
-        factor: usize,
-    ) -> Self {
+    /// * `f_sample` - Частота дискретизации АЦП.
+    /// * `chunk_size` - Размер пакета АЦП в отсчётах.
+    /// * `factor` - Коэффициент децимации `M`.
+    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64) -> Self {
+        let f_sample_dec = f_sample.decimated(factor);
+        let chunk_dec = chunk_size / factor + 1; // а не 512: после децимации ≈26
+        let delay = group_delay_samples(f_cutoff, f_sample_dec);
         Self {
-            decimation: DecimationCtx::new(
-                sample_rate, 
-                samples_capacity, 
-                factor
-            ),
-            // Выделяем память под комплексный сигнал на основе размера чанка
-            complex_local_oscillator: ComplexLocalOscillatorCtx::new(samples_capacity),
-            lpf_tracking_band: LPFTrackingBandCtx::new(
-                sample_rate,
-                samples_capacity,
-            ),
-            instant_shaft_phase: InstantShaftPhaseCtx::new(samples_capacity),
-            validity_detector: ValidityDetectorCtx::new(samples_capacity),
+            decimation: DecimationCtx::new(f_sample, chunk_size, factor),
+            complex_local_oscillator: ComplexLocalOscillatorCtx::new(chunk_dec),
+            lpf_tracking_band: LPFTrackingBandCtx::new(f_sample_dec, chunk_dec, f_cutoff),
+            instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, delay),
         }
     }
 }

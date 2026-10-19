@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 /// Контекст и выходные буферы модуля вычисления мгновенной фазы вала.
 ///
 /// Структура инкапсулирует массив рассчитанных абсолютных углов поворота вала. 
@@ -10,6 +12,40 @@ pub struct InstantShaftPhaseCtx {
     /// в полуоткрытом интервале [0, 2 * PI). Буфер полностью обновляется (очищается через clear()) 
     /// на каждом вызове вычислительного узла `eval` для текущего чанка данных.
     pub shaft_phase: Vec<f64>,
+    /// Развёрнутая (непрерывная) фаза вала, рад: `turns · 2π + shaft_phase`.
+    /// Параллельна `shaft_phase`, очищается на каждом `eval`.
+    /// Первый отсчёт после старта равен своей свёрнутой фазе (`turns = 0`).
+    pub shaft_phase_unwrapped: Vec<f64>,
+    /// Флаг готовности фазы для каждого отсчёта пакета (параллелен `shaft_phase`).
+    ///
+    /// `false`, пока линия задержки `phi_delay` заполняется: первые `delay_samples`
+    /// отсчётов после создания контекста или после [`Self::reset`]. В этих позициях
+    /// `shaft_phase` и `shaft_phase_unwrapped` содержат заглушку `0.0`, а не фазу вала.
+    /// Это только признак прогрева; итоговую валидность (наличие сигнала, допустимая `δ`)
+    /// определяет `ValidityDetector`, потребителю нужно `valid && ready`.
+    pub ready: Vec<bool>,
+    /// Линия задержки фазы гетеродина `phi_het` (FIFO).
+    ///
+    /// Нужна, чтобы складывать `atan2` огибающей с фазой гетеродина того же момента времени:
+    /// выход ФНЧ запаздывает на `delay_samples`, поэтому фаза гетеродина берётся с таким же
+    /// запаздыванием. Длина очереди между вызовами `eval` равна `delay_samples` (после
+    /// прогрева), хранится в контексте, чтобы переживать границы пакетов.
+    /// Очищается в [`Self::reset`].
+    pub phi_delay: VecDeque<f64>,
+    /// Задержка выравнивания в отсчётах после децимации.
+    ///
+    /// Равна групповой задержке каскада ФНЧ на нулевой частоте
+    /// `D = (1/Q1 + 1/Q2) / (2π·fc) · f_sample_dec` (см. `group_delay_samples`),
+    /// около 1901 отсчёта при `fc = 3.5 Гц` и `f_sample_dec = 16 кГц`.
+    /// Определяет латентность выхода: `shaft_phase[n]` относится к моменту
+    /// `n − delay_samples`, то есть опаздывает на `delay_samples / f_sample_dec` секунд.
+    /// `0` отключает задержку (все отсчёты сразу готовы).
+    pub delay_samples: usize,
+    /// Свёрнутая фаза последнего отсчёта прошлого пакета. `NaN` до первого отсчёта.
+    pub prev_phase: f64,
+    /// Накопленное число полных оборотов (со знаком). Целое, чтобы не терять точность `f64`
+    /// на длинных прогонах.
+    pub turns: i64,
 }
 //
 impl InstantShaftPhaseCtx {
@@ -20,12 +56,24 @@ impl InstantShaftPhaseCtx {
     /// высоконагруженного DSP-конвейера.
     ///
     /// # Аргументы
-    /// * `samples_capacity` - Ожидаемый максимальный размер выходного чанка прореженного сигнала 
+    /// * `chunk_size_dec` - Ожидаемое число отсчётов децимированного сигнала в одном пакете.
     ///   в отсчетах (используется для предрасчета размера буфера `shaft_phase`).
-    pub fn new(samples_capacity: usize) -> Self {
-        Self { 
-            shaft_phase: Vec::with_capacity(samples_capacity) 
+    pub fn new(chunk_size_dec: usize, delay_samples: usize) -> Self {
+        Self {
+            shaft_phase: Vec::with_capacity(chunk_size_dec),
+            shaft_phase_unwrapped: Vec::with_capacity(chunk_size_dec),
+            ready: Vec::with_capacity(chunk_size_dec),
+            phi_delay: VecDeque::with_capacity(delay_samples + chunk_size_dec + 1),
+            delay_samples,
+            prev_phase: f64::NAN,
+            turns: 0,
         }
+    }
+    /// Сброс при потере сигнала / переходе в Acquisition.
+    pub fn reset(&mut self) {
+        self.phi_delay.clear();
+        self.prev_phase = f64::NAN;
+        self.turns = 0;
     }
 }
 //
@@ -35,9 +83,5 @@ impl Default for InstantShaftPhaseCtx {
     /// Выходной вектор инициализируется с нулевой емкостью без выделения памяти на куче. 
     /// Для промышленной потоковой обработки рекомендуется использовать метод `new` во избежание 
     /// динамических реаллокаций памяти в "горячем" цикле расчетов.
-    fn default() -> Self {
-        Self {
-            shaft_phase: Vec::new(),
-        }
-    }
+    fn default() -> Self { Self::new(0, 0) }
 }

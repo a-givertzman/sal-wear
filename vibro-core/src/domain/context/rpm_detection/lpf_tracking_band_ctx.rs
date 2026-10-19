@@ -1,11 +1,5 @@
 use rustfft::num_complex::Complex;
-use crate::Biquad;
-/// Фиксированная частота среза (Fc) фильтра полосы слежения, Гц.
-/// 
-/// Задает общую границу пропускания низких частот для каскада биквадов. 
-/// Значение 3.5 Гц выбрано оптимально для устойчивого трекинга динамики 
-/// изменения RPM и глубокого подавления промышленных помех.
-const F_CUTOFF: f64 = 3.5;
+use crate::{Biquad, FSampleDec};
 /// Добротность (Q) первого биквадратного звена для каскадного ФНЧ Баттерворта 4-го порядка.
 const Q_FACTOR_1: f64 = 0.5412;
 /// Добротность (Q) второго биквадратного звена для каскадного ФНЧ Баттерворта 4-го порядка.
@@ -14,6 +8,12 @@ const Q_FACTOR_1: f64 = 0.5412;
 /// аналоговый прототип Баттерворта 4-го порядка с максимально плоской 
 /// амплитудно-частотной характеристикой (АЧХ) в полосе пропускания.
 const Q_FACTOR_2: f64 = 1.3066;
+/// Групповая задержка каскада на нулевой частоте, в отсчётах после децимации.
+/// D = (1/Q1 + 1/Q2) / (2π·fc) · f_sample_dec  (производная ФЧХ по ω при ω → 0).
+pub fn group_delay_samples(f_cutoff: f64, f_sample_dec: FSampleDec<f64>) -> usize {
+    let tau = (1.0 / Q_FACTOR_1 + 1.0 / Q_FACTOR_2) / (2.0 * std::f64::consts::PI * f_cutoff);
+    (tau * f_sample_dec.value()).round() as usize
+}
 /// Контекст и состояние фиксированного ФНЧ полосы слежения.
 ///
 /// Структура инкапсулирует два последовательно соединенных звена второго порядка 
@@ -30,6 +30,9 @@ pub struct LPFTrackingBandCtx {
     /// Буфер полностью очищается на каждом цикле обработки (`eval`) и не накапливает 
     /// историю отсчетов между чанками данных.
     pub filtered_signal: Vec<Complex<f64>>,
+    /// Амплитуда огибающей `A[n] = sqrt(I² + Q²)` для детектора валидности.
+    /// Параллельна `filtered_signal`, очищается на каждом `eval`.
+    pub amplitude: Vec<f64>,
 }
 //
 impl LPFTrackingBandCtx {
@@ -41,16 +44,29 @@ impl LPFTrackingBandCtx {
     /// во время работы высоконагруженного DSP-конвейера.
     ///
     /// # Аргументы
-    /// * `f_sample` - Внутренняя рабочая частота дискретизации сигнала (для конвейера — 16 000 Гц)
-    /// * `signal_capacity` - Ожидаемое количество отсчетов прореженного сигнала в одном чанке
+    /// * `f_sample_dec` - Частота дискретизации после децимации.
+    /// * `chunk_size_dec` - Ожидаемое число отсчётов децимированного сигнала в одном пакете.
+    /// * `f_cutoff` - Частота среза одного ФНЧ, Гц. Равна `B/2`, где `B` — полная полоса слежения,
+    ///   вычисляемая в конфиге по формуле раздела 4, п. 2 (`RpmDetectionConf::tracking_cutoff_hz`).
+    ///
+    /// # Panics
+    /// Если `f_cutoff` не лежит в `(0, f_sample_dec / 10)`: иначе фильтр численно неустойчив
+    /// или не имеет смысла (опечатка в конфиге).
     pub fn new(
-        f_sample: f64, 
-        signal_capacity: usize
+        f_sample_dec: FSampleDec<f64>, 
+        chunk_size_dec: usize,
+        f_cutoff: f64,
     ) -> Self {
+        assert!(
+            f_cutoff > 0.0 && f_cutoff < f_sample_dec.value() / 10.0,
+            "LPFTrackingBandCtx::new | f_cutoff = {f_cutoff} Гц вне допустимого диапазона для f_sample_dec = {} Гц",
+            f_sample_dec.value()
+        );
         Self { 
-            stage1: Biquad::new(F_CUTOFF, f_sample, Q_FACTOR_1), 
-            stage2: Biquad::new(F_CUTOFF, f_sample, Q_FACTOR_2), 
-            filtered_signal: Vec::with_capacity(signal_capacity),
+            stage1: Biquad::new(f_cutoff, f_sample_dec.value(), Q_FACTOR_1), 
+            stage2: Biquad::new(f_cutoff, f_sample_dec.value(), Q_FACTOR_2), 
+            filtered_signal: Vec::with_capacity(chunk_size_dec),
+            amplitude: Vec::with_capacity(chunk_size_dec),
         }
     }
 }
@@ -66,6 +82,7 @@ impl Default for LPFTrackingBandCtx {
             stage1: Default::default(),
             stage2: Default::default(),
             filtered_signal: Default::default(),
+            amplitude: Default::default(),
         }
     }
 }
