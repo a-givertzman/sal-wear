@@ -85,9 +85,9 @@ where
         // Очищаем динамический выходной буфер флагов текущего чанка перед заполнением
         v.valid_flags.clear();
         // Поотсчетный цикл амплитудного детектора с гистерезисом
-        for y in ctx.rpm_detection.lpf_tracking_band.filtered_signal.iter() {
-            // Вычисляем математический модуль (длину) комплексного вектора огибающей 1X
-            let a = y.norm();
+        let lpf = &ctx.rpm_detection.lpf_tracking_band;
+        let ph = &ctx.rpm_detection.instant_shaft_phase;
+        for (n, &a) in lpf.amplitude.iter().enumerate() {
             // Логика двухпорогового компаратора
             if v.valid {
                 if a < self.a_low { 
@@ -103,7 +103,7 @@ where
                 v.invalid_samples += 1; 
             }
             // Логируем мгновенный статус валидности для каждого отсчета текущего пакета
-            v.valid_flags.push(v.valid);
+            v.valid_flags.push(v.valid && ph.ready[n]);
         }
         // Финальный автомат переключения глобального состояния вычислительного ядра
         v.state = if v.valid {
