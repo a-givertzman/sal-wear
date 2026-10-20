@@ -40,7 +40,8 @@ fn phase_is_atan2_plus_phi_het() {
         (-1.0f64 + 0.2).rem_euclid(2.0 * PI),
     ];
     for (o, e) in out.iter().zip(expected.iter()) {
-        assert!((o - e).abs() < 1e-12, "получено {o}, ожидалось {e}");
+        let val = o.clone().value().unwrap();
+        assert!((val - e).abs() < 1e-12, "получено {}, ожидалось {e}", val);
     }
 }
 ///
@@ -53,8 +54,9 @@ fn phase_is_in_range() {
     ctx.rpm_detection.complex_local_oscillator.phi_het = (0..100).map(|k| k as f64 * 0.11).collect();
     ctx = node().eval(ctx);
     assert_eq!(ctx.rpm_detection.instant_shaft_phase.shaft_phase.len(), 100);
-    for &p in &ctx.rpm_detection.instant_shaft_phase.shaft_phase {
-        assert!((0.0..2.0 * PI).contains(&p), "вне диапазона: {p}");
+    for p in &ctx.rpm_detection.instant_shaft_phase.shaft_phase {
+        let val = p.clone().value().unwrap();
+        assert!((0.0..2.0 * PI).contains(&val), "вне диапазона: {val}");
     }
 }
 ///
@@ -104,7 +106,9 @@ fn phase_rate_equals_true_frequency_for_any_f_het() {
         assert_eq!(ph.len(), n);
         let mut unwrapped = 0.0;
         for w in ph.windows(2) {
-            let mut d = w[1] - w[0];
+            let val1 = w[1].clone().value().unwrap();
+            let val2 = w[0].clone().value().unwrap();
+            let mut d = val1 - val2;
             if d > PI { d -= 2.0 * PI; }
             if d < -PI { d += 2.0 * PI; }
             unwrapped += d;
@@ -159,8 +163,9 @@ fn delayed_identity_exact_for_any_f_het() {
         let out = &ctx.rpm_detection.instant_shaft_phase;
         for k in d..n {
             let exp = 2.0 * PI * f_true * (k as f64 - d as f64) / FS + th0;
+            let shaft_phase = out.shaft_phase[k].clone().value().unwrap();
             assert!(out.ready[k]);
-            assert!(wrap(out.shaft_phase[k] - exp).abs() < 1e-9, "f_het={f_het}, n={k}");
+            assert!(wrap(shaft_phase - exp).abs() < 1e-9, "f_het={f_het}, n={k}");
         }
     }
 }
@@ -178,7 +183,8 @@ fn without_delay_error_is_two_pi_delta_d() {
     let ctx = node().eval(ctx_for(0, filtered, phi));
     let k = n - 1;
     let truth_now = 2.0 * PI * f_true * k as f64 / FS;
-    let err = wrap(ctx.rpm_detection.instant_shaft_phase.shaft_phase[k] - truth_now).abs();
+    let shaft_phase = ctx.rpm_detection.instant_shaft_phase.shaft_phase[k].clone().value().unwrap();
+    let err = wrap(shaft_phase - truth_now).abs();
     let expected = 2.0 * PI * delta * d as f64 / FS;
     assert!((err - expected).abs() < 1e-9, "ошибка {err}, ожидалось {expected}");
 }
@@ -212,7 +218,9 @@ fn unwrap_persists_between_chunks() {
     }
     assert_eq!(unwrapped.len(), truth.len());
     for w in unwrapped.windows(2) {
-        assert!((w[1] - w[0] - 0.1).abs() < 1e-9, "скачок на стыке пакетов: {}", w[1] - w[0]);
+        let val1 = w[1].clone().value().unwrap();
+        let val2 = w[0].clone().value().unwrap();
+        assert!((val1 - val2 - 0.1).abs() < 1e-9, "скачок на стыке пакетов: {}", val2 - val1);
     }
 }
 
@@ -248,7 +256,8 @@ fn real_filter_residual_error() {
         let ctx = node().eval(ctx_for(d, filtered, phi));
         let k = n - 1;
         let exp = 2.0 * PI * f_true * (k as f64 - d as f64) / FS + th0;
-        wrap(ctx.rpm_detection.instant_shaft_phase.shaft_phase[k] - exp).abs()
+        let shaft_phase = ctx.rpm_detection.instant_shaft_phase.shaft_phase[k].clone().value().unwrap();
+        wrap(shaft_phase - exp).abs()
     };
     for f_het in [49.5, 49.0, 48.0, 47.0] {
         log::debug!("f_het={f_het}, δ={}: ошибка {:.4} рад", 50.0 - f_het, residual(f_het));

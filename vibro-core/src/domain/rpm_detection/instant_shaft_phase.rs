@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 use sal_core::dbg::Dbg;
-use crate::{AngularCtx, Eval, err};
+use crate::{AngularCtx, Eval, PhaseStatus, err};
 use function_name::named;
 /// Вычисление мгновенной фазы вала
 ///
@@ -92,6 +92,7 @@ where
         }
         if filtered.len() != phi_het.len() {
             let (a, b) = (filtered.len(), phi_het.len());
+            out.reset();
             ctx.err = Some(err!(self.dbg, "eval: filtered_signal ({}) != phi_het ({})", a, b));
             return ctx;
         }
@@ -99,23 +100,36 @@ where
             out.phi_delay.push_back(phi_now);
             if out.phi_delay.len() <= out.delay_samples {
                 // Линия задержки еще заполняется: фаза недостоверна.
-                out.shaft_phase.push(0.0);
-                out.shaft_phase_unwrapped.push(0.0);
+                out.shaft_phase.push(crate::PhaseStatus::Invalid);
+                out.shaft_phase_unwrapped.push(crate::PhaseStatus::Invalid);
                 out.ready.push(false);
                 continue;
             }
             let phi = out.phi_delay.pop_front().unwrap();
             let phase = (y.im.atan2(y.re) + phi).rem_euclid(2.0 * PI);
-            // Переход через границу круга: скачок свёрнутой фазы больше π по модулю
-            // означает, что реальное вращение продолжилось в ту же сторону.
-            if out.prev_phase.is_finite() {
-                let d = phase - out.prev_phase;
-                if d < -PI { out.turns += 1; }
-                else if d > PI { out.turns -= 1; }
+            let valid = phase.is_finite();
+            if valid {
+                if out.prev_phase.is_finite() {
+                    // Переход через границу круга: скачок свёрнутой фазы больше π по модулю
+                    // означает, что реальное вращение продолжилось в ту же сторону.
+                    let d = phase - out.prev_phase;
+                    if d < -PI { out.turns += 1; }
+                    else if d > PI { out.turns -= 1; }
+                }
+                out.prev_phase = phase;
+            } else if out.prev_phase.is_finite() {
+                // TODO(P0): при разрыве потока/провале сигнала вал физически проворачивается
+                // на N оборотов, которые мы не отследили. Свёрнутая фаза после восстановления
+                // корректна, но развёрнутая получила бы скачок -N·2π, что ломает ресемплинг в
+                // угловом домене (OrderDomainSamples использует phases[i+1]-phases[i]).
+                // Пока сбрасываем turns И prev_phase, чтобы после восстановления развёрнутая
+                // фаза стартовала от текущей свёрнутой. Решение отложено до
+                // готовности [шага 3.5.](vibro-core/design/rpm-detection-v1.md)
+                out.turns = 0;
+                out.prev_phase = f64::NAN;
             }
-            out.prev_phase = phase;
-            out.shaft_phase.push(phase);
-            out.shaft_phase_unwrapped.push(out.turns as f64 * 2.0 * PI + phase);
+            out.shaft_phase.push(PhaseStatus::from_value(phase));
+            out.shaft_phase_unwrapped.push(PhaseStatus::from_value(out.turns as f64 * 2.0 * PI + phase));
             out.ready.push(true);
         }
         ctx
