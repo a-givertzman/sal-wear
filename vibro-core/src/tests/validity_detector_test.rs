@@ -1,6 +1,5 @@
-use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
-use crate::{Eval, AngularCtx, TrackState, ValidityDetector};
+use crate::{Eval, AngularCtx, TrackState, ValidityDetector, PhaseStatus};
 
 struct DummyChild;
 impl Eval<AngularCtx, AngularCtx> for DummyChild {
@@ -16,24 +15,27 @@ fn node() -> ValidityDetector<DummyChild> {
     ValidityDetector::new(&Dbg::own("validity_test"), DummyChild, A_LOW, A_HIGH, SETTLE)
 }
 
+/// ValidityDetector читает amplitude, сверяет её длину с ready и пишет
+/// PhaseStatus::Invalid в shaft_phase по индексу. Поэтому готовим все буферы
+/// одной длины, имитируя выход InstantShaftPhase.
 fn feed(n: &ValidityDetector<DummyChild>, ctx: AngularCtx, amps: &[f64]) -> AngularCtx {
     let mut ctx = ctx;
-    ctx.rpm_detection.lpf_tracking_band.filtered_signal =
-        amps.iter().map(|&a| Complex::new(a, 0.0)).collect();
+    let len = amps.len();
+    ctx.rpm_detection.lpf_tracking_band.amplitude = amps.to_vec();
+    let ph = &mut ctx.rpm_detection.instant_shaft_phase;
+    ph.ready = vec![true; len];
+    ph.shaft_phase = vec![PhaseStatus::Valid(0.0); len];
+    ph.shaft_phase_unwrapped = vec![PhaseStatus::Valid(0.0); len];
     n.eval(ctx)
 }
-/// Подаём 10 отсчётов амплитуды 1.0. 
-/// Стартовое состояние невалидное, а 1.0 выше a_high, 
-/// поэтому флаг включается. 
-/// Проверяется три вещи: valid == true, state == Valid, 
-/// valid_flags.len() == 10. Тест гарантирует, 
-/// что система вообще может выйти из начального состояния.
+/// Подаём 10 отсчётов амплитуды 1.0. Стартовое состояние невалидное, а 1.0 выше
+/// a_high, поэтому флаг включается. Проверяется: valid == true и state == Valid.
+/// Тест гарантирует, что система может выйти из начального состояния.
 #[test]
 fn becomes_valid_above_high_threshold() {
     let ctx = feed(&node(), AngularCtx::default(), &[1.0; 10]);
     assert!(ctx.rpm_detection.validity_detector.valid);
     assert_eq!(ctx.rpm_detection.validity_detector.state, TrackState::Valid);
-    assert_eq!(ctx.rpm_detection.validity_detector.valid_flags.len(), 10);
 }
 /// Главный тест гистерезиса, две части.
 /// 
@@ -97,18 +99,22 @@ fn invalid_counter_accumulates_across_calls() {
     assert_eq!(ctx.rpm_detection.validity_detector.invalid_samples, 120);
     assert_eq!(ctx.rpm_detection.validity_detector.state, TrackState::Acquisition);
 }
-/// Вход [1.0, 1.0, 0.1, 0.1, 0.5] должен дать флаги [true, true, false, false, true].
-/// Здесь виден гистерезис по отсчётам: 0.5 выше a_high, 
-/// поэтому возврат в true. 
-/// Потом второй вызов с двумя отсчётами даёт valid_flags.len() == 2, 
-/// то есть вектор очищается, а не копится.
+/// Вход [1.0, 1.0, 0.1, 0.1, 0.5] при ready = true даёт shaft_phase
+/// [Valid, Valid, Invalid, Invalid, Valid]: гистерезис виден по отсчётам,
+/// 0.5 выше a_high, поэтому возврат в Valid. Второй вызов пересобирает буфер
+/// заново (len == 2), а не копит.
 #[test]
-fn flags_are_per_sample_and_cleared_each_call() {
+fn phase_status_is_marked_invalid_per_sample() {
     let n = node();
     let ctx = feed(&n, AngularCtx::default(), &[1.0, 1.0, 0.1, 0.1, 0.5]);
-    assert_eq!(ctx.rpm_detection.validity_detector.valid_flags, vec![true, true, false, false, true]);
+    let ph = &ctx.rpm_detection.instant_shaft_phase;
+    assert!(ph.shaft_phase[0].is_valid());
+    assert!(ph.shaft_phase[1].is_valid());
+    assert!(!ph.shaft_phase[2].is_valid());
+    assert!(!ph.shaft_phase[3].is_valid());
+    assert!(ph.shaft_phase[4].is_valid());
     let ctx = feed(&n, ctx, &[1.0, 1.0]);
-    assert_eq!(ctx.rpm_detection.validity_detector.valid_flags.len(), 2);
+    assert_eq!(ctx.rpm_detection.instant_shaft_phase.shaft_phase.len(), 2);
 }
 /// Атрибут #[should_panic]: конструктор с a_low = 0.5, a_high = 0.4 
 /// должен паниковать через assert!(a_high > a_low). 

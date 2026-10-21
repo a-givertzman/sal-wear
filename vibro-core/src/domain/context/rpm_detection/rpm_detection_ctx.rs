@@ -59,7 +59,7 @@ impl RpmDetectionCtx {
             complex_local_oscillator: ComplexLocalOscillatorCtx::new(chunk_dec),
             lpf_tracking_band: LPFTrackingBandCtx::new(f_sample_dec, chunk_dec, f_cutoff),
             instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, delay),
-            validity_detector: ValidityDetectorCtx::new(chunk_dec)
+            validity_detector: ValidityDetectorCtx::new()
         }
     }
 }
