@@ -36,7 +36,12 @@ fn order_domain_stationary_test() {
     let low_range = OrderDomainSamples::new(&dbg, conf.analysis.samples_per_rev(), Pass::new());
     let freqs = [(Frequency::Rpm(1.0), 200)];
     let inputs = Arc::new(MockEventValues::new());
-    let mut ctx = AngularCtx::new(f_sample as f64, chunk_size);
+    let mut ctx = AngularCtx::new(
+        crate::FSample(f_sample as f64), 
+        chunk_size, 
+        conf.analysis.rpm_detection.decimation_factor(crate::FSample(f_sample as f64)), 
+        conf.analysis.rpm_detection.tracking_band_hz()
+    );
     let angular_grid = AngularGrid::new(
         &dbg, chunk_size,
         Autocorrelation::new(
@@ -64,10 +69,11 @@ fn order_domain_stationary_test() {
         let rpm = rpm_start + (rpm_end - rpm_start) * progress_sin;
         udp.parse(rpm, &mut samples);
         inputs.set_rpm(rpm);
-        ctx.push_chunk(&samples);
+        let frame = Frame::raw(Utc::now(), 2048.0, &samples);
+        ctx.push_chunk(&frame);
         let phases;
         (ctx, phases) = angular_grid.eval(ctx);
-        let frame = Frame::new(Utc::now(), 2048f32, &samples, phases);
+        let frame = Arc::new(frame.with_phases(phases));
         i_ctx.update(frame.clone());
         i_ctx.rpm = crate::Rpm(rpm);
         i_ctx = low_range.eval(i_ctx);

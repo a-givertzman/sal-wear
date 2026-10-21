@@ -6,3 +6,5 @@ mod decimation;
 pub use decimation::*;
 mod instant_shaft_phase;
 pub use instant_shaft_phase::*;
+mod validity_detector;
+pub use validity_detector::*;

@@ -89,7 +89,14 @@ where
         let window_size = conf.analysis.n_fft();
         let window_fn = WindowFn::<f32>::kaiser(&dbg, window_size, window_size, 0, 5.65)
             .map_err(|err| err_pass!(dbg, err))?;
-        let angular_ctx = Cell::new(AngularCtx::new(conf.adc.sample_rate_hz, conf.adc.chunk_size));
+        let angular_ctx = Cell::new(AngularCtx::new(
+            crate::FSample(conf.adc.sample_rate_hz), 
+            conf.adc.chunk_size, 
+            conf.analysis.rpm_detection.decimation_factor(
+                crate::FSample(conf.adc.sample_rate_hz)
+            ),
+            conf.analysis.rpm_detection.tracking_cutoff_hz(),
+        )); // VORZHEV Z.A. 13.10.2026
         let low_range_ctx = Cell::new(ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), conf.adc.chunk_size, retain.clone()));
         Ok(Self {
             angular: AngularGrid::new(&dbg, conf.adc.chunk_size,
@@ -130,22 +137,22 @@ where
         })
     }
 }
-impl<T, SqlBuilder> Eval<&[u16], Result<(), Error>> for VibroSensor<T, SqlBuilder>
+impl<T, SqlBuilder> Eval<&Frame<f64>, Result<(), Error>> for VibroSensor<T, SqlBuilder>
 where
     T: EventValueAccess<str, f64>,
     SqlBuilder: Fn(&ImbContext) {
     //
     #[named]
     #[inline]
-    fn eval(&self, samples: &[u16]) -> Result<(), Error> {
+    fn eval(&self, frame: &Frame<f64>) -> Result<(), Error> {
         let ts = chrono::Utc::now();
         let mut angular_ctx = self.angular_ctx.take();
         let mut low_range_ctx = self.low_range_ctx.take();
-        angular_ctx.push_chunk(samples);
+        angular_ctx.push_chunk(frame);
         let phases;
         (angular_ctx, phases) = self.angular.eval(angular_ctx);
-        let frame = Frame::new(ts, self.conf.adc.ds_offset as f32, samples, phases);
-        low_range_ctx.update(frame.clone());
+        let frame = Arc::new(frame.clone().with_phases(phases));
+        low_range_ctx.update(frame);
         low_range_ctx = self.low_range.eval(low_range_ctx);
         if let Some(err) = low_range_ctx.err() {
             self.angular_ctx.set(angular_ctx);

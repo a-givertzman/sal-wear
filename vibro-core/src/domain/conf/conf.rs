@@ -1,6 +1,8 @@
 use std::ops::{Bound, RangeBounds};
 use serde::{Deserialize, Deserializer, Serialize};
 
+use crate::FSample;
+
 /// Главная конфигурация конвейера обработки вибросигнала.
 /// Инкапсулирует базовые аппаратные константы, параметры сетки и границы фильтров.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -18,6 +20,9 @@ pub struct AnalysisConf {
     pub order_tracking: OrderTrackingConf,
     /// Частотные диапазоны для детекторов.
     pub bands: BandsConf,
+    /// Параметры определения RPM и фазы вала
+    #[serde(default)]
+    pub rpm_detection: RpmDetectionConf
 }
 impl AnalysisConf {
     /// ### Плотность угловой дискретизации (сэмплов на оборот).
@@ -97,7 +102,7 @@ pub struct HardwareConf {
     /// Возвращает размер пакета данных, поступающего из АЦП.
     pub chunk_size: usize,
     /// Постоянная составляющая сигнала.
-    pub ds_offset: f64,
+    pub dc_offset: f64,
 }
 
 /// ### Настройки углового домена (Order Tracking).
@@ -207,6 +212,56 @@ where
         Bound::Excluded(val)
     };
     Ok((start, end))
+}
+
+///
+/// Параметры определения RPM и фазы вала
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct RpmDetectionConf {
+    /// Частота дискретизации после децимации, к которой стремимся, Гц.
+    /// Коэффициент децимации M = ⌊f_sample / f_sample_dec_target⌋. По умолчанию 16000.
+    pub f_sample_dec_target_hz: f64,
+    /// |ḟ|_max: максимальная скорость изменения частоты вала, Гц/с.
+    pub max_freq_rate_hz_s: f64,
+    /// τ_net: задержка сетевого RPM, с.
+    pub tau_net_s: f64,
+    /// T_update: период обновления сетевого RPM, с.
+    pub t_update_s: f64,
+    /// |Δf_net|: максимальная ошибка сетевого RPM, Гц.
+    pub delta_f_net_hz: f64,
+    /// B_запас: запас по полосе, Гц.
+    pub band_margin_hz: f64,
+}
+impl RpmDetectionConf {
+    /// Коэффициент децимации M = ⌊f_sample / f_sample_dec_target⌋.
+    pub fn decimation_factor(&self, f_sample: FSample<f64>) -> usize {
+        let m = (f_sample.value() / self.f_sample_dec_target_hz).floor() as usize;
+        assert!(m >= 1, "f_sample ({}) меньше целевой f_sample_dec ({})", f_sample.value(), self.f_sample_dec_target_hz);
+        m
+    }
+    /// Полная полоса слежения B, Гц
+    /// B ≥ |ḟ|_max·(τ_net + T_update) + |Δf_net| + B_запас.
+    pub fn tracking_band_hz(&self) -> f64 {
+        let b = self.max_freq_rate_hz_s * (self.tau_net_s + self.t_update_s)
+            + self.delta_f_net_hz + self.band_margin_hz;
+        assert!(b > 0.0); 
+        return b
+    }
+    /// Частота среза одного ФНЧ: B/2.
+    pub fn tracking_cutoff_hz(&self) -> f64 { self.tracking_band_hz() / 2.0 }
+}
+impl Default for RpmDetectionConf {
+    fn default() -> Self {
+        Self { 
+            f_sample_dec_target_hz: 16000.0, 
+            max_freq_rate_hz_s: 2.0, 
+            tau_net_s: 0.5, 
+            t_update_s: 0.5, 
+            delta_f_net_hz: 3.0, 
+            band_margin_hz: 2.0  
+        }
+    }
 }
 
 ///

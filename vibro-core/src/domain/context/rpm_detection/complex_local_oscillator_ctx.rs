@@ -13,12 +13,12 @@ pub struct ComplexLocalOscillatorCtx {
     /// Массив значений накопленной фазы гетеродина `phi_het[n]` для каждого отсчета в рамках текущего чанка.
     /// 
     /// Используется для ведения истории изменения фазы, диагностики и последующих этапов демодуляции.
-    pub phi_net: Vec<f64>,
+    pub phi_het: Vec<f64>,
     /// Конечное значение накопленной фазы гетеродина на последнем отсчете текущего чанка.
     /// 
     /// Является критически важным базовым состоянием. Переносится в качестве начального значения фазы 
     /// для следующего чанка данных, обеспечивая непрерывность интеграла скорости вала и исключая скачки фазы.
-    pub phi_last: f64,
+    pub phi_het_last: f64,
 }
 //
 impl ComplexLocalOscillatorCtx {
@@ -28,12 +28,12 @@ impl ComplexLocalOscillatorCtx {
     /// высоконагруженного цикла гетеродинирования.
     ///
     /// # Аргументы
-    /// * `samples_capacity` - Размер входящего чанка данных в отсчетах (используется для расчета емкости буферов).
-    pub fn new(signal_len: usize) -> Self {
+    /// * `chunk_size` - Размер входящего чанка данных в отсчетах (используется для расчета емкости буферов).
+    pub fn new(chunk_size: usize) -> Self {
         Self { 
-            complex_signal: Vec::with_capacity(signal_len), 
-            phi_net: Vec::with_capacity(signal_len), 
-            phi_last: 0.0, 
+            complex_signal: Vec::with_capacity(chunk_size), 
+            phi_het: Vec::with_capacity(chunk_size), 
+            phi_het_last: 0.0, 
         }
     }
 }
@@ -45,8 +45,8 @@ impl Default for ComplexLocalOscillatorCtx {
     fn default() -> Self {
         Self {
             complex_signal: Vec::new(),
-            phi_net: Vec::new(),
-            phi_last: 0.0,
+            phi_het: Vec::new(),
+            phi_het_last: 0.0,
         }
     }
 }

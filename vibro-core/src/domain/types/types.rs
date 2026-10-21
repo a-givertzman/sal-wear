@@ -138,6 +138,30 @@ impl<T: Float + Default> Default for Rpm<T> {
     }
 }
 
+///
+/// f_sample | Частота дискретизации АЦП.
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct FSample<T: Float>(pub T);
+impl<T: Float> FSample<T> {
+    #[inline] pub fn value(self) -> T { self.0 }
+    /// Частота после децимации с коэффициентом `factor`.
+    #[inline] pub fn decimated(self, factor: usize) -> FSampleDec<T> {
+        FSampleDec(self.0 / T::from(factor).unwrap())
+    }
+}
+
+///
+/// f_sample_dec | Частота дискретизации после децимации.
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct FSampleDec<T: Float>(pub T);
+impl<T: Float> FSampleDec<T> {
+    #[inline] pub fn value(self) -> T { self.0 }
+}
+
 super::impl_math!(Rms);
 super::impl_math!(Phase);
 super::impl_math!(Rpm);
+super::impl_math!(FSample);
+super::impl_math!(FSampleDec);

@@ -1,7 +1,7 @@
-use std::{f64::consts::PI, println};
+use std::{f64::consts::PI};
 use rustfft::num_complex::Complex;
 use sal_core::dbg::Dbg;
-use crate::{Biquad, Eval, AngularCtx, LPFTrackingBand};
+use crate::{AngularCtx, Biquad, Conf, Eval, FSample, LPFTrackingBand};
 ///
 /// Заглушка для интерфейса `Child`
 struct DummyChild;
@@ -12,8 +12,8 @@ impl Eval<AngularCtx, AngularCtx> for DummyChild {
 const F: f64 = 320000.0;
 const DECIMATION_COEFF: f64 = 20.0;
 const FS: f64 = F / DECIMATION_COEFF;   // частота после децимации
-const BAND_HZ: f64 = 7.0;  // полоса B, 
-const F_CUTOFF: f64 = 3.5; // Граница от нуля до края полосы (частоты после Гетеродина)
+const BAND_HZ: f64 = 7.0;
+const F_CUTOFF: f64 = BAND_HZ / 2.0;
 ///
 /// Инициализация фильтра ФНЧ
 fn make_filter() -> LPFTrackingBand<DummyChild> {
@@ -24,10 +24,38 @@ fn make_filter() -> LPFTrackingBand<DummyChild> {
 /// Контекст с настроенным каскадом Баттерворта 4-го порядка.
 fn make_ctx() -> AngularCtx {
     let mut ctx = AngularCtx::default();
-    let f_cutoff = BAND_HZ / 2.0;
-    ctx.rpm_detection.lpf_tracking_band.stage1 = Biquad::new(f_cutoff, FS, 0.5412);
-    ctx.rpm_detection.lpf_tracking_band.stage2 = Biquad::new(f_cutoff, FS, 1.3066);
+    ctx.rpm_detection.lpf_tracking_band.stage1 = Biquad::new(F_CUTOFF, FS, 0.5412);
+    ctx.rpm_detection.lpf_tracking_band.stage2 = Biquad::new(F_CUTOFF, FS, 1.3066);
     ctx
+}
+fn prod_ctx() -> AngularCtx {
+        let conf: Conf = serde_yaml::from_str(r#"
+            adc:
+                sample-rate-hz: 320000
+                chunk-size: 512
+                dc-offset: 2048
+            analysis:
+                order-tracking:
+                    max-order: 300
+                    order-resolution: 0.01
+                bands:
+                    low-order: 0.5..10.0
+                    mid-hz: ..5000
+                    high-hz: 5000..10000
+                rpm-detection:
+                    f-sample-dec-target-hz: 16000
+                    max-freq-rate-hz-s: 2.0
+                    tau-net-s: 0.5
+                    t-update-s: 0.5
+                    delta-f-net-hz: 3.0
+                    band-margin-hz: 2.0
+    "#).unwrap();
+    let f_sample = FSample(conf.adc.sample_rate_hz);
+    let rd = &conf.analysis.rpm_detection;
+    let factor = rd.decimation_factor(f_sample);
+    let f_cutoff = rd.tracking_cutoff_hz();
+    assert!((f_cutoff - F_CUTOFF).abs() < 1e-12, "конфиг дал fc = {f_cutoff}, тест ждёт {F_CUTOFF}");
+    AngularCtx::new(f_sample, conf.adc.chunk_size, factor, f_cutoff)
 }
 ///
 /// Симуляция гетеродированного сигнала: I/Q
@@ -49,6 +77,28 @@ fn run(f: f64, seconds: f64) -> f64 {
     let chunk = 13;
     let mut peak = 0.0f64;
     let mut k = 0;
+    let mut n = 0usize;
+    while k < total {
+        ctx.rpm_detection.complex_local_oscillator.complex_signal = tone(f, k, chunk);
+        ctx = filter.eval(ctx);
+        if k > total * 3 / 4 {
+            n += ctx.rpm_detection.lpf_tracking_band.filtered_signal.len();
+            for y in &ctx.rpm_detection.lpf_tracking_band.filtered_signal {
+                peak = peak.max(y.norm());
+            }
+        }
+        k += chunk;
+    }
+    assert!(n > 1000, "собрано слишком мало точек: {n}");
+
+    peak
+}
+fn run_with(ctx: AngularCtx, f: f64, seconds: f64) -> f64 {
+    let filter = make_filter();
+    let mut ctx = ctx;
+    let total = (FS * seconds) as usize;
+    let chunk = 13;
+    let (mut peak, mut k) = (0.0f64, 0usize);
     while k < total {
         ctx.rpm_detection.complex_local_oscillator.complex_signal = tone(f, k, chunk);
         ctx = filter.eval(ctx);
@@ -71,7 +121,7 @@ fn run(f: f64, seconds: f64) -> f64 {
 #[test]
 fn passes_low_frequency() {
     let amp = run(0.5, 20.0);
-    let target_amp = 1.0; // Основное тригонометрической тождество: cos(x) + sin(x) = 1
+    let target_amp = 1.0; // Основное тригонометрической тождество: cos(x)^2 + sin(x)^2 = 1
     assert!((amp - target_amp).abs() < 0.05, "0.5 Гц должна проходить, амплитуда = {amp}");
 }
 ///
@@ -84,15 +134,19 @@ fn passes_low_frequency() {
 fn rejects_far_frequency_fourth_order() {
     let f = 50.0;
     let amp = run(f, 20.0);
-    let target_amp = 1.0 / (f / F_CUTOFF).powf(4.0); 
-    assert!((amp - target_amp).abs() < 1e-3, "50 Гц должна подавляться каскадом из 2 секций, амплитуда = {amp}");
+    let target_amp = (F_CUTOFF / f).powi(4); // ≈ 2.4e-5
+    // 4-й порядок: ожидание ±3×. Один биквад дал бы ≈ 5e-3, то есть в ~200 раз больше.
+    assert!(
+        amp < target_amp * 3.0 && amp > target_amp / 3.0,
+        "50 Гц: амплитуда {amp}, ожидалось ≈{target_amp}"
+    );
 }
 ///
 /// Амплитуда (коэффициент передачи) фильтра Баттерворта 
 /// на частоте среза всегда равна 1/sqrt(2) независимо от порядка фильтра [n].
 #[test]
 fn cutoff_is_minus_3db() {
-    let amp = run(3.5, 20.0);
+    let amp = run(F_CUTOFF, 20.0);
     assert!((amp - 0.707).abs() < 0.03, "на fc ожидается ≈0.707, амплитуда = {amp}");
 }
 ///
@@ -133,7 +187,7 @@ fn state_persists_between_frames() {
 ///
 /// Подаём сигнал только в канал I (Q=0 на входе), проверяем, 
 /// что на выходе Q остаётся пренебрежимо малым. 
-/// Биквад — линейная система с раздельными состояниями w1_i/w2_i и w1_q/w2_q, 
+/// Биквад — линейная система с раздельными состояниями s1_i/s2_i и s1_q/s2_q, 
 /// поэтому канал I физически не должен влиять на канал Q, 
 /// только на свой собственный выход. Это защита от возможной ошибки, 
 /// при которой состояния случайно перепутались бы местами или использовались совместно.
@@ -147,4 +201,55 @@ fn iq_channels_are_independent() {
     for y in &ctx.rpm_detection.lpf_tracking_band.filtered_signal {
         assert!(y.im.abs() < 1e-12, "Q-канал получил сигнал из I: {}", y.im);
     }
+}
+///
+/// AngularCtx::new(f_sample, chunk) настраивает биквады на f_sample_dec = 16 кГц, а не на 320 кГц.
+/// Признаки: коэффициент передачи ≈0.707 на fc.
+#[test]
+fn production_ctx_uses_decimated_sample_rate() {
+    let at_fc = run_with(prod_ctx(), F_CUTOFF, 20.0);
+    assert!(
+        (at_fc - 0.7071).abs() < 0.03,
+        "на fc ожидалось 0.707, получено {at_fc}: биквады настроены не на f_sample_dec"
+    );
+}
+///
+/// Численная устойчивость: 10 минут при 16 кГц (9.6 млн отсчётов).
+/// Выход конечен, ограничен, амплитуда в начале и в конце совпадает.
+#[test]
+fn long_run_is_numerically_stable() {
+    let filter = make_filter();
+    let mut ctx = prod_ctx();
+    let total = (FS * 600.0) as usize;
+    let chunk = 13;
+    let (mut early, mut late) = (0.0f64, 0.0f64);
+    let mut k = 0usize;
+    while k < total {
+        ctx.rpm_detection.complex_local_oscillator.complex_signal = tone(0.5, k, chunk);
+        ctx = filter.eval(ctx);
+        for y in &ctx.rpm_detection.lpf_tracking_band.filtered_signal {
+            let a = y.norm();
+            assert!(a.is_finite() && a < 1.1, "расходимость на отсчёте {k}: {a}");
+            if k > total / 10 && k < total / 5 { early = early.max(a); }
+            if k > total * 9 / 10 { late = late.max(a); }
+        }
+        k += chunk;
+    }
+    assert!(early > 0.9, "сигнал не прошёл: {early}");
+    assert!((early - late).abs() < 1e-6, "дрейф амплитуды: {early} → {late}");
+}
+///
+/// Пустой complex_signal: filtered_signal пуст, паники нет, состояние не испорчено.
+#[test]
+fn empty_input_gives_empty_output() {
+    let filter = make_filter();
+    let mut ctx = prod_ctx();
+    ctx.rpm_detection.complex_local_oscillator.complex_signal.clear();
+    ctx = filter.eval(ctx);
+    assert!(ctx.err.is_none());
+    assert!(ctx.rpm_detection.lpf_tracking_band.filtered_signal.is_empty());
+    assert!(ctx.rpm_detection.lpf_tracking_band.amplitude.is_empty());
+    // после пустого пакета фильтр продолжает работать корректно
+    let amp = run_with(ctx, 0.5, 20.0);
+    assert!((amp - 1.0).abs() < 0.05, "состояние испорчено пустым пакетом: {amp}");
 }
