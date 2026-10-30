@@ -56,7 +56,6 @@ impl RpmDetectionCtx {
     /// * `f_sample` - Частота дискретизации АЦП.
     /// * `chunk_size` - Размер пакета АЦП в отсчётах.
     /// * `factor` - Коэффициент децимации `M`.
-    /// * `raw_rpm` - Приблизительная частота вращения с тахометра (об/мин).
     pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64) -> Self {
         let f_sample_dec = f_sample.decimated(factor);
         let chunk_dec = chunk_size / factor + 1; // а не 512: после децимации ≈26

@@ -77,7 +77,7 @@ mod capture_mode {
 
         // Так как valid == true, вычисления не должны изменять флаг и частоту
         assert_eq!(res_ctx.rpm_detection.capture_mode.is_updated, false);
-        assert_eq!(res_ctx.rpm_detection.capture_mode.f_precise, 0.0);
+        assert_eq!(res_ctx.rpm_detection.capture_mode.f_precise, Some(0.0));
     }
     /// Тест 5: В режиме аварии (valid == false) и сильном сигнале частота должна успешно захватываться.
     #[test]
@@ -103,7 +103,7 @@ mod capture_mode {
         // Проверяем успешность захвата
         assert_eq!(res_ctx.rpm_detection.capture_mode.is_updated, true);
         // Точность интерполяции должна найти наши 50.2 Гц с высокой точностью
-        assert!((res_ctx.rpm_detection.capture_mode.f_precise - f_real).abs() < 0.05);
+        assert!((res_ctx.rpm_detection.capture_mode.f_precise.unwrap() - f_real).abs() < 0.05);
     }
     /// Тест 6: Фильтрация по NOIZE_THRESHOLD. Слабый сигнал ниже порога должен игнорироваться.
     #[test]

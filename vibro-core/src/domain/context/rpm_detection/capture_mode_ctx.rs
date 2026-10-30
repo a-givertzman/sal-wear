@@ -15,7 +15,7 @@ pub const NOIZE_THRESHOLD: f64 = 5.0;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CaptureModeCtx {
     /// Точная вычисленная частота f_precise после параболической интерполяции.
-    pub f_precise: f64,
+    pub f_precise: Option<f64>,
     /// Полуширина окна поиска вокруг базовой частоты гетеродина f в Герцах.
     /// Определяет границы сканирования: f - delat_F, f + delta_F
     pub search_half_window_hz: f64,
@@ -34,7 +34,7 @@ impl CaptureModeCtx {
     /// * `steps` — Количество шагов сканирования в одну сторону (минумум 1).
     pub fn new(half_window: f64, steps: usize) -> Self {
         Self {
-            f_precise: 0.0,
+            f_precise: None,
             search_half_window_hz: half_window.abs(),
             search_steps: steps.max(1),
             is_updated: false,
@@ -44,7 +44,7 @@ impl CaptureModeCtx {
     /// Сбрасывает вычисленную частоту и флаги обновления в исходное состояние.
     /// Вызывается принудительно при полной потере сигнала или переинициализации трекера.
     pub fn reset(&mut self) {
-        self.f_precise = 0.0;
+        self.f_precise = None;
         self.is_updated = false;
     }
     ///
@@ -66,7 +66,7 @@ impl Default for CaptureModeCtx {
     /// (шаг сетки delta_f = 0.4 Гц, всего 11 расчетных точек).
     fn default() -> Self {
         Self {
-            f_precise: 0.0,
+            f_precise: Some(0.0),
             search_half_window_hz: 2.0,
             search_steps: 5,
             is_updated: false,

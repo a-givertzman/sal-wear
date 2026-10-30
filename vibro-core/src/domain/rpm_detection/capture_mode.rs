@@ -144,7 +144,7 @@ where
             );
             // Обновление состояния контекста режима захвата
             if f_precise.is_finite() && f_precise > 0.0 && max_amp > NOIZE_THRESHOLD {
-                ctx.rpm_detection.capture_mode.f_precise = f_precise;
+                ctx.rpm_detection.capture_mode.f_precise = Some(f_precise);
                 ctx.rpm_detection.capture_mode.is_updated = true;
             } else {
                 ctx.rpm_detection.capture_mode.is_updated = false;
