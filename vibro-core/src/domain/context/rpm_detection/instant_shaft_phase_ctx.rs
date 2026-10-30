@@ -1,4 +1,32 @@
 use std::collections::VecDeque;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PhaseStatus {
+    Valid(f64),
+    Invalid
+}
+//
+impl PhaseStatus {
+    #[inline]
+    pub fn is_valid(&self) -> bool {
+        matches!(self, PhaseStatus::Valid(_))
+    }
+    #[inline]
+    pub fn value(self) -> Option<f64> {
+        match self {
+            PhaseStatus::Valid(v) => Some(v),
+            PhaseStatus::Invalid => None,
+        }
+    }
+    #[inline]
+    pub fn from_value(v: f64) -> Self {
+        if v.is_finite() {
+            PhaseStatus::Valid(v)
+        } else {
+            PhaseStatus::Invalid
+        }
+    }
+}
+
 
 /// Контекст и выходные буферы модуля вычисления мгновенной фазы вала.
 ///
@@ -6,23 +34,22 @@ use std::collections::VecDeque;
 /// Выделение памяти под буфер происходит один раз на этапе инициализации DSP-конвейера, 
 /// что гарантирует отсутствие задержек аллокации в процессе потоковой обработки.
 pub struct InstantShaftPhaseCtx {
-    /// Массив значений мгновенной физической фазы (угла поворота) вала в радианах.
-    /// 
-    /// Все отсчеты жестко привязаны к временной шкале и строго нормализованы 
-    /// в полуоткрытом интервале [0, 2 * PI). Буфер полностью обновляется (очищается через clear()) 
-    /// на каждом вызове вычислительного узла `eval` для текущего чанка данных.
-    pub shaft_phase: Vec<f64>,
+    /// Мгновенная физическая фаза (угол поворота) вала с флагом валидности.
+    ///
+    /// Каждый отсчёт — `PhaseStatus::Valid(f)`, где `f` нормализована в полуоткрытый
+    /// интервал `[0, 2*PI)`, либо `PhaseStatus::Invalid` (фаза недостоверна: нефинитная,
+    /// а в будущем — вне полосы по амплитуде/δ). Буфер полностью обновляется
+    /// (очищается через `clear()`) на каждом вызове `eval` для текущего чанка данных.
+    pub shaft_phase: Vec<PhaseStatus>,
     /// Развёрнутая (непрерывная) фаза вала, рад: `turns · 2π + shaft_phase`.
     /// Параллельна `shaft_phase`, очищается на каждом `eval`.
     /// Первый отсчёт после старта равен своей свёрнутой фазе (`turns = 0`).
-    pub shaft_phase_unwrapped: Vec<f64>,
-    /// Флаг готовности фазы для каждого отсчёта пакета (параллелен `shaft_phase`).
+    pub shaft_phase_unwrapped: Vec<PhaseStatus>,
+    /// Признак завершения прогрева для каждого отсчёта пакета (параллелен `shaft_phase`).
     ///
     /// `false`, пока линия задержки `phi_delay` заполняется: первые `delay_samples`
     /// отсчётов после создания контекста или после [`Self::reset`]. В этих позициях
-    /// `shaft_phase` и `shaft_phase_unwrapped` содержат заглушку `0.0`, а не фазу вала.
-    /// Это только признак прогрева; итоговую валидность (наличие сигнала, допустимая `δ`)
-    /// определяет `ValidityDetector`, потребителю нужно `valid && ready`.
+    /// `shaft_phase` и `shaft_phase_unwrapped` содержат `PhaseStatus::Invalid`.
     pub ready: Vec<bool>,
     /// Линия задержки фазы гетеродина `phi_het` (FIFO).
     ///
@@ -40,6 +67,10 @@ pub struct InstantShaftPhaseCtx {
     /// Определяет латентность выхода: `shaft_phase[n]` относится к моменту
     /// `n − delay_samples`, то есть опаздывает на `delay_samples / f_sample_dec` секунд.
     /// `0` отключает задержку (все отсчёты сразу готовы).
+    /// TODO(P0): `shaft_phase[k]` относится к моменту `k - D` (D ≈ 1901 отсч. @16 кГц
+    /// ≈ 119 мс ≈ 38 000 сырых отсчётов АЦП ≈ 6 оборотов при 50 Гц). Чтобы сопоставить
+    /// θ с сырым сэмплом x[k], нужно задерживать и сырой поток. Решение отложено до
+    /// готовности [шага 3.5.](vibro-core/design/rpm-detection-v1.md)
     pub delay_samples: usize,
     /// Свёрнутая фаза последнего отсчёта прошлого пакета. `NaN` до первого отсчёта.
     pub prev_phase: f64,
