@@ -1,5 +1,7 @@
 mod lpf_tracking_band;
 pub use lpf_tracking_band::*;
+mod capture_mode;
+pub use capture_mode::*;
 mod complex_local_oscillator;
 pub use complex_local_oscillator::*;
 mod decimation;

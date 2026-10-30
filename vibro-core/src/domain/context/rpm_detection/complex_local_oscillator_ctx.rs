@@ -19,6 +19,7 @@ pub struct ComplexLocalOscillatorCtx {
     /// Является критически важным базовым состоянием. Переносится в качестве начального значения фазы 
     /// для следующего чанка данных, обеспечивая непрерывность интеграла скорости вала и исключая скачки фазы.
     pub phi_het_last: f64,
+    pub f_het: f64, 
 }
 //
 impl ComplexLocalOscillatorCtx {
@@ -34,6 +35,7 @@ impl ComplexLocalOscillatorCtx {
             complex_signal: Vec::with_capacity(chunk_size), 
             phi_het: Vec::with_capacity(chunk_size), 
             phi_het_last: 0.0, 
+            f_het: 0.0, 
         }
     }
 }
@@ -47,6 +49,7 @@ impl Default for ComplexLocalOscillatorCtx {
             complex_signal: Vec::new(),
             phi_het: Vec::new(),
             phi_het_last: 0.0,
+            f_het: 0.0,
         }
     }
 }

@@ -39,6 +39,9 @@ pub struct AngularCtx {
 impl AngularCtx {
     /// - `f_sample` - Частота дискретизации АЦП.
     /// - `chunk_size` - Размер выборки, пакета сэмплов, поступающего из АЦП за один раз.
+    /// - `factor` - Коэффициент децимации `M` (целое ≥ 1). Понижает частоту
+    ///   внутреннего тракта: `f_sample_dec = f_sample / factor`
+    /// - `f_cutoff` - Частота среза одного ФНЧ полосы слежения, Гц
     pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64) -> Self {
         // Формула вычисления размера выборки `capacity`
         // Чтобы автокорреляция надежно зацепилась за оборотную частоту,
@@ -69,7 +72,7 @@ impl AngularCtx {
                 f_sample, 
                 chunk_size,
                 factor,
-                f_cutoff
+                f_cutoff,
             ),
             err: None,
         }
