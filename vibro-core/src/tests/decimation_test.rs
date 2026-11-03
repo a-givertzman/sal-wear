@@ -41,6 +41,9 @@ use sal_core::dbg::Dbg;
             conf_adc_chunk_size,
             20,
             3.5,
+            4.0,
+            0.25,
+            64,
         );
         let ts = Utc::now();
         let frame = Frame::raw(ts, 2048.0, &samples);
@@ -92,6 +95,9 @@ use sal_core::dbg::Dbg;
             conf_adc_chunk_size,
             20, 
             3.5,
+            4.0,
+            0.25,
+            64,
         );
         let mut all_decimated: Vec<f64> = Vec::new();
         // Симулируем потоковую обработку двух последовательных чанков для заполнения линии задержки фильтра

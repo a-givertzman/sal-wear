@@ -1,5 +1,14 @@
-use crate::{CaptureModeCtx, ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx, ValidityDetectorCtx, group_delay_samples};
-
+use crate::{
+    CaptureModeCtx,
+    ComplexLocalOscillatorCtx,
+    DecimationCtx,
+    FSample,
+    InstantShaftPhaseCtx,
+    LPFTrackingBandCtx,
+    StandardClarificationCtx,
+    ValidityDetectorCtx,
+    group_delay_samples
+};
 ///
 /// Агрегирующий контекст конвейера обработки сигналов (DSP Pipeline) для оценки частоты вращения (RPM).
 ///
@@ -42,6 +51,14 @@ pub struct RpmDetectionCtx {
     /// интерполяцией. Используется для быстрого восстановления абсолютной фазы вала и начальной
     /// инициализации опорного гетеродина при невалидности основного тракта слежения.
     pub(crate) capture_mode: CaptureModeCtx,
+    /// Контекст и конфигурация алгоритма штатного уточнения частоты по дрейфу arg(y).
+    ///
+    /// Хранит настройки окна усреднения (кратного периоду оборота вала), параметры разомкнутой
+    /// коррекции частоты гетеродина, непрерывное состояние развертки фазы огибающей и публикуемые
+    /// результаты — текущую оценку отклонения δ и уточненную частоту `f_precise = f_het + δ`.
+    /// Используется в штатном режиме слежения для точного измерения RPM и удержания огибающей 1X
+    /// в центре полосы ФНЧ без обратной связи в тракт фазы вала.
+    pub(crate) standard_clarification: StandardClarificationCtx,
 }
 //
 impl RpmDetectionCtx {
@@ -56,7 +73,17 @@ impl RpmDetectionCtx {
     /// * `f_sample` - Частота дискретизации АЦП.
     /// * `chunk_size` - Размер пакета АЦП в отсчётах.
     /// * `factor` - Коэффициент децимации `M`.
-    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64) -> Self {
+    /// * `f_cutoff` - Частота среза одного ФНЧ полосы слежения, Гц
+    /// * `revs_per_window` - Число оборотов вала в окне усреднения δ.
+    /// * `correction_gain` - Доля δ, переносимая в частоту гетеродина за одно окно.
+    ///   Диапазон `0.0..=1.0`; значение `0.0`
+    ///   полностью выключает коррекцию — узел остается чистым измерителем.
+    /// * `min_window_samples` - Минимальная длина окна усреднения в сэмплах.
+    ///   Страховка на высоких оборотах: не дает окну выродиться при больших
+    ///   `f_het` (иначе `dt` в знаменателе оценки δ сжимается, и шум `atan2`
+    ///   взрывает измерение). В рабочем диапазоне 10..100 Гц не активно
+    ///   (4 оборота при 100 Гц — уже 640 сэмплов).
+    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64, revs_per_window: f64, correction_gain: f64, min_window_samples: usize) -> Self {
         let f_sample_dec = f_sample.decimated(factor);
         let chunk_dec = chunk_size / factor + 1; // а не 512: после децимации ≈26
         let delay = group_delay_samples(f_cutoff, f_sample_dec);
@@ -67,6 +94,7 @@ impl RpmDetectionCtx {
             instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, delay),
             validity_detector: ValidityDetectorCtx::new(),
             capture_mode: CaptureModeCtx::default(),
+            standard_clarification: StandardClarificationCtx::new(revs_per_window, correction_gain, min_window_samples, f_cutoff),
         }
     }
 }
@@ -84,6 +112,7 @@ impl Default for RpmDetectionCtx {
             instant_shaft_phase: Default::default(),
             validity_detector: Default::default(),
             capture_mode: Default::default(),
+            standard_clarification: StandardClarificationCtx::default(),
         }
     }
 }

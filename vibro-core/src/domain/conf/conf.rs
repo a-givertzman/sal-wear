@@ -232,6 +232,12 @@ pub struct RpmDetectionConf {
     pub delta_f_net_hz: f64,
     /// B_запас: запас по полосе, Гц.
     pub band_margin_hz: f64,
+    /// Оборотов вала в окне усреднения δ.
+    pub refinement_revs_per_window: f64,
+    /// Доля δ, переносимая в f_het за окно (0.0 — коррекция выключена).
+    pub refinement_correction_gain: f64,
+    /// Минимальная длина окна уточнения, сэмплов.
+    pub refinement_min_window_samples: usize,
 }
 impl RpmDetectionConf {
     /// Коэффициент децимации M = ⌊f_sample / f_sample_dec_target⌋.
@@ -259,7 +265,10 @@ impl Default for RpmDetectionConf {
             tau_net_s: 0.5, 
             t_update_s: 0.5, 
             delta_f_net_hz: 3.0, 
-            band_margin_hz: 2.0  
+            band_margin_hz: 2.0,
+            refinement_revs_per_window: 4.0,
+            refinement_correction_gain: 0.25,
+            refinement_min_window_samples: 64,  
         }
     }
 }

@@ -35,7 +35,10 @@ fn complex_test () {
         crate::FSample(conf.adc.sample_rate_hz), 
         conf.adc.chunk_size,
         conf.analysis.rpm_detection.decimation_factor(crate::FSample(conf.adc.sample_rate_hz as f64)), 
-        conf.analysis.rpm_detection.tracking_band_hz()
+        conf.analysis.rpm_detection.tracking_band_hz(),
+        conf.analysis.rpm_detection.refinement_revs_per_window,
+        conf.analysis.rpm_detection.refinement_correction_gain,
+        conf.analysis.rpm_detection.refinement_min_window_samples,
     ); // VORZHEV Z.A. 13.10.2026
     let angular_grid = AngularGrid::new(&dbg,
         conf.adc.chunk_size,

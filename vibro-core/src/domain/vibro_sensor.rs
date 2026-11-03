@@ -96,6 +96,9 @@ where
                 crate::FSample(conf.adc.sample_rate_hz)
             ),
             conf.analysis.rpm_detection.tracking_cutoff_hz(),
+            conf.analysis.rpm_detection.refinement_revs_per_window,
+            conf.analysis.rpm_detection.refinement_correction_gain,
+            conf.analysis.rpm_detection.refinement_min_window_samples,
         )); // VORZHEV Z.A. 13.10.2026
         let low_range_ctx = Cell::new(ImbContext::new(&dbg, conf.analysis.samples_per_rev(), conf.analysis.n_fft(), conf.adc.chunk_size, retain.clone()));
         Ok(Self {
