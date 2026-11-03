@@ -55,7 +55,17 @@ fn prod_ctx() -> AngularCtx {
     let factor = rd.decimation_factor(f_sample);
     let f_cutoff = rd.tracking_cutoff_hz();
     assert!((f_cutoff - F_CUTOFF).abs() < 1e-12, "конфиг дал fc = {f_cutoff}, тест ждёт {F_CUTOFF}");
-    AngularCtx::new(f_sample, conf.adc.chunk_size, factor, f_cutoff, 1.0, 10,)
+    AngularCtx::new(
+        f_sample, 
+        conf.adc.chunk_size, 
+        factor, 
+        f_cutoff,
+        4.0,
+        0.25,
+        64,
+        1.0, 
+        10,
+    )
 }
 ///
 /// Симуляция гетеродированного сигнала: I/Q

@@ -41,6 +41,9 @@ use sal_core::dbg::Dbg;
             conf_adc_chunk_size,
             20,
             3.5,
+            4.0,
+            0.25,
+            64,
             1.0,
             10,
         );
@@ -94,6 +97,9 @@ use sal_core::dbg::Dbg;
             conf_adc_chunk_size,
             20, 
             3.5,
+            4.0,
+            0.25,
+            64,
             1.0,
             10,
         );
