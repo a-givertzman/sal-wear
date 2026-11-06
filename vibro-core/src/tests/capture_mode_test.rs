@@ -66,7 +66,7 @@ mod capture_mode {
         // Наполняем буфер синусоидой, превышающей порог шума
         let f_sample = 1000.0;
         for n in 0..500 {
-            ctx.rpm_detection.decimation.decimated.push(20.0 * (2.0 * PI * 50.0 * (n as f64 / f_sample)).sin());
+            ctx.rpm_detection.capture_mode.signal_buffer.push_back(20.0 * (2.0 * PI * 50.0 * (n as f64 / f_sample)).sin());
         }
         ctx.rpm_detection.decimation.f_sample_dec = FSampleDec(f_sample);
 
@@ -87,12 +87,12 @@ mod capture_mode {
         ctx.raw_rpm = 3000.0; // Ожидаем 50 Гц
         ctx.rpm_detection.capture_mode.search_half_window_hz = 5.0; // Окно поиска 45-55 Гц
         ctx.rpm_detection.capture_mode.search_steps = 10;
-        
+        ctx.rpm_detection.capture_mode.buffer_len = 1000;
         // Сигнал с частотой 50.2 Гц (чуть смещен от сетки) и амплитудой 15.0 (выше NOIZE_THRESHOLD)
         let f_sample = 1000.0;
         let f_real = 50.2;
         for n in 0..1000 {
-            ctx.rpm_detection.decimation.decimated.push(15.0 * (2.0 * PI * f_real * (n as f64 / f_sample)).sin());
+            ctx.rpm_detection.capture_mode.signal_buffer.push_back(15.0 * (2.0 * PI * f_real * (n as f64 / f_sample)).sin());
         }
         ctx.rpm_detection.decimation.f_sample_dec = FSampleDec(f_sample);
 
@@ -116,7 +116,7 @@ mod capture_mode {
         // Очень слабый сигнал с амплитудой 1.0 (заведомо ниже вашего NOIZE_THRESHOLD, который равен 5.0)
         let f_sample = 1000.0;
         for n in 0..500 {
-            ctx.rpm_detection.decimation.decimated.push(1.0 * (2.0 * PI * 50.0 * (n as f64 / f_sample)).sin());
+            ctx.rpm_detection.capture_mode.signal_buffer.push_back(1.0 * (2.0 * PI * 50.0 * (n as f64 / f_sample)).sin());
         }
         ctx.rpm_detection.decimation.f_sample_dec = FSampleDec(f_sample);
         let parent_dbg = Dbg::own("capture mode test");

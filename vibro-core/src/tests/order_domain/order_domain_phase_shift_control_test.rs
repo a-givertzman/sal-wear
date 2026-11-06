@@ -86,6 +86,8 @@ fn order_domain_phase_shift_test() {
             chunk_size,
             conf.analysis.rpm_detection.decimation_factor(crate::FSample(f_sample as f64)), 
             conf.analysis.rpm_detection.tracking_band_hz(),
+            conf.analysis.rpm_detection.capture_history_s,
+            conf.analysis.rpm_detection.search_steps,
             conf.analysis.rpm_detection.refinement_revs_per_window,
             conf.analysis.rpm_detection.refinement_correction_gain,
             conf.analysis.rpm_detection.refinement_min_window_samples,

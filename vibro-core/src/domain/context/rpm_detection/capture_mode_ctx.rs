@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 /// Порог отношения сигнал/шум (SNR) для валидации пика алгоритма Герцеля.
 ///
 /// Определяет минимально допустимую физическую амплитуду выделенной гармоники,
@@ -12,7 +14,7 @@ pub const NOIZE_THRESHOLD: f64 = 5.0;
 ///
 /// Контекст используется для грубого поиска пика фильтрами Герцеля в окрестности f
 /// и последующего точного восстановления фазы через параболическую интерполяцию.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CaptureModeCtx {
     /// Точная вычисленная частота f_precise после параболической интерполяции.
     pub f_precise: Option<f64>,
@@ -22,6 +24,11 @@ pub struct CaptureModeCtx {
     /// Количество шагов сканирования сетки Герцеля в одну сторону от центра.
     /// Общее число расчетных точек (бинов) на сетке равно `(search_steps * 2) + 1`.
     pub search_steps: usize,
+    /// Кольцевой буфер истории децимированного сигнала для сетки Герцеля (шаг 3.5).
+    /// Наполняется на каждом чанке, чтобы на момент аварии в нем было 0.5-2 с данных.
+    pub signal_buffer: VecDeque<f64>,
+    /// Размер окна истории, сэмплов (0.5-2 с при f_sample_dec)
+    pub buffer_len: usize,
     /// Флаг, указывающий, что в текущем цикле была успешно найдена и обновлена точная частота.
     pub is_updated: bool,
 }
@@ -31,13 +38,18 @@ impl CaptureModeCtx {
     ///
     /// # Аргументы
     /// * `half_window` — Полуширина диапазона поиска в Гц ($\pm \Delta F$).
-    /// * `steps` — Количество шагов сканирования в одну сторону (минумум 1).
-    pub fn new(half_window: f64, steps: usize) -> Self {
+    /// * `search_steps` — Количество шагов сканирования в одну сторону (минумум 1).
+    /// * `buffer_len` - Размер окна истории в сэмплах
+    ///   (например 1.0 с при 16 кГц -> 16000). Чем длиннее окно, тем точнее
+    ///   суббинная оценка частоты и устойчивее к шуму (разрешение ~1/T).
+    pub fn new(half_window: f64, search_steps: usize, buffer_len: usize) -> Self {
         Self {
             f_precise: None,
             search_half_window_hz: half_window.abs(),
-            search_steps: steps.max(1),
+            search_steps: search_steps.max(1),
             is_updated: false,
+            buffer_len,
+            signal_buffer: VecDeque::with_capacity(buffer_len + 1),
         }
     }
     ///
@@ -70,6 +82,8 @@ impl Default for CaptureModeCtx {
             search_half_window_hz: 2.0,
             search_steps: 5,
             is_updated: false,
+            buffer_len: 16000,
+            signal_buffer: VecDeque::with_capacity(16000 + 1),
         }
     }
 }

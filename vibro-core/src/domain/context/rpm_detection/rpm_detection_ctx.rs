@@ -83,8 +83,12 @@ impl RpmDetectionCtx {
     ///   `f_het` (иначе `dt` в знаменателе оценки δ сжимается, и шум `atan2`
     ///   взрывает измерение). В рабочем диапазоне 10..100 Гц не активно
     ///   (4 оборота при 100 Гц — уже 640 сэмплов).
-    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64, revs_per_window: f64, correction_gain: f64, min_window_samples: usize) -> Self {
+    /// * `f_cutoff` - Частота среза одного ФНЧ, Гц. Равна B/2, где B — полная полоса слежения, вычисляемая в конфиге по [формуле раздела 4, п. 2](vibro-core\design\rpm-detection-v1.md) (RpmDetectionConf::tracking_cutoff_hz).
+    /// * `capture_history_s` - Глубина истории сигнала для режима захвата, секунды (ТЗ: 0.5..2 с).
+    /// * `search_steps` - Число шагов сетки Герцеля в одну сторону от центра (всего точек: 2N+1).
+    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64, revs_per_window: f64, correction_gain: f64, min_window_samples: usize, capture_history_s: f64, search_steps: usize) -> Self {
         let f_sample_dec = f_sample.decimated(factor);
+        let buffer_len = (f_sample_dec.value() * capture_history_s).floor() as usize;
         let chunk_dec = chunk_size / factor + 1; // а не 512: после децимации ≈26
         let delay = group_delay_samples(f_cutoff, f_sample_dec);
         Self {
@@ -93,8 +97,8 @@ impl RpmDetectionCtx {
             lpf_tracking_band: LPFTrackingBandCtx::new(f_sample_dec, chunk_dec, f_cutoff),
             instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, delay),
             validity_detector: ValidityDetectorCtx::new(),
-            capture_mode: CaptureModeCtx::default(),
             standard_clarification: StandardClarificationCtx::new(revs_per_window, correction_gain, min_window_samples, f_cutoff),
+            capture_mode: CaptureModeCtx::new(f_cutoff, search_steps, buffer_len),
         }
     }
 }
