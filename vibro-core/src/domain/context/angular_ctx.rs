@@ -42,7 +42,9 @@ impl AngularCtx {
     /// - `factor` - Коэффициент децимации `M` (целое ≥ 1). Понижает частоту
     ///   внутреннего тракта: `f_sample_dec = f_sample / factor`
     /// - `f_cutoff` - Частота среза одного ФНЧ полосы слежения, Гц
-    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64) -> Self {
+    /// - `capture_history_s` - Глубина истории сигнала для режима захвата, секунды (ТЗ: 0.5..2 с).
+    /// - `search_steps` - Число шагов сетки Герцеля в одну сторону от центра (всего точек: 2N+1).
+    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64, capture_history_s: f64, search_steps: usize) -> Self {
         // Формула вычисления размера выборки `capacity`
         // Чтобы автокорреляция надежно зацепилась за оборотную частоту,
         // в буфере должно лежать минимум 2–3 полных оборота вала.
@@ -73,6 +75,8 @@ impl AngularCtx {
                 chunk_size,
                 factor,
                 f_cutoff,
+                capture_history_s,
+                search_steps,
             ),
             err: None,
         }

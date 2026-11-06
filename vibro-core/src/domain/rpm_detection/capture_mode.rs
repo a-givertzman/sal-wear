@@ -133,14 +133,31 @@ where
         if ctx.err.is_some() {
             return ctx.pass_err(&self.dbg, "eval");
         }
+        { // Копим историю сигнала в кольцевой буффер
+            let d = &mut ctx.rpm_detection;
+            for &x in d.decimation.decimated.iter() {
+                if d.capture_mode.signal_buffer.len() >= d.capture_mode.buffer_len {
+                    d.capture_mode.signal_buffer.pop_front();
+                }
+                d.capture_mode.signal_buffer.push_back(x);
+            }
+        }
         if !ctx.rpm_detection.validity_detector.valid {
+            // Поиск только при достаточной истории: короткий буфер даёт
+            // разрешение ~1/T и бессмысленную оценку (на старте системы)
+            if ctx.rpm_detection.capture_mode.signal_buffer.len() < ctx.rpm_detection.capture_mode.buffer_len / 2 {
+                ctx.rpm_detection.capture_mode.is_updated = false;
+                return ctx;
+            }
+            let cap = &mut ctx.rpm_detection.capture_mode;
+            let buf = cap.signal_buffer.make_contiguous();
             // Запуск поиска по сетке на основе децимированного буфера истории сигнала
             let (f_precise, max_amp) = Self::find_precise_frequency(
-                &ctx.rpm_detection.decimation.decimated, 
+                buf, 
                 ctx.raw_rpm / 60.0, // Базовая частота вращения (Гц) из RPM
                 ctx.rpm_detection.decimation.f_sample_dec, 
-                ctx.rpm_detection.capture_mode.search_half_window_hz, 
-                ctx.rpm_detection.capture_mode.search_steps,
+                cap.search_half_window_hz, 
+                cap.search_steps,
             );
             // Обновление состояния контекста режима захвата
             if f_precise.is_finite() && f_precise > 0.0 && max_amp > NOIZE_THRESHOLD {
