@@ -1,3 +1,5 @@
+mod capture_mode_ctx;
+pub use capture_mode_ctx::*;
 mod complex_local_oscillator_ctx;
 pub use complex_local_oscillator_ctx::*;
 mod decimation_ctx;

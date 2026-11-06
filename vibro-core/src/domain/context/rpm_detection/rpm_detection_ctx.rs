@@ -1,4 +1,4 @@
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx, ValidityDetectorCtx, group_delay_samples};
+use crate::{CaptureModeCtx, ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx, ValidityDetectorCtx, group_delay_samples};
 
 ///
 /// Агрегирующий контекст конвейера обработки сигналов (DSP Pipeline) для оценки частоты вращения (RPM).
@@ -36,6 +36,12 @@ pub struct RpmDetectionCtx {
     /// Защищает систему от фазового дребезга и автоматически инициирует повторный захват частоты 
     /// при длительной просадке сигнала.
     pub(crate) validity_detector: ValidityDetectorCtx,
+    /// Контекст и конфигурация алгоритма точной оценки частоты в режиме захвата.
+    ///
+    /// Хранит параметры сетки поиска Герцеля и результаты суббинного уточнения пика параболической
+    /// интерполяцией. Используется для быстрого восстановления абсолютной фазы вала и начальной
+    /// инициализации опорного гетеродина при невалидности основного тракта слежения.
+    pub(crate) capture_mode: CaptureModeCtx,
 }
 //
 impl RpmDetectionCtx {
@@ -50,8 +56,12 @@ impl RpmDetectionCtx {
     /// * `f_sample` - Частота дискретизации АЦП.
     /// * `chunk_size` - Размер пакета АЦП в отсчётах.
     /// * `factor` - Коэффициент децимации `M`.
-    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64) -> Self {
+    /// * `f_cutoff` - Частота среза одного ФНЧ, Гц. Равна B/2, где B — полная полоса слежения, вычисляемая в конфиге по [формуле раздела 4, п. 2](vibro-core\design\rpm-detection-v1.md) (RpmDetectionConf::tracking_cutoff_hz).
+    /// * `capture_history_s` - Глубина истории сигнала для режима захвата, секунды (ТЗ: 0.5..2 с).
+    /// * `search_steps` - Число шагов сетки Герцеля в одну сторону от центра (всего точек: 2N+1).
+    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64, capture_history_s: f64, search_steps: usize) -> Self {
         let f_sample_dec = f_sample.decimated(factor);
+        let buffer_len = (f_sample_dec.value() * capture_history_s).floor() as usize;
         let chunk_dec = chunk_size / factor + 1; // а не 512: после децимации ≈26
         let delay = group_delay_samples(f_cutoff, f_sample_dec);
         Self {
@@ -59,7 +69,8 @@ impl RpmDetectionCtx {
             complex_local_oscillator: ComplexLocalOscillatorCtx::new(chunk_dec),
             lpf_tracking_band: LPFTrackingBandCtx::new(f_sample_dec, chunk_dec, f_cutoff),
             instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, delay),
-            validity_detector: ValidityDetectorCtx::new()
+            validity_detector: ValidityDetectorCtx::new(),
+            capture_mode: CaptureModeCtx::new(f_cutoff, search_steps, buffer_len),
         }
     }
 }
@@ -76,6 +87,7 @@ impl Default for RpmDetectionCtx {
             lpf_tracking_band: Default::default(),
             instant_shaft_phase: Default::default(),
             validity_detector: Default::default(),
+            capture_mode: Default::default(),
         }
     }
 }
