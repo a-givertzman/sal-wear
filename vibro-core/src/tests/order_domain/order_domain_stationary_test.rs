@@ -44,6 +44,8 @@ fn order_domain_stationary_test() {
         conf.analysis.rpm_detection.refinement_revs_per_window,
         conf.analysis.rpm_detection.refinement_correction_gain,
         conf.analysis.rpm_detection.refinement_min_window_samples,
+        conf.analysis.rpm_detection.capture_history_s,
+        conf.analysis.rpm_detection.search_steps,
     );
     let angular_grid = AngularGrid::new(
         &dbg, chunk_size,

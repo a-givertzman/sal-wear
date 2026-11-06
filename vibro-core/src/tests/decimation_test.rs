@@ -41,9 +41,14 @@ use sal_core::dbg::Dbg;
             conf_adc_chunk_size,
             20,
             3.5,
+<<<<<<< HEAD
             4.0,
             0.25,
             64,
+=======
+            1.0,
+            10,
+>>>>>>> rpm-detection-capture-mode
         );
         let ts = Utc::now();
         let frame = Frame::raw(ts, 2048.0, &samples);
@@ -98,6 +103,8 @@ use sal_core::dbg::Dbg;
             4.0,
             0.25,
             64,
+            1.0,
+            10,
         );
         let mut all_decimated: Vec<f64> = Vec::new();
         // Симулируем потоковую обработку двух последовательных чанков для заполнения линии задержки фильтра

@@ -47,7 +47,7 @@ impl LPFTrackingBandCtx {
     /// * `f_sample_dec` - Частота дискретизации после децимации.
     /// * `chunk_size_dec` - Ожидаемое число отсчётов децимированного сигнала в одном пакете.
     /// * `f_cutoff` - Частота среза одного ФНЧ, Гц. Равна `B/2`, где `B` — полная полоса слежения,
-    ///   вычисляемая в конфиге по формуле раздела 4, п. 2 (`RpmDetectionConf::tracking_cutoff_hz`).
+    ///   вычисляемая в конфиге по [формуле раздела 4, п. 2](vibro-core\design\rpm-detection-v1.md) (`RpmDetectionConf::tracking_cutoff_hz`).
     ///
     /// # Panics
     /// Если `f_cutoff` не лежит в `(0, f_sample_dec / 10)`: иначе фильтр численно неустойчив

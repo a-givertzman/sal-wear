@@ -51,7 +51,10 @@ impl AngularCtx {
     ///   `f_het` (иначе `dt` в знаменателе оценки δ сжимается, и шум `atan2`
     ///   взрывает измерение). В рабочем диапазоне 10..100 Гц не активно
     ///   (4 оборота при 100 Гц — уже 640 сэмплов).
-    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64, revs_per_window: f64, correction_gain: f64, min_window_samples: usize) -> Self {
+    /// - `f_cutoff` - Частота среза одного ФНЧ полосы слежения, Гц
+    /// - `capture_history_s` - Глубина истории сигнала для режима захвата, секунды (ТЗ: 0.5..2 с).
+    /// - `search_steps` - Число шагов сетки Герцеля в одну сторону от центра (всего точек: 2N+1).
+    pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64, revs_per_window: f64, correction_gain: f64, min_window_samples: usize, capture_history_s: f64, search_steps: usize) -> Self {
         // Формула вычисления размера выборки `capacity`
         // Чтобы автокорреляция надежно зацепилась за оборотную частоту,
         // в буфере должно лежать минимум 2–3 полных оборота вала.
@@ -84,7 +87,9 @@ impl AngularCtx {
                 f_cutoff,
                 revs_per_window, 
                 correction_gain, 
-                min_window_samples
+                min_window_samples,
+                capture_history_s,
+                search_steps,
             ),
             err: None,
         }
