@@ -6,7 +6,8 @@ mod capture_mode {
         AngularCtx,
         CaptureMode, 
         Eval,
-        FSampleDec
+        FSampleDec,
+        TrackState,
     };
     // Вспомогательная структура-заглушка для Child узла
     pub struct MockChild;
@@ -54,11 +55,13 @@ mod capture_mode {
             "Амплитуда ожидалась ~10.0, но алгоритм вернул: {amp}"
         );
     }
-    /// Тест 4: В штатном режиме (valid == true) алгоритм поиска НЕ должен запускаться.
+    /// Тест 4: В штатном режиме (state == Valid) алгоритм поиска НЕ должен запускаться.
     #[test]
     fn test_eval_skips_when_valid() {
         let mut ctx = AngularCtx::default();
         ctx.rpm_detection.validity_detector.valid = true; // ШТАТНЫЙ РЕЖИМ
+        // Захват запускается только в Acquisition: явно фиксируем штатное состояние
+        ctx.rpm_detection.validity_detector.state = TrackState::Valid;
         ctx.raw_rpm = 3000.0; // 50 Гц
         ctx.rpm_detection.capture_mode.search_half_window_hz = 2.0;
         ctx.rpm_detection.capture_mode.search_steps = 5;
@@ -75,9 +78,10 @@ mod capture_mode {
         
         let res_ctx = node.eval(ctx);
 
-        // Так как valid == true, вычисления не должны изменять флаг и частоту
+        // Так как state == Valid, вычисления не должны изменять флаг и частоту
         assert_eq!(res_ctx.rpm_detection.capture_mode.is_updated, false);
-        assert_eq!(res_ctx.rpm_detection.capture_mode.f_precise, Some(0.0));
+        // Дефолт контекста — None (Some(0.0) давал дедлок первого чанка)
+        assert_eq!(res_ctx.rpm_detection.capture_mode.f_precise, None);
     }
     /// Тест 5: В режиме аварии (valid == false) и сильном сигнале частота должна успешно захватываться.
     #[test]
@@ -95,6 +99,11 @@ mod capture_mode {
             ctx.rpm_detection.capture_mode.signal_buffer.push_back(15.0 * (2.0 * PI * f_real * (n as f64 / f_sample)).sin());
         }
         ctx.rpm_detection.decimation.f_sample_dec = FSampleDec(f_sample);
+        // Текущий чанк тоже должен подтверждать пик (гейт amp_now):
+        // наполняем decimated продолжением того же синуса
+        for n in 1000..1026 {
+            ctx.rpm_detection.decimation.decimated.push(15.0 * (2.0 * PI * f_real * (n as f64 / f_sample)).sin());
+        }
 
         let parent_dbg = Dbg::own("capture mode test");
         let node = CaptureMode::new(&parent_dbg, MockChild);

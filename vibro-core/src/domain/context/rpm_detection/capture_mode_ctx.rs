@@ -78,7 +78,7 @@ impl Default for CaptureModeCtx {
     /// (шаг сетки delta_f = 0.4 Гц, всего 11 расчетных точек).
     fn default() -> Self {
         Self {
-            f_precise: Some(0.0),
+            f_precise: None,
             search_half_window_hz: 2.0,
             search_steps: 5,
             is_updated: false,
