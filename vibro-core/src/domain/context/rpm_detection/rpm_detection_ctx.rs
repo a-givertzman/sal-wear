@@ -1,5 +1,4 @@
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx, group_delay_samples};
-
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx};
 ///
 /// Агрегирующий контекст конвейера обработки сигналов (DSP Pipeline) для оценки частоты вращения (RPM).
 ///
@@ -46,12 +45,11 @@ impl RpmDetectionCtx {
     pub fn new(f_sample: FSample<f64>, chunk_size: usize, factor: usize, f_cutoff: f64) -> Self {
         let f_sample_dec = f_sample.decimated(factor);
         let chunk_dec = chunk_size / factor + 1; // а не 512: после децимации ≈26
-        let delay = group_delay_samples(f_cutoff, f_sample_dec);
         Self {
             decimation: DecimationCtx::new(f_sample, chunk_size, factor),
             complex_local_oscillator: ComplexLocalOscillatorCtx::new(chunk_dec),
             lpf_tracking_band: LPFTrackingBandCtx::new(f_sample_dec, chunk_dec, f_cutoff),
-            instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, delay),
+            instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, f_cutoff, f_sample_dec),
         }
     }
 }
