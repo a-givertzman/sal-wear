@@ -1,4 +1,4 @@
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx, ValidityDetectorCtx};
 ///
 /// Агрегирующий контекст конвейера обработки сигналов (DSP Pipeline) для оценки частоты вращения (RPM).
 ///
@@ -27,7 +27,14 @@ pub struct RpmDetectionCtx {
     /// Отвечает за компенсацию частотного сдвига гетеродина и расчет абсолютного 
     /// физического угла поворота вала в диапазоне [0, 2*PI) для каждого отсчета чанка. 
     /// Полученные данные полностью подготовлены для ордерного (порядкового) анализа.
-    pub(crate) instant_shaft_phase: InstantShaftPhaseCtx
+    pub(crate) instant_shaft_phase: InstantShaftPhaseCtx,
+    /// Состояние и выходные буферы амплитудного детектора валидности с гистерезисом.
+    /// 
+    /// Реализует конечный автомат, который непрерывно оценивает амплитуду комплексной огибающей 1X 
+    /// и переключает глобальные режимы работы тракта слежения (Valid, Degraded, Acquisition). 
+    /// Защищает систему от фазового дребезга и автоматически инициирует повторный захват частоты 
+    /// при длительной просадке сигнала.
+    pub(crate) validity_detector: ValidityDetectorCtx,
 }
 //
 impl RpmDetectionCtx {
@@ -50,6 +57,7 @@ impl RpmDetectionCtx {
             complex_local_oscillator: ComplexLocalOscillatorCtx::new(chunk_dec),
             lpf_tracking_band: LPFTrackingBandCtx::new(f_sample_dec, chunk_dec, f_cutoff),
             instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, f_cutoff, f_sample_dec),
+            validity_detector: ValidityDetectorCtx::new(),
         }
     }
 }
@@ -65,6 +73,7 @@ impl Default for RpmDetectionCtx {
             complex_local_oscillator: Default::default(),
             lpf_tracking_band: Default::default(),
             instant_shaft_phase: Default::default(),
+            validity_detector: Default::default(),
         }
     }
 }
