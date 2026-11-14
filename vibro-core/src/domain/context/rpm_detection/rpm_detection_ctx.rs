@@ -1,4 +1,4 @@
-use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, LPFTrackingBandCtx};
+use crate::{ComplexLocalOscillatorCtx, DecimationCtx, FSample, InstantShaftPhaseCtx, LPFTrackingBandCtx};
 ///
 /// Агрегирующий контекст конвейера обработки сигналов (DSP Pipeline) для оценки частоты вращения (RPM).
 ///
@@ -22,6 +22,12 @@ pub struct RpmDetectionCtx {
     /// Вырезает все высокочастотные компоненты, гармоники редуктора и шумы, оставляя 
     /// идеально чистую комплексную огибающую первой оборотной гармоники (1X).
     pub(crate) lpf_tracking_band: LPFTrackingBandCtx,
+    /// Состояние и выходные буферы модуля восстановления мгновенной фазы вала.
+    /// 
+    /// Отвечает за компенсацию частотного сдвига гетеродина и расчет абсолютного 
+    /// физического угла поворота вала в диапазоне [0, 2*PI) для каждого отсчета чанка. 
+    /// Полученные данные полностью подготовлены для ордерного (порядкового) анализа.
+    pub(crate) instant_shaft_phase: InstantShaftPhaseCtx
 }
 //
 impl RpmDetectionCtx {
@@ -43,6 +49,7 @@ impl RpmDetectionCtx {
             decimation: DecimationCtx::new(f_sample, chunk_size, factor),
             complex_local_oscillator: ComplexLocalOscillatorCtx::new(chunk_dec),
             lpf_tracking_band: LPFTrackingBandCtx::new(f_sample_dec, chunk_dec, f_cutoff),
+            instant_shaft_phase: InstantShaftPhaseCtx::new(chunk_dec, f_cutoff, f_sample_dec),
         }
     }
 }
@@ -57,6 +64,7 @@ impl Default for RpmDetectionCtx {
             decimation: Default::default(),
             complex_local_oscillator: Default::default(),
             lpf_tracking_band: Default::default(),
+            instant_shaft_phase: Default::default(),
         }
     }
 }
