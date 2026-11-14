@@ -15,14 +15,6 @@ fn node() -> InstantShaftPhase<DummyChild> {
 //
 const FS: f64 = 16_000.0;
 fn wrap(d: f64) -> f64 { (d + PI).rem_euclid(2.0 * PI) - PI }
-//
-fn ctx_for(fc: f64, filtered: Vec<Complex<f64>>, phi: Vec<f64>) -> AngularCtx {
-    let mut ctx = AngularCtx::default();
-    ctx.rpm_detection.instant_shaft_phase = InstantShaftPhaseCtx::new(filtered.len(), fc, FSampleDec(FS));
-    ctx.rpm_detection.lpf_tracking_band.filtered_signal = filtered;
-    ctx.rpm_detection.complex_local_oscillator.phi_het = phi;
-    ctx
-}
 ///
 /// φ_вал = atan2(Q, I) + φ_het (mod 2π): известные числа, включая отрицательный угол и сумму > 2π.
 #[test]
