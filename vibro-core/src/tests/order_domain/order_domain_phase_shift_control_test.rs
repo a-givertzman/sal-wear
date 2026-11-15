@@ -85,7 +85,9 @@ fn order_domain_phase_shift_test() {
             crate::FSample(f_sample as f64), 
             chunk_size,
             conf.analysis.rpm_detection.decimation_factor(crate::FSample(f_sample as f64)), 
-            conf.analysis.rpm_detection.tracking_band_hz()
+            conf.analysis.rpm_detection.tracking_band_hz(),
+            conf.analysis.rpm_detection.capture_history_s,
+            conf.analysis.rpm_detection.search_steps,
         );
         let angular_grid = AngularGrid::new(
             &dbg,

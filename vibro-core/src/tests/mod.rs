@@ -1,3 +1,4 @@
+mod capture_mode_test;
 mod complex_local_oscillator_test;
 mod order_domain;
 mod complex_test;

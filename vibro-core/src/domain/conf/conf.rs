@@ -232,6 +232,11 @@ pub struct RpmDetectionConf {
     pub delta_f_net_hz: f64,
     /// B_запас: запас по полосе, Гц.
     pub band_margin_hz: f64,
+    /// Глубина истории сигнала для режима захвата, секунды (ТЗ: 0.5..2 с).
+    /// Разрешение по частоте сетки Герцеля ~1/T.
+    pub capture_history_s: f64,
+    /// Число шагов сетки Герцеля в одну сторону от центра (всего точек: 2N+1).
+    pub search_steps: usize,
 }
 impl RpmDetectionConf {
     /// Коэффициент децимации M = ⌊f_sample / f_sample_dec_target⌋.
@@ -259,7 +264,9 @@ impl Default for RpmDetectionConf {
             tau_net_s: 0.5, 
             t_update_s: 0.5, 
             delta_f_net_hz: 3.0, 
-            band_margin_hz: 2.0  
+            band_margin_hz: 2.0,
+            capture_history_s: 1.0,
+            search_steps: 10,  
         }
     }
 }

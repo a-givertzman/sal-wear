@@ -80,7 +80,9 @@ where
         ctx.rpm_detection.complex_local_oscillator.complex_signal.clear();
         ctx.rpm_detection.complex_local_oscillator.phi_het.clear();
         // Переводим грубую частоту вращения из об/мин в Гц (f_het)
-        let f_het = ctx.raw_rpm / 60.0; 
+
+        let f_het = *ctx.rpm_detection.capture_mode.f_precise
+            .get_or_insert_with(|| ctx.raw_rpm / 60.0);
         let f_sample_dec = ctx.rpm_detection.decimation.f_sample_dec;
         // Валидация входных физических параметров на корректность и бесконечность
         if !ctx.raw_rpm.is_finite() || ctx.raw_rpm < 0.0 || !f_sample_dec.value().is_finite() || f_sample_dec.value() <= 0.0{
