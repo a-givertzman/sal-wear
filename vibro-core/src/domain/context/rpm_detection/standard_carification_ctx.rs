@@ -1,8 +1,5 @@
 use std::f64::consts::{PI, TAU};
-
 use rustfft::num_complex::Complex;
-
-use crate::RpmDetectionConf;
 ///
 /// Контекст узла уточнения частоты
 #[derive(Debug, Clone)]
@@ -17,7 +14,6 @@ pub struct StandardClarificationCtx {
     pub correction_gain: f64,
     /// Частота среза одного ФНЧ, Гц. Равна `B/2`, где `B` — полная полоса слежения,
     pub f_cutoff: f64,
-    // --- Рабочее состояние тракта ---
     /// Непрерывный развернутый аргумент огибающей, рад
     pub arg_unwrapped: f64,
     /// Сырой аргумент предыдущего сэмпла, рад
@@ -26,7 +22,6 @@ pub struct StandardClarificationCtx {
     pub window_start_arg: f64,
     /// Сэмплов накоплено в текущем окне
     pub window_samples: usize,
-    // --- Публикуемый результат ---
     /// Текущая оценка отклонения частоты δ, Гц (обновляется раз в окно)
     pub delta_hz: f64,
     /// Уточненная частота вращения f_het + δ, Гц (None до первого завершенного окна)
@@ -35,12 +30,18 @@ pub struct StandardClarificationCtx {
 //
 impl StandardClarificationCtx {
     /// Длина окна усреднения в сэмплах: целое число оборотов вала, не меньше минимума
+    /// * `f_sample_dec` — Частота дискретизации комплексной огибающей после децимации, Гц.
+    /// * `f_het` — Частота гетеродина (опорная частота вращения вала), Гц.
     pub fn window_len_samples(&self, f_sample_dec: f64, f_het: f64) -> usize {
         ((self.revs_per_window * f_sample_dec / f_het).round() as usize)
             .max(self.min_window_samples)
     }
     /// Обработка одного сэмпла огибающей: развертка фазы и, при закрытии окна, оценка δ.
     /// Возвращает `Some(δ)`, Гц, если окно завершилось на этом сэмпле.
+    /// * `y` — Текущий комплексный отсчёт огибающей сигнала (`I + jQ`).
+    /// * `window_len` — Требуемая длина окна усреднения в сэмплах (обычно рассчитывается через [`Self::window_len_samples`]).
+    /// * `f_sample_dec` — Частота дискретизации комплексной огибающей после децимации, Гц.
+    /// * `f_het` — Частота гетеродина (опорная частота вращения вала), Гц.
     pub fn update(&mut self, y: &Complex<f64>, window_len: usize, f_sample_dec: f64, f_het: f64) -> Option<f64> {
         let arg = y.im.atan2(y.re);
         self.arg_unwrapped = match self.prev_arg {

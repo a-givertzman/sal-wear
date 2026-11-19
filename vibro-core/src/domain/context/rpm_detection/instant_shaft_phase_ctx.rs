@@ -1,15 +1,32 @@
 use std::collections::VecDeque;
+use crate::{FSampleDec, Q_FACTOR_1, Q_FACTOR_2};
+/// Результат вычисления фазового отсчёта с явной индикацией достоверности.
+///
+/// Используется вместо сырого `f64` или `Option<f64>` для семантического разделения
+/// корректных измерений и ситуаций потери сигнала, деления на ноль или появления
+/// нечисловых значений (`NaN`, `±∞`) на этапе демодуляции и фазовой обработки.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PhaseStatus {
+    /// Достоверное значение фазы (обычно в радианах, в диапазоне `[-π, π]` или развёрнутое).
     Valid(f64),
-    Invalid
+    /// Недостоверный отсчёт (например, при слишком малой амплитуде сигнала или появлении `NaN`/`Inf`).
+    Invalid,
 }
 //
 impl PhaseStatus {
+    /// Проверяет, содержит ли статус корректное значение фазы.
+    ///
+    /// # Возвращает
+    /// `true`, если вариант равен [`PhaseStatus::Valid`], иначе `false`.
     #[inline]
     pub fn is_valid(&self) -> bool {
         matches!(self, PhaseStatus::Valid(_))
     }
+    /// Извлекает числовое значение фазы, преобразуя статус в стандартный [`Option<f64>`].
+    ///
+    /// # Возвращает
+    /// * `Some(v)` — если статус [`PhaseStatus::Valid()`].
+    /// * `None` — если статус [`PhaseStatus::Invalid`].
     #[inline]
     pub fn value(self) -> Option<f64> {
         match self {
@@ -17,6 +34,16 @@ impl PhaseStatus {
             PhaseStatus::Invalid => None,
         }
     }
+    /// Конструирует [`PhaseStatus`] из сырого числа с плавающей точкой с проверкой на конечность.
+    ///
+    /// Отсеивает некорректные результаты вычислений с плавающей точкой (`NaN`, `f64::INFINITY`, `f64::NEG_INFINITY`).
+    ///
+    /// # Аргументы
+    /// * `v` - Вычисленное значение фазы.
+    ///
+    /// # Возвращает
+    /// * [`PhaseStatus::Valid()`], если `v.is_finite()` истинно.
+    /// * [`PhaseStatus::Invalid`] в противном случае.
     #[inline]
     pub fn from_value(v: f64) -> Self {
         if v.is_finite() {
@@ -26,8 +53,6 @@ impl PhaseStatus {
         }
     }
 }
-
-
 /// Контекст и выходные буферы модуля вычисления мгновенной фазы вала.
 ///
 /// Структура инкапсулирует массив рассчитанных абсолютных углов поворота вала. 
@@ -89,7 +114,8 @@ impl InstantShaftPhaseCtx {
     /// # Аргументы
     /// * `chunk_size_dec` - Ожидаемое число отсчётов децимированного сигнала в одном пакете.
     ///   в отсчетах (используется для предрасчета размера буфера `shaft_phase`).
-    pub fn new(chunk_size_dec: usize, delay_samples: usize) -> Self {
+    pub fn new(chunk_size_dec: usize, f_cutoff: f64, f_sample_dec: FSampleDec<f64>) -> Self {
+        let delay_samples = Self::group_delay_samples(f_cutoff, f_sample_dec);
         Self {
             shaft_phase: Vec::with_capacity(chunk_size_dec),
             shaft_phase_unwrapped: Vec::with_capacity(chunk_size_dec),
@@ -99,6 +125,12 @@ impl InstantShaftPhaseCtx {
             prev_phase: f64::NAN,
             turns: 0,
         }
+    }
+    /// Групповая задержка каскада на нулевой частоте, в отсчётах после децимации.
+    /// D = (1/Q1 + 1/Q2) / (2π·fc) · f_sample_dec  (производная ФЧХ по ω при ω → 0).
+    pub fn group_delay_samples(f_cutoff: f64, f_sample_dec: FSampleDec<f64>) -> usize {
+        let tau = (1.0 / Q_FACTOR_1 + 1.0 / Q_FACTOR_2) / (2.0 * std::f64::consts::PI * f_cutoff);
+        (tau * f_sample_dec.value()).round() as usize
     }
     /// Сброс при потере сигнала / переходе в Acquisition.
     pub fn reset(&mut self) {
@@ -114,5 +146,5 @@ impl Default for InstantShaftPhaseCtx {
     /// Выходной вектор инициализируется с нулевой емкостью без выделения памяти на куче. 
     /// Для промышленной потоковой обработки рекомендуется использовать метод `new` во избежание 
     /// динамических реаллокаций памяти в "горячем" цикле расчетов.
-    fn default() -> Self { Self::new(0, 0) }
+    fn default() -> Self { Self::new(0, 0.0, FSampleDec(0.0)) }
 }
