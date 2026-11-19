@@ -157,11 +157,11 @@ mod full_pipeline {
             CHUNK_RAW,
             M,
             F_CUTOFF,
+            1.0, // capture_history_s: 1 с истории при 1000 Гц -> buffer 1000
+            10, // search_steps
             4.0,   // revs_per_window
             0.25,  // correction_gain
             64,    // min_window_samples
-            1.0,   // capture_history_s: 1 с истории при 1000 Гц -> buffer 1000
-            10,    // search_steps
         );
         ctx.raw_rpm = 3000.0;
         ctx.rpm_detection.capture_mode.search_half_window_hz = 5.0;
