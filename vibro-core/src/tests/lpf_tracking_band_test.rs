@@ -60,11 +60,11 @@ fn prod_ctx() -> AngularCtx {
         conf.adc.chunk_size, 
         factor, 
         f_cutoff,
+        1.0, 
+        10,
         4.0,
         0.25,
         64,
-        1.0, 
-        10,
     )
 }
 ///
