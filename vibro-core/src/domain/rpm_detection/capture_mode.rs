@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 use sal_core::dbg::Dbg;
 use function_name::named;
-use crate::{AngularCtx, Eval, FSampleDec, NOIZE_THRESHOLD};
+use crate::{AngularCtx, Eval, FSampleDec, NOIZE_THRESHOLD, TrackState};
 ///
 /// Узел обработки сигналов для реализации **режима захвата (Capture Mode)**.
 ///
@@ -150,7 +150,7 @@ where
                 d.capture_mode.signal_buffer.push_back(x);
             }
         }
-        if !ctx.rpm_detection.validity_detector.valid {
+        if ctx.rpm_detection.validity_detector.state == TrackState::Acquisition {
             // Поиск только при достаточной истории: короткий буфер даёт
             // разрешение ~1/T и бессмысленную оценку (на старте системы)
             if ctx.rpm_detection.capture_mode.signal_buffer.len() < ctx.rpm_detection.capture_mode.buffer_len / 2 {
@@ -167,8 +167,16 @@ where
                 cap.search_half_window_hz, 
                 cap.search_steps,
             );
-            // Обновление состояния контекста режима захвата
-            if f_precise.is_finite() && f_precise > 0.0 && max_amp > NOIZE_THRESHOLD {
+            // Обновление состояния контекста режима захвата.
+            // Пик обязан подтверждаться текущим чанком: буфер истории отстаёт
+            // до buffer_len сэмплов, и без этой проверки захват «находит»
+            // затухающий хвост уже потерянного сигнала и портит f_precise
+            let amp_now = Self::goertzel(
+                &ctx.rpm_detection.decimation.decimated,
+                f_precise,
+                ctx.rpm_detection.decimation.f_sample_dec,
+            );
+            if f_precise.is_finite() && f_precise > 0.0 && max_amp > NOIZE_THRESHOLD && amp_now > NOIZE_THRESHOLD {
                 ctx.rpm_detection.capture_mode.f_precise = Some(f_precise);
                 ctx.rpm_detection.capture_mode.is_updated = true;
             } else {

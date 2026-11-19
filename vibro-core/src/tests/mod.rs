@@ -13,5 +13,6 @@ mod fft_buffer;
 pub(self) use fft_buffer::*;
 mod order_domain_samples_test;
 mod order_spectrum_test;
+mod rpm_detection_complex_test;
 mod validity_detector_test;
 mod standard_clarification_test;

@@ -62,10 +62,11 @@ where
         // Длина окна усреднения — целое число периодов оборота вала
         let window_len = fr.window_len_samples(f_sample_dec, f_het);
         for y in ctx.rpm_detection.lpf_tracking_band.filtered_signal.iter() {
-            if let Some(delta) = fr.update(y, window_len, f_sample_dec, f_het) {
-                if fr.apply_correction && track_valid {
+            if let Some(_) = fr.update(y, window_len, f_sample_dec, f_het) {
+                let saturated = fr.delta_hz.abs() >= fr.f_cutoff;
+                if fr.apply_correction && track_valid && !saturated {
                     ctx.rpm_detection.capture_mode.f_precise =
-                        Some(f_het + fr.correction_gain * delta);
+                        Some(f_het + fr.correction_gain * fr.delta_hz);
                 }
             }
         }
